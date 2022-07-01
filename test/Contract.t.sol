@@ -1,22 +1,89 @@
-// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/Test.sol";
+import {Test} from "forge-std/test.sol";
 
-import "src/CaptureTheFlag.sol";
+import "../src/PermitSwap.sol";
 
-contract FlagTest is Test {
-    CaptureTheFlag t;
-    address alice = address(0x123);
+import {MockERC20} from "./utils/MockERC20.sol";
+import {SigUtils} from "./utils/SigUtils.sol";
+
+contract DepositTest is Test {
+    ///                                                          ///
+    ///                           SETUP                          ///
+    ///                                                          ///
+
+    PermitSwap internal deposit;
+    MockERC20 internal token;
+    SigUtils internal sigUtils;
+
+    uint256 internal ownerPrivateKey;
+    address internal owner;
 
     function setUp() public {
-        t = new CaptureTheFlag(0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0);
-        vm.label(alice, "Alice");
+        deposit = new PermitSwap();
+        token = new MockERC20();
+        sigUtils = new SigUtils(token.DOMAIN_SEPARATOR());
+
+        ownerPrivateKey = 0xA11CE;
+        owner = vm.addr(ownerPrivateKey);
+
+        token.mint(owner, 1e18);
     }
 
-    function testCapture() public {
-        vm.prank(alice);
-        t.captureTheFlag();
-        assertEq(t.currentHolder(), alice);
+    ///                                                          ///
+    ///                           DEPOSIT                        ///
+    ///                                                          ///
+
+    function test_Deposit() public {
+        vm.prank(owner);
+        token.approve(address(deposit), 1e18);
+
+        vm.prank(owner);
+        deposit.deposit(address(token), 1e18);
+
+        assertEq(token.balanceOf(owner), 0);
+        assertEq(token.balanceOf(address(deposit)), 1e18);
+    }
+
+    function testFail_ContractNotApproved() public {
+        vm.prank(owner);
+        deposit.deposit(address(token), 1e18);
+    }
+
+    ///                                                          ///
+    ///                       DEPOSIT w/ PERMIT                  ///
+    ///                                                          ///
+
+    function test_DepositWithLimitedPermit() public {
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(deposit),
+            value: 1e18,
+            nonce: token.nonces(owner),
+            deadline: 1 days
+        });
+
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+
+        deposit.depositWithPermit(PermitSwap.PermitData(
+            address(token),
+            1e18,
+            permit.owner,
+            permit.spender,
+            permit.value,
+            permit.deadline,
+            v,
+            r,
+            s)
+        );
+
+        assertEq(token.balanceOf(owner), 0);
+        assertEq(token.balanceOf(address(deposit)), 1e18);
+
+        assertEq(token.allowance(owner, address(deposit)), 0);
+        assertEq(token.nonces(owner), 1);
+
     }
 }
