@@ -1,5 +1,5 @@
 {
-  "name": "contracts",
+  "name": "712-contracts",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -10,11 +10,17 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gaonuk/712-Contracts.git"
+  },
   "author": "",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Gaonuk/712-Contracts/issues"
+  },
+  "homepage": "https://github.com/Gaonuk/712-Contracts#readme",
   "dependencies": {
-    "@opengsn/cli": "^2.2.6",
-    "@opengsn/contracts": "^2.2.6"
+    "@opengsn/cli": "^2.2.6"
   }
 }

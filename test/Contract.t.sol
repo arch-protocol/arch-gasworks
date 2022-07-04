@@ -1,10 +1,9 @@
 pragma solidity ^0.8.13;
 
-import {Test} from "forge-std/test.sol";
+import {Test} from "forge-std/Test.sol";
 
 import "../src/PermitSwap.sol";
-
-import {MockERC20} from "./utils/MockERC20.sol";
+import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 import {SigUtils} from "./utils/SigUtils.sol";
 
 contract DepositTest is Test {
@@ -14,14 +13,16 @@ contract DepositTest is Test {
 
     PermitSwap internal deposit;
     MockERC20 internal token;
+    MockERC20 internal web3;
     SigUtils internal sigUtils;
 
     uint256 internal ownerPrivateKey;
     address internal owner;
 
     function setUp() public {
-        deposit = new PermitSwap();
-        token = new MockERC20();
+        token = new MockERC20("Mock Token", "MOCK", 18);
+        web3 = new MockERC20("Arch Web3 Token", "WEB3", 18);
+        deposit = new PermitSwap(address(web3));
         sigUtils = new SigUtils(token.DOMAIN_SEPARATOR());
 
         ownerPrivateKey = 0xA11CE;
@@ -39,7 +40,7 @@ contract DepositTest is Test {
         token.approve(address(deposit), 1e18);
 
         vm.prank(owner);
-        deposit.deposit(address(token), 1e18);
+        deposit.deposit(address(token), 1e18, 1e18);
 
         assertEq(token.balanceOf(owner), 0);
         assertEq(token.balanceOf(address(deposit)), 1e18);
@@ -47,7 +48,7 @@ contract DepositTest is Test {
 
     function testFail_ContractNotApproved() public {
         vm.prank(owner);
-        deposit.deposit(address(token), 1e18);
+        deposit.deposit(address(token), 1e18, 1e18);
     }
 
     ///                                                          ///
@@ -76,11 +77,13 @@ contract DepositTest is Test {
             permit.deadline,
             v,
             r,
-            s)
+            s),
+            1e18
         );
 
         assertEq(token.balanceOf(owner), 0);
         assertEq(token.balanceOf(address(deposit)), 1e18);
+        assertEq(web3.balanceOf(owner), 1e18);
 
         assertEq(token.allowance(owner, address(deposit)), 0);
         assertEq(token.nonces(owner), 1);

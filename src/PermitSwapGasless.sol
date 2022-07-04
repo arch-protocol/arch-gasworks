@@ -8,7 +8,7 @@ import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
 import {IWETH} from "./interfaces/IWETH.sol";
 
-contract PermitSwap is ERC2771Recipient {
+contract PermitSwapGasless is ERC2771Recipient {
     MockERC20 public web3;
     event TokenDeposit(address user, address tokenContract, uint256 amount);
 
@@ -37,17 +37,17 @@ contract PermitSwap is ERC2771Recipient {
         bytes swapCallData;
     }
 
-    constructor(address _web3) {
-        // _setTrustedForwarder(forwarder);
+    constructor(address _web3, address forwarder) {
+        _setTrustedForwarder(forwarder);
         web3 = MockERC20(_web3);
     }
 
     function deposit(address _tokenContract, uint256 _amount, uint256 totalSwap) external {
-        ERC20(_tokenContract).transferFrom(msg.sender, address(this), _amount);
+        ERC20(_tokenContract).transferFrom(_msgSender(), address(this), _amount);
 
-        emit TokenDeposit(msg.sender, _tokenContract, _amount);
+        emit TokenDeposit(_msgSender(), _tokenContract, _amount);
 
-        web3.mint(msg.sender, totalSwap);
+        web3.mint(_msgSender(), totalSwap);
     }
 
     function depositWithPermit(PermitData calldata permit, uint256 totalSwap) external {
@@ -61,11 +61,11 @@ contract PermitSwap is ERC2771Recipient {
             permit._s
         );
 
-        ERC20(permit._tokenContract).transferFrom(permit._owner, address(this), permit._amount);
+        ERC20(permit._tokenContract).transferFrom(_msgSender(), address(this), permit._amount);
 
         emit TokenDeposit(permit._owner, permit._tokenContract, permit._amount);
 
-        web3.mint(permit._owner, totalSwap);
+        web3.mint(_msgSender(), totalSwap);
         // _fillQuoteInternal(swapData);
     }
 
