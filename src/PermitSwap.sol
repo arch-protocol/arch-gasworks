@@ -1,17 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
-import "gsn/ERC2771Recipient.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 import "solmate/tokens/ERC20.sol";
-import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
+contract PermitSwap {
 
-import {IWETH} from "./interfaces/IWETH.sol";
-
-contract PermitSwap is ERC2771Recipient {
-    MockERC20 public web3;
     event TokenDeposit(address user, address tokenContract, uint256 amount);
-
     struct PermitData {
         address _tokenContract;
         uint256 _amount;
@@ -37,20 +31,19 @@ contract PermitSwap is ERC2771Recipient {
         bytes swapCallData;
     }
 
-    constructor(address _web3) {
+    constructor() {
         // _setTrustedForwarder(forwarder);
-        web3 = MockERC20(_web3);
     }
 
-    function deposit(address _tokenContract, uint256 _amount, uint256 totalSwap) external {
+    function swapNormal(address _tokenContract, uint256 _amount, SwapData calldata data) external {
         ERC20(_tokenContract).transferFrom(msg.sender, address(this), _amount);
 
         emit TokenDeposit(msg.sender, _tokenContract, _amount);
 
-        web3.mint(msg.sender, totalSwap);
+        _fillQuoteInternal(data);
     }
 
-    function depositWithPermit(PermitData calldata permit, uint256 totalSwap) external {
+    function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external {
         ERC20(permit._tokenContract).permit(
             permit._owner,
             permit._spender,
@@ -65,19 +58,18 @@ contract PermitSwap is ERC2771Recipient {
 
         emit TokenDeposit(permit._owner, permit._tokenContract, permit._amount);
 
-        web3.mint(permit._owner, totalSwap);
-        // _fillQuoteInternal(swapData);
+        _fillQuoteInternal(swapData);
     }
 
-    function _fillQuoteInternal(SwapData calldata swapData) internal {
-        require(swapData.sellToken.approve(swapData.spender, type(uint256).max));
+    function _fillQuoteInternal(SwapData calldata swap) internal {
+        require(swap.sellToken.approve(swap.spender, type(uint256).max));
         // Call the encoded swap function call on the contract at `swapTarget`,
         // passing along any ETH attached to this function call to cover protocol fees.
-        (bool success, ) = swapData.swapTarget.call{value: msg.value}(swapData.swapCallData);
+        (bool success, ) = swap.swapTarget.call{value: msg.value}(swap.swapCallData);
         require(success, "SWAP_CALL_FAILED");
         // Refund any unspent protocol fees to the sender.
-        payable(_msgSender()).transfer(address(this).balance);
+        payable(msg.sender).transfer(address(this).balance);
 
-        swapData.buyToken.transfer(_msgSender(), swapData.buyToken.balanceOf(address(this)));
+        swap.buyToken.transfer(msg.sender, swap.buyToken.balanceOf(address(this)));
     }
 }

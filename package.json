@@ -21,6 +21,8 @@
   },
   "homepage": "https://github.com/Gaonuk/712-Contracts#readme",
   "dependencies": {
-    "@opengsn/cli": "^2.2.6"
+    "@opengsn/cli": "^2.2.6",
+    "axios": "^0.27.2",
+    "ethers": "^5.6.9"
   }
 }
