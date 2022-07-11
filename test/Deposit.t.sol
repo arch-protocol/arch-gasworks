@@ -101,7 +101,7 @@ contract DepositTest is Test {
         );
 
         assertEq(usdc.balanceOf(owner), 0);
-        assertEq(usdc.balanceOf(address(deposit)), 0);
+        assertEq(usdc.balanceOf(address(deposit)), 1e6);
 
         assertEq(usdc.allowance(owner, address(deposit)), 0);
         assertEq(usdc.nonces(owner), 1);
