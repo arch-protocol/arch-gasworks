@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
-import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-
 import "solmate/tokens/ERC20.sol";
 contract PermitSwap {
 
@@ -20,19 +18,29 @@ contract PermitSwap {
 
     struct SwapData {
         // The `sellTokenAddress` field from the API response.
-        IERC20 sellToken;
+        ERC20 sellToken;
         // The `buyTokenAddress` field from the API response.
-        IERC20 buyToken;
+        ERC20 buyToken;
         // The `allowanceTarget` field from the API response.
         address spender;
         // The `to` field from the API response.
         address payable swapTarget;
         // The `data` field from the API response.
         bytes swapCallData;
+
+        uint256 swapValue;
     }
 
     constructor() {
         // _setTrustedForwarder(forwarder);
+    }
+    
+    receive() external payable {
+
+    }
+
+    fallback() external payable {
+
     }
 
     function swapNormal(address _tokenContract, uint256 _amount, SwapData calldata data) external {

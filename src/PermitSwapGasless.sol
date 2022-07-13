@@ -1,15 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 import "gsn/ERC2771Recipient.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-
 import "solmate/tokens/ERC20.sol";
-import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
-
-import {IWETH} from "./interfaces/IWETH.sol";
 
 contract PermitSwapGasless is ERC2771Recipient {
-    MockERC20 public web3;
     event TokenDeposit(address user, address tokenContract, uint256 amount);
 
     struct PermitData {
@@ -26,31 +20,32 @@ contract PermitSwapGasless is ERC2771Recipient {
 
     struct SwapData {
         // The `sellTokenAddress` field from the API response.
-        IERC20 sellToken;
+        ERC20 sellToken;
         // The `buyTokenAddress` field from the API response.
-        IERC20 buyToken;
+        ERC20 buyToken;
         // The `allowanceTarget` field from the API response.
         address spender;
         // The `to` field from the API response.
         address payable swapTarget;
         // The `data` field from the API response.
         bytes swapCallData;
+
+        uint256 swapValue;
     }
 
-    constructor(address _web3, address forwarder) {
+    constructor(address forwarder) {
         _setTrustedForwarder(forwarder);
-        web3 = MockERC20(_web3);
     }
 
-    function deposit(address _tokenContract, uint256 _amount, uint256 totalSwap) external {
+    function swapNormal(address _tokenContract, uint256 _amount, SwapData calldata data) external {
         ERC20(_tokenContract).transferFrom(_msgSender(), address(this), _amount);
 
         emit TokenDeposit(_msgSender(), _tokenContract, _amount);
 
-        web3.mint(_msgSender(), totalSwap);
+        _fillQuoteInternal(data);
     }
 
-    function depositWithPermit(PermitData calldata permit, uint256 totalSwap) external {
+    function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external {
         ERC20(permit._tokenContract).permit(
             permit._owner,
             permit._spender,
@@ -61,23 +56,22 @@ contract PermitSwapGasless is ERC2771Recipient {
             permit._s
         );
 
-        ERC20(permit._tokenContract).transferFrom(_msgSender(), address(this), permit._amount);
+        ERC20(permit._tokenContract).transferFrom(permit._owner, address(this), permit._amount);
 
         emit TokenDeposit(permit._owner, permit._tokenContract, permit._amount);
 
-        web3.mint(_msgSender(), totalSwap);
-        // _fillQuoteInternal(swapData);
+        _fillQuoteInternal(swapData);
     }
 
-    function _fillQuoteInternal(SwapData calldata swapData) internal {
-        require(swapData.sellToken.approve(swapData.spender, type(uint256).max));
+    function _fillQuoteInternal(SwapData calldata swap) internal {
+        require(swap.sellToken.approve(swap.spender, type(uint256).max));
         // Call the encoded swap function call on the contract at `swapTarget`,
         // passing along any ETH attached to this function call to cover protocol fees.
-        (bool success, ) = swapData.swapTarget.call{value: msg.value}(swapData.swapCallData);
+        (bool success, ) = swap.swapTarget.call{value: msg.value}(swap.swapCallData);
         require(success, "SWAP_CALL_FAILED");
         // Refund any unspent protocol fees to the sender.
         payable(_msgSender()).transfer(address(this).balance);
 
-        swapData.buyToken.transfer(_msgSender(), swapData.buyToken.balanceOf(address(this)));
+        swap.buyToken.transfer(_msgSender(), swap.buyToken.balanceOf(address(this)));
     }
 }

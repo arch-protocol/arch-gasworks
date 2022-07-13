@@ -1,13 +1,14 @@
-pragma solidity ^0.8.13;
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
 import "forge-std/Script.sol";
-import "../src/PermitSwap.sol";
+import "src/ArchPaymaster.sol";
 
 contract MyScript is Script {
     function run() external {
         vm.startBroadcast();
 
-        PermitSwap t = new PermitSwap();
+        ArchPaymaster t = new ArchPaymaster();
 
         vm.stopBroadcast();
     }

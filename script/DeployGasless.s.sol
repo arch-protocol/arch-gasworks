@@ -9,7 +9,7 @@ contract MyScript is Script {
     function run() external {
         vm.startBroadcast();
 
-        PermitSwapGasless t = new PermitSwapGasless(0x95bD8D42f30351685e96C62EDdc0d0613bf9a87A, 0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f);
+        PermitSwapGasless t = new PermitSwapGasless(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
 
         vm.stopBroadcast();
     }
