@@ -25,6 +25,7 @@ async function main() {
   console.log("swapTarget: " + quote.to)
   console.log("quote data: " + quote.data)
   console.log("value: " + quote.value);
+  console.log("buyAmount: " + quote.buyAmount);
 }
 
 main()

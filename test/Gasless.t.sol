@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
 import {Test} from "forge-std/Test.sol";
@@ -8,10 +9,16 @@ import {SigUtils} from "./utils/SigUtils.sol";
 import "solmate/tokens/ERC20.sol";
 import "./utils/HexUtils.sol";
 
+import "solmate/utils/SafeTransferLib.sol";
+
 contract GaslessTest is Test {
     ///                                                          ///
     ///                           SETUP                          ///
     ///                                                          ///
+    using SafeTransferLib for ERC20;
+
+    address immutable internal usdcAddress = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    address immutable internal web3Address = 0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A;
 
     PermitSwapGasless internal swap;
     ERC20 internal usdc;
@@ -32,9 +39,7 @@ contract GaslessTest is Test {
         owner = vm.addr(ownerPrivateKey);
 
         vm.prank(0xF977814e90dA44bFA03b6295A0616a897441aceC);
-        usdc.transfer(owner, 1e6);
-
-        // vm.deal(address(swap), 10 ether);
+        usdc.safeTransfer(owner, 1e6);
 
         vm.deal(owner, 10 ether);
 
@@ -43,8 +48,8 @@ contract GaslessTest is Test {
         inputs[1] = "scripts/fetch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(1e6));
         bytes memory res = vm.ffi(inputs);
-        (address spender, address payable swapTarget, bytes memory quote, uint256 value) = abi.decode(res, (address, address, bytes, uint256));
-        swapData = PermitSwapGasless.SwapData(usdc, web3, spender, swapTarget, quote, value);
+        (address spender, address payable swapTarget, bytes memory quote, uint256 value, uint256 buyAmount) = abi.decode(res, (address, address, bytes, uint256, uint256));
+        swapData = PermitSwapGasless.SwapData(usdcAddress, web3Address, spender, swapTarget, quote, value, buyAmount);
     }
 
     ///                                                          ///
@@ -60,7 +65,7 @@ contract GaslessTest is Test {
 
         assertEq(usdc.balanceOf(owner), 0);
         assertEq(usdc.balanceOf(address(swap)), 0);
-        assertGe(web3.balanceOf(owner), 5e17);
+        assertGe(web3.balanceOf(owner), swapData.buyAmount);
     }   
 
     function testFail_ContractNotApproved() public {
@@ -102,7 +107,7 @@ contract GaslessTest is Test {
         assertEq(usdc.balanceOf(address(swap)), 0);
         assertEq(usdc.allowance(owner, address(swap)), 0);
         assertEq(usdc.nonces(owner), 1);
-        assertGe(web3.balanceOf(owner), 5e17);
+        assertGe(web3.balanceOf(owner), swapData.buyAmount);
     }
 
     function test_SwapWithMaxPermit() public {
@@ -136,7 +141,7 @@ contract GaslessTest is Test {
 
         assertEq(usdc.allowance(owner, address(swap)), type(uint256).max - 1e6);
         assertEq(usdc.nonces(owner), 1);
-        assertGe(web3.balanceOf(owner), 5e17);
+        assertGe(web3.balanceOf(owner), swapData.buyAmount);
     }
 
     function testRevert_ExpiredPermit() public {
@@ -226,7 +231,7 @@ contract GaslessTest is Test {
         SigUtils.Permit memory permit = SigUtils.Permit({
             owner: owner,
             spender: address(swap),
-            value: 5e17, // sets allowance of 0.5 tokens
+            value: swapData.buyAmount, // sets allowance of 0.5 tokens
             nonce: 0,
             deadline: 2**256 - 1
         });

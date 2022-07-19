@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
 import {Test} from "forge-std/Test.sol";
@@ -7,24 +8,29 @@ import "../src/PermitSwap.sol";
 import {SigUtils} from "./utils/SigUtils.sol";
 import "solmate/tokens/ERC20.sol";
 import "./utils/HexUtils.sol";
+import "solmate/utils/SafeTransferLib.sol";
+
 
 contract PermitSwapTest is Test {
     ///                                                          ///
     ///                           SETUP                          ///
     ///                                                          ///
+    using SafeTransferLib for ERC20;
 
     PermitSwap internal swap;
     ERC20 internal usdc;
     ERC20 internal web3;
     SigUtils internal sigUtils;
+    address immutable internal usdcAddress = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    address immutable internal web3Address = 0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A;
 
     uint256 internal ownerPrivateKey;
     address internal owner;
     PermitSwap.SwapData internal swapData;
 
     function setUp() public {
-        usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
-        web3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
+        usdc = ERC20(usdcAddress);
+        web3 = ERC20(web3Address);
         swap = new PermitSwap();
         sigUtils = new SigUtils(usdc.DOMAIN_SEPARATOR());
 
@@ -32,9 +38,7 @@ contract PermitSwapTest is Test {
         owner = vm.addr(ownerPrivateKey);
 
         vm.prank(0xF977814e90dA44bFA03b6295A0616a897441aceC);
-        usdc.transfer(owner, 1e6);
-
-        // vm.deal(address(swap), 10 ether);
+        usdc.safeTransfer(owner, 1e6);
 
         vm.deal(owner, 10 ether);
 
@@ -43,8 +47,8 @@ contract PermitSwapTest is Test {
         inputs[1] = "scripts/fetch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(1e6));
         bytes memory res = vm.ffi(inputs);
-        (address spender, address payable swapTarget, bytes memory quote, uint256 value) = abi.decode(res, (address, address, bytes, uint256));
-        swapData = PermitSwap.SwapData(usdc, web3, spender, swapTarget, quote, value);
+        (address spender, address payable swapTarget, bytes memory quote, uint256 value, uint256 buyAmount) = abi.decode(res, (address, address, bytes, uint256, uint256));
+        swapData = PermitSwap.SwapData(usdcAddress, web3Address, spender, swapTarget, quote, value, buyAmount);
     }
 
     ///                                                          ///
@@ -60,7 +64,7 @@ contract PermitSwapTest is Test {
 
         assertEq(usdc.balanceOf(owner), 0);
         assertEq(usdc.balanceOf(address(swap)), 0);
-        assertGe(web3.balanceOf(owner), 5e17);
+        assertGe(web3.balanceOf(owner), swapData.buyAmount);
     }   
 
     function testFail_ContractNotApproved() public {
@@ -102,7 +106,7 @@ contract PermitSwapTest is Test {
         assertEq(usdc.balanceOf(address(swap)), 0);
         assertEq(usdc.allowance(owner, address(swap)), 0);
         assertEq(usdc.nonces(owner), 1);
-        assertGe(web3.balanceOf(owner), 5e17);
+        assertGe(web3.balanceOf(owner), swapData.buyAmount);
     }
 
     function test_SwapWithMaxPermit() public {
@@ -136,7 +140,7 @@ contract PermitSwapTest is Test {
 
         assertEq(usdc.allowance(owner, address(swap)), type(uint256).max - 1e6);
         assertEq(usdc.nonces(owner), 1);
-        assertGe(web3.balanceOf(owner), 5e17);
+        assertGe(web3.balanceOf(owner), swapData.buyAmount);
     }
 
     function testRevert_ExpiredPermit() public {
@@ -272,5 +276,24 @@ contract PermitSwapTest is Test {
             r,
             s
         ), swapData);
+    }
+
+    function testRevert_SwapCallFailed() public {
+        vm.prank(owner);
+        usdc.approve(address(swap), 1e6);
+
+        string[] memory inputs = new string[](3);
+        inputs[0] = "node";
+        inputs[1] = "scripts/fetch-quote.js";
+        inputs[2] = Conversor.iToHex(abi.encode(100e6)); // owner has only 1 usdc
+        bytes memory res = vm.ffi(inputs);
+        (address s, address payable st, bytes memory q, uint256 v, uint256 b) = abi.decode(res, (address, address, bytes, uint256, uint256));
+
+        PermitSwap.SwapData memory badSwapData = PermitSwap.SwapData(usdcAddress, web3Address, s, st, q, v, b);
+
+        vm.expectRevert("SWAP_CALL_FAILED");
+
+        vm.prank(owner);
+        swap.swapNormal(address(usdc), 1e6, badSwapData);
     }
 }

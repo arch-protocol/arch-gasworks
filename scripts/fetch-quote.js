@@ -25,7 +25,7 @@ async function main(quantity) {
   let quote = response.data
   
   encoded = encoder.encode(["address", "address", 
-   "bytes", "uint256"], [quote.allowanceTarget, quote.to, quote.data, quote.value]);
+   "bytes", "uint256", "uint256"], [quote.allowanceTarget, quote.to, quote.data, quote.value, quote.buyAmount]);
   process.stdout.write(encoded)
 }
 
