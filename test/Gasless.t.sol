@@ -53,27 +53,6 @@ contract GaslessTest is Test {
     }
 
     ///                                                          ///
-    ///                           Swap                           ///
-    ///                                                          ///
-
-    function test_Swap() public {
-        vm.prank(owner);
-        usdc.approve(address(swap), 1e6);
-
-        vm.prank(owner);
-        swap.swapNormal(address(usdc), 1e6, swapData);
-
-        assertEq(usdc.balanceOf(owner), 0);
-        assertEq(usdc.balanceOf(address(swap)), 0);
-        assertGe(web3.balanceOf(owner), swapData.buyAmount);
-    }   
-
-    function testFail_ContractNotApproved() public {
-        vm.prank(owner);
-        swap.swapNormal(address(usdc), 1e6, swapData);
-    }
-
-    ///                                                          ///
     ///                       SWAP w/ PERMIT                     ///
     ///                                                          ///
 
