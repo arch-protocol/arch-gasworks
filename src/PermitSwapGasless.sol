@@ -60,22 +60,6 @@ contract PermitSwapGasless is ERC2771Recipient, Owned {
         _setTrustedForwarder(_forwarder);
     }
 
-    function swapNormal(
-        address _tokenContract,
-        uint256 _amount,
-        SwapData calldata data
-    ) external {
-        ERC20(_tokenContract).safeTransferFrom(
-            msg.sender,
-            address(this),
-            _amount
-        );
-
-        emit Received(msg.sender, _tokenContract, _amount);
-
-        _fillQuoteInternal(data, _amount);
-    }
-
     function swapWithPermit(
         PermitData calldata permit,
         SwapData calldata swapData
