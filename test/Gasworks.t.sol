@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {Test} from "forge-std/Test.sol";
 import "forge-std/console2.sol";
 
-import "../src/PermitSwapGasless.sol";
+import "../src/Gasworks.sol";
 import {SigUtils} from "./utils/SigUtils.sol";
 import "solmate/tokens/ERC20.sol";
 import "./utils/HexUtils.sol";
@@ -20,19 +20,21 @@ contract GaslessTest is Test {
     address internal immutable usdcAddress = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
     address internal immutable web3Address = 0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A;
 
-    PermitSwapGasless internal swap;
+    Gasworks internal swap;
     ERC20 internal usdc;
     ERC20 internal web3;
     SigUtils internal sigUtils;
 
     uint256 internal ownerPrivateKey;
     address internal owner;
-    PermitSwapGasless.SwapData internal swapData;
+    Gasworks.SwapData internal swapData;
 
     function setUp() public {
         usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
         web3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
-        swap = new PermitSwapGasless(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
+        swap = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
+        swap.setTokens(address(usdc));
+        swap.setTokens(address(web3));
         sigUtils = new SigUtils(usdc.DOMAIN_SEPARATOR());
 
         ownerPrivateKey = 0xA11CE;
@@ -50,7 +52,7 @@ contract GaslessTest is Test {
         bytes memory res = vm.ffi(inputs);
         (address spender, address payable swapTarget, bytes memory quote, uint256 value, uint256 buyAmount) =
             abi.decode(res, (address, address, bytes, uint256, uint256));
-        swapData = PermitSwapGasless.SwapData(usdcAddress, web3Address, spender, swapTarget, quote, value, buyAmount);
+        swapData = Gasworks.SwapData(web3Address, spender, swapTarget, quote, value, buyAmount);
     }
 
     ///                                                          ///
@@ -72,7 +74,7 @@ contract GaslessTest is Test {
 
         vm.prank(owner);
         swap.swapWithPermit(
-            PermitSwapGasless.PermitData(address(usdc), 1e6, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
+            Gasworks.PermitData(address(usdc), 1e6, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
             swapData
         );
 
@@ -98,7 +100,7 @@ contract GaslessTest is Test {
 
         vm.prank(owner);
         swap.swapWithPermit(
-            PermitSwapGasless.PermitData(address(usdc), 1e6, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
+            Gasworks.PermitData(address(usdc), 1e6, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
             swapData
         );
 
@@ -127,7 +129,7 @@ contract GaslessTest is Test {
 
         vm.expectRevert("Permit: permit is expired");
         swap.swapWithPermit(
-            PermitSwapGasless.PermitData(address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
+            Gasworks.PermitData(address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
             swapData
         );
     }
@@ -147,7 +149,7 @@ contract GaslessTest is Test {
 
         vm.expectRevert("Permit: invalid signature");
         swap.swapWithPermit(
-            PermitSwapGasless.PermitData(address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
+            Gasworks.PermitData(address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
             swapData
         );
     }
@@ -167,7 +169,7 @@ contract GaslessTest is Test {
 
         vm.expectRevert("Permit: invalid signature");
         swap.swapWithPermit(
-            PermitSwapGasless.PermitData(address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
+            Gasworks.PermitData(address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
             swapData
         );
     }
@@ -186,7 +188,7 @@ contract GaslessTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
         swap.swapWithPermit(
-            PermitSwapGasless.PermitData(address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
+            Gasworks.PermitData(address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
             swapData
         );
     }
@@ -200,7 +202,7 @@ contract GaslessTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
         swap.swapWithPermit(
-            PermitSwapGasless.PermitData(
+            Gasworks.PermitData(
                 address(usdc),
                 2e18, // owner was only minted 1 usdc
                 permit.owner,
