@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  run-ci:
+    runs-on: ubuntu-latest
+    env: 
+      ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 17.3
+      - name: Install Foundry
+        uses: onbjerg/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install forge libraries
+        run: make install
+
+      - name: Install node_modules
+        run: npm install
+
+      - name: Run tests
+        run: FOUNDRY_PROFILE=ci make test-fork
