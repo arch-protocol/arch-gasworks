@@ -54,6 +54,12 @@ contract Gasworks is ERC2771Recipient, Owned {
 
     }
 
+    modifier onlyForwarder() virtual {
+        require(msg.sender == getTrustedForwarder(), "UNAUTHORIZED");
+
+        _;
+    }
+
     function setTrustedForwarder(address _forwarder) external onlyOwner {
         _setTrustedForwarder(_forwarder);
     }
@@ -66,10 +72,9 @@ contract Gasworks is ERC2771Recipient, Owned {
         return tokens[_token];
     }
 
-    function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external {
+    function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external onlyForwarder {
         require(isPermitted(permit._tokenContract), "INVALID_SELL_TOKEN");
         require(isPermitted(swapData.buyToken), "INVALID_BUY_TOKEN");
-        // Check if Biconomy is sender
 
         ERC20 token = ERC20(permit._tokenContract);
         safePermit(token, permit);
