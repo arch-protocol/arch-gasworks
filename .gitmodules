@@ -10,3 +10,6 @@
 [submodule "lib/gsn"]
 	path = lib/gsn
 	url = https://github.com/opengsn/gsn/
+[submodule "lib/index-coop-smart-contracts"]
+	path = lib/index-coop-smart-contracts
+	url = https://github.com/IndexCoop/index-coop-smart-contracts

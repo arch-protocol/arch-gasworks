@@ -6,3 +6,4 @@ openzeppelin-contracts/=lib/openzeppelin-contracts/
 solmate/=lib/solmate/src/
 @opengsn/=node_modules/@opengsn/
 @openzeppelin/=node_modules/@openzeppelin/
+indexcoop/=lib/index-coop-smart-contracts/contracts/exchangeIssuance/
