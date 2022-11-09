@@ -15,6 +15,6 @@ The Gasless Swap is deployed on Polygon Mainnet: [0x7d68f2540cb097c0348fc7312d7d
 ### Team
 | Name | Email |
 | :-------------- | :---------------- |
-| Rodrigo Gaona | rodrigo@archfinance.io |
-| Juan Pablo Schele | juan@archfinance.io |
+| Rodrigo Gaona | rodrigo@arch.finance |
+| Juan Pablo Schele | juan@arch.finance |
 
