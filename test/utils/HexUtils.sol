@@ -42,8 +42,9 @@ library Conversor {
         uint256 cycles = byteCode.length / 0x20;
         uint256 requiredAlloc = length;
 
-        if (length % 0x20 > 0) //optimise copying the final part of the bytes - to avoid looping with single byte writes
-        {
+        if (
+            length % 0x20 > 0 //optimise copying the final part of the bytes - to avoid looping with single byte writes
+        ) {
             cycles++;
             requiredAlloc += 0x20; //expand memory to allow end blank, so we don't smack the next stack entry
         }
