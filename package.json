@@ -1,5 +1,5 @@
 {
-  "name": "712-contracts",
+  "name": "arch-gasworks",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -12,24 +12,18 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Gaonuk/712-Contracts.git"
+    "url": "git+https://github.com/arch-protocol/arch-gasworks.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Gaonuk/712-Contracts/issues"
+    "url": "https://github.com/arch-protocol/arch-gasworks/issues"
   },
-  "homepage": "https://github.com/Gaonuk/712-Contracts#readme",
+  "homepage": "https://github.com/arch-protocol/arch-gasworks#readme",
   "dependencies": {
-    "@opengsn/cli": "^2.2.6",
-    "axios": "^0.27.2",
-    "ethers": "^5.6.9",
-    "jose": "^4.10.0"
-  },
-  "devDependencies": {
-    "prettier": "^2.7.1",
-    "prettier-plugin-solidity": "^1.0.0-dev.23",
-    "solhint": "^3.3.7",
-    "solhint-plugin-prettier": "^0.0.5"
+    "axios": "^1.3.5",
+    "ethers": "^6.3.0",
+    "jose": "^4.14.0",
+    "qs": "^6.11.1"
   }
 }
