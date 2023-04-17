@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.17.0;
 
 import "gsn/ERC2771Recipient.sol";
 import "solmate/tokens/ERC20.sol";
