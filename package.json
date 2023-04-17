@@ -25,6 +25,7 @@
     "ethers": "^6.3.0",
     "jose": "^4.14.0",
     "qs": "^6.11.1",
-    "solhint": "^3.4.1"
+    "solhint": "^3.4.1",
+    "solhint-plugin-prettier": "^0.0.5"
   }
 }
