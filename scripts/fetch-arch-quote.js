@@ -1,6 +1,6 @@
 const { ethers } = require("ethers")
 const axios = require("axios").default
-const encoder = new ethers.utils.AbiCoder()
+const encoder = new ethers.AbiCoder()
 const qs = require("qs")
 const {
   SignJWT,
