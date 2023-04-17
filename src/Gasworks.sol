@@ -147,7 +147,7 @@ contract Gasworks is ERC2771Recipient, Owned {
         );
 
         mintData._setToken.transfer(permit._owner, mintData._amountSetToken);
-        token.safeTransfer(permit._owner, token.balanceOf(address(this))); 
+        token.safeTransfer(permit._owner, token.balanceOf(address(this)));
     }
 
     function _fillQuoteInternal(SwapData calldata swap, uint256 sellAmount, address _owner, address _sellToken)
