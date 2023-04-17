@@ -5,5 +5,5 @@ paymasters/=lib/gsn/packages/paymasters/contracts/
 openzeppelin-contracts/=lib/openzeppelin-contracts/
 solmate/=lib/solmate/src/
 @opengsn/=node_modules/@opengsn/
-@openzeppelin/=node_modules/@openzeppelin/
 indexcoop/=lib/index-coop-smart-contracts/contracts/exchangeIssuance/
+permit2/=lib/permit2/src/
