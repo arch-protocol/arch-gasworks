@@ -13,3 +13,6 @@
 [submodule "lib/index-coop-smart-contracts"]
 	path = lib/index-coop-smart-contracts
 	url = https://github.com/IndexCoop/index-coop-smart-contracts
+[submodule "lib/permit2"]
+	path = lib/permit2
+	url = https://github.com/Uniswap/permit2
