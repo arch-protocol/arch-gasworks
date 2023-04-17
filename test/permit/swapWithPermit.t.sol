@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import {Test} from "forge-std/Test.sol";
-import "forge-std/console2.sol";
-
-import "../src/Gasworks.sol";
-import {SigUtils} from "./utils/SigUtils.sol";
-import "solmate/tokens/ERC20.sol";
-import "./utils/HexUtils.sol";
-
-import "solmate/utils/SafeTransferLib.sol";
+import {Gasworks} from "src/Gasworks.sol";
+import {SigUtils} from "test/utils/SigUtils.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {Conversor} from "test/utils/HexUtils.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 contract GaslessTest is Test {
     ///                                                          ///
@@ -75,7 +72,9 @@ contract GaslessTest is Test {
 
         vm.prank(biconomyForwarder);
         swap.swapWithPermit(
-            Gasworks.PermitData(address(usdc), 1e6, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
+            Gasworks.PermitData(
+                address(usdc), 1e6, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s
+            ),
             swapData
         );
 
@@ -101,7 +100,9 @@ contract GaslessTest is Test {
 
         vm.prank(biconomyForwarder);
         swap.swapWithPermit(
-            Gasworks.PermitData(address(usdc), 1e6, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
+            Gasworks.PermitData(
+                address(usdc), 1e6, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s
+            ),
             swapData
         );
 
@@ -131,7 +132,9 @@ contract GaslessTest is Test {
         vm.expectRevert("Permit: permit is expired");
         vm.prank(biconomyForwarder);
         swap.swapWithPermit(
-            Gasworks.PermitData(address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
+            Gasworks.PermitData(
+                address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s
+            ),
             swapData
         );
     }
@@ -152,7 +155,9 @@ contract GaslessTest is Test {
         vm.expectRevert("Permit: invalid signature");
         vm.prank(biconomyForwarder);
         swap.swapWithPermit(
-            Gasworks.PermitData(address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
+            Gasworks.PermitData(
+                address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s
+            ),
             swapData
         );
     }
@@ -173,7 +178,9 @@ contract GaslessTest is Test {
         vm.expectRevert("Permit: invalid signature");
         vm.prank(biconomyForwarder);
         swap.swapWithPermit(
-            Gasworks.PermitData(address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
+            Gasworks.PermitData(
+                address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s
+            ),
             swapData
         );
     }
@@ -193,7 +200,9 @@ contract GaslessTest is Test {
 
         vm.prank(biconomyForwarder);
         swap.swapWithPermit(
-            Gasworks.PermitData(address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s),
+            Gasworks.PermitData(
+                address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s
+            ),
             swapData
         );
     }
