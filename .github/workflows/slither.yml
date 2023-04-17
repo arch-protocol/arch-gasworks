@@ -1,16 +1,14 @@
-name: CI
+name: Slither Analysis
 
 on:
   push:
     branches:
       - main
   pull_request:
-
+  
 jobs:
-  run-ci:
+  analyze:
     runs-on: ubuntu-latest
-    env: 
-      ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
     steps:
       - uses: actions/checkout@v3
 
@@ -33,12 +31,10 @@ jobs:
 
       - name: Install forge libraries
         run: make install
-
-      - name: Install node_modules
-        run: npm ci
-
-      - name: Check code format
-        run: forge fmt --check
-
-      - name: Check lint
-        run: npm run lint
+      
+      - name: Run Slither
+        uses: crytic/slither-action@v0.2.0
+        with:
+          node-version: 16.18.0
+          fail-on: medium
+          slither-args: --filter-paths "lib/|test/|script/" --exclude-low
