@@ -71,12 +71,6 @@ contract Gasworks is ERC2771Recipient, Owned {
         bool _isDebtIssuance;
     }
 
-    modifier isBiconomy() virtual {
-        require(msg.sender == biconomyForwarder, "UNAUTHORIZED");
-
-        _;
-    }
-
     constructor(address _forwarder) Owned(_msgSender()) {
         _setTrustedForwarder(_forwarder);
         exchangeIssuance = IExchangeIssuanceZeroEx(payable(0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320));
