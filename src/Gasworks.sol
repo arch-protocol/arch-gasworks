@@ -2,11 +2,11 @@
 pragma solidity ^0.8.17.0;
 
 import "gsn/ERC2771Recipient.sol";
-import "solmate/tokens/ERC20.sol";
-import "solmate/utils/SafeTransferLib.sol";
-import "solmate/auth/Owned.sol";
+import "solmate/src/tokens/ERC20.sol";
+import "solmate/src/utils/SafeTransferLib.sol";
+import "solmate/src/auth/Owned.sol";
 import "./interfaces/IExchangeIssuanceZeroEx.sol";
-import "permit2/interfaces/ISignatureTransfer.sol";
+import "permit2/src/interfaces/ISignatureTransfer.sol";
 
 contract Gasworks is ERC2771Recipient, Owned {
     using SafeTransferLib for ERC20;
