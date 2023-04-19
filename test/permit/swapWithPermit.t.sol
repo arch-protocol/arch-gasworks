@@ -4,9 +4,9 @@ pragma solidity ^0.8.17.0;
 import {Test} from "forge-std/Test.sol";
 import {Gasworks} from "src/Gasworks.sol";
 import {SigUtils} from "test/utils/SigUtils.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {Conversor} from "test/utils/HexUtils.sol";
-import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 contract GaslessTest is Test {
     ///                                                          ///
