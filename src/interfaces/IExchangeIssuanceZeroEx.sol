@@ -1,6 +1,6 @@
 //    SPDX-License-Identifier: Unlicensed
 
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17.0;
 
 pragma experimental ABIEncoderV2;
 
@@ -21,11 +21,11 @@ interface IExchangeIssuanceZeroEx {
         bool isDebtIssuanceModule;
     }
 
+    // The issued SetToken
+    // The address of the input asset(ERC20/ETH) used to issue the SetTokens
+    // The amount of input tokens used for issuance
+    // The amount of SetTokens received by the recipient
     event ExchangeIssue( // The recipient address of the issued SetTokens
-        // The issued SetToken
-        // The address of the input asset(ERC20/ETH) used to issue the SetTokens
-        // The amount of input tokens used for issuance
-        // The amount of SetTokens received by the recipient
         address indexed _recipient,
         ISetToken indexed _setToken,
         IERC20 indexed _inputToken,
@@ -33,11 +33,11 @@ interface IExchangeIssuanceZeroEx {
         uint256 _amountSetIssued
     );
 
+    // The redeemed SetToken
+    // The address of output asset(ERC20/ETH) received by the recipient
+    // The amount of SetTokens redeemed for output tokens
+    // The amount of output tokens received by the recipient
     event ExchangeRedeem( // The recipient adress of the output tokens obtained for redemption
-        // The redeemed SetToken
-        // The address of output asset(ERC20/ETH) received by the recipient
-        // The amount of SetTokens redeemed for output tokens
-        // The amount of output tokens received by the recipient
         address indexed _recipient,
         ISetToken indexed _setToken,
         IERC20 indexed _outputToken,
@@ -99,9 +99,7 @@ interface IExchangeIssuanceZeroEx {
         bytes[] memory _componentQuotes,
         address _issuanceModule,
         bool _isDebtIssuance
-    )
-        external
-        returns (uint256);
+    ) external returns (uint256);
 
     /**
      * Issues an exact amount of SetTokens for given amount of ETH.
@@ -119,10 +117,7 @@ interface IExchangeIssuanceZeroEx {
         bytes[] memory _componentQuotes,
         address _issuanceModule,
         bool _isDebtIssuance
-    )
-        external
-        payable
-        returns (uint256);
+    ) external payable returns (uint256);
 
     /**
      * Redeems an exact amount of SetTokens for an ERC20 token.
@@ -146,9 +141,7 @@ interface IExchangeIssuanceZeroEx {
         bytes[] memory _componentQuotes,
         address _issuanceModule,
         bool _isDebtIssuance
-    )
-        external
-        returns (uint256);
+    ) external returns (uint256);
 
     /**
      * Redeems an exact amount of SetTokens for ETH.
@@ -170,9 +163,7 @@ interface IExchangeIssuanceZeroEx {
         bytes[] memory _componentQuotes,
         address _issuanceModule,
         bool _isDebtIssuance
-    )
-        external
-        returns (uint256);
+    ) external returns (uint256);
 
     /**
      * Returns component positions required for issuance
@@ -187,10 +178,7 @@ interface IExchangeIssuanceZeroEx {
         bool _isDebtIssuance,
         ISetToken _setToken,
         uint256 _amountSetToken
-    )
-        external
-        view
-        returns (address[] memory components, uint256[] memory positions);
+    ) external view returns (address[] memory components, uint256[] memory positions);
 
     /**
      * Returns component positions required for Redemption
@@ -205,8 +193,5 @@ interface IExchangeIssuanceZeroEx {
         bool _isDebtIssuance,
         ISetToken _setToken,
         uint256 _amountSetToken
-    )
-        external
-        view
-        returns (address[] memory components, uint256[] memory positions);
+    ) external view returns (address[] memory components, uint256[] memory positions);
 }

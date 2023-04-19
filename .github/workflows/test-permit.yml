@@ -1,0 +1,14 @@
+name: Gasworks Permit Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  gasworks-tests:
+    uses: ./.github/workflows/tests-template.yml
+    with:
+      make-command: test-permit
+    secrets: inherit

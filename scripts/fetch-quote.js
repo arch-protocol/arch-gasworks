@@ -1,6 +1,6 @@
 const { ethers } = require("ethers")
 const axios = require("axios").default
-const encoder = new ethers.utils.AbiCoder();
+const encoder = new ethers.AbiCoder();
 
 const API_QUOTE_URL = "https://polygon.api.0x.org/swap/v1/quote"
 

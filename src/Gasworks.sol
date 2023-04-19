@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17.0;
 
 import "gsn/ERC2771Recipient.sol";
-import "solmate/tokens/ERC20.sol";
-import "solmate/utils/SafeTransferLib.sol";
-import "solmate/auth/Owned.sol";
+import "solmate/src/tokens/ERC20.sol";
+import "solmate/src/utils/SafeTransferLib.sol";
+import "solmate/src/auth/Owned.sol";
 import "./interfaces/IExchangeIssuanceZeroEx.sol";
+import "permit2/src/interfaces/ISignatureTransfer.sol";
 
 contract Gasworks is ERC2771Recipient, Owned {
     using SafeTransferLib for ERC20;
@@ -13,6 +14,7 @@ contract Gasworks is ERC2771Recipient, Owned {
 
     address private constant biconomyForwarder = 0x86C80a8aa58e0A4fa09A69624c31Ab2a6CAD56b8;
     IExchangeIssuanceZeroEx private immutable exchangeIssuance;
+    ISignatureTransfer private immutable signatureTransfer;
 
     event Received(address sender, address tokenContract, uint256 amount, address messageSender);
     event Swap(address buyToken, uint256 buyAmount, address sellToken, uint256 sellAmount);
@@ -69,15 +71,10 @@ contract Gasworks is ERC2771Recipient, Owned {
         bool _isDebtIssuance;
     }
 
-    modifier isBiconomy() virtual {
-        require(msg.sender == biconomyForwarder, "UNAUTHORIZED");
-
-        _;
-    }
-
     constructor(address _forwarder) Owned(_msgSender()) {
         _setTrustedForwarder(_forwarder);
         exchangeIssuance = IExchangeIssuanceZeroEx(payable(0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320));
+        signatureTransfer = ISignatureTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
     }
 
     function setTrustedForwarder(address _forwarder) external onlyOwner {
@@ -100,7 +97,7 @@ contract Gasworks is ERC2771Recipient, Owned {
      * @param permit              Permit data of the ERC20 token used (USDC)
      * @param swapData            Data of the swap to perform
      */
-    function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external isBiconomy {
+    function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external {
         require(isPermitted(permit._tokenContract), "INVALID_SELL_TOKEN");
         require(isPermitted(swapData.buyToken), "INVALID_BUY_TOKEN");
 
@@ -123,7 +120,7 @@ contract Gasworks is ERC2771Recipient, Owned {
      * @param permit              Permit data of the ERC20 token used (USDC)
      * @param mintData            Data of the issuance to perform
      */
-    function mintWithPermit(PermitData calldata permit, MintData calldata mintData) external isBiconomy {
+    function mintWithPermit(PermitData calldata permit, MintData calldata mintData) external {
         require(isPermitted(permit._tokenContract), "INVALID_SELL_TOKEN");
         require(isPermitted(address(mintData._setToken)), "INVALID_TOKEN_TO_MINT");
 
@@ -147,7 +144,28 @@ contract Gasworks is ERC2771Recipient, Owned {
         );
 
         mintData._setToken.transfer(permit._owner, mintData._amountSetToken);
-        token.safeTransfer(permit._owner, token.balanceOf(address(this))); 
+        token.safeTransfer(permit._owner, token.balanceOf(address(this)));
+    }
+
+    function swapWithPermi2(
+        ISignatureTransfer.PermitTransferFrom memory permit,
+        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
+        address owner,
+        bytes32 witness,
+        string calldata witnessTypeString,
+        bytes calldata signature,
+        SwapData calldata swapData
+    ) external {
+        require(isPermitted(permit.permitted.token), "INVALID_SELL_TOKEN");
+        require(isPermitted(swapData.buyToken), "INVALID_BUY_TOKEN");
+
+        signatureTransfer.permitWitnessTransferFrom(
+            permit, transferDetails, owner, witness, witnessTypeString, signature
+        );
+
+        emit Received(owner, transferDetails.to, transferDetails.requestedAmount, msg.sender);
+
+        _fillQuoteInternal(swapData, transferDetails.requestedAmount, owner, transferDetails.to);
     }
 
     function _fillQuoteInternal(SwapData calldata swap, uint256 sellAmount, address _owner, address _sellToken)
