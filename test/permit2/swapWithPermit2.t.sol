@@ -29,12 +29,10 @@ contract GaslessTest is Test, PermitSignature, TokenProvider {
 
     address internal immutable usdcAddress = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
     address internal immutable web3Address = 0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A;
-    address private constant biconomyForwarder = 0x86C80a8aa58e0A4fa09A69624c31Ab2a6CAD56b8;
 
     Gasworks internal swap;
     ERC20 internal usdc;
     ERC20 internal web3;
-    SigUtils internal sigUtils;
 
     uint256 internal ownerPrivateKey;
     address internal owner;
@@ -60,8 +58,6 @@ contract GaslessTest is Test, PermitSignature, TokenProvider {
 
         vm.prank(0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245);
         usdc.safeTransfer(owner, 1e6);
-
-        vm.deal(biconomyForwarder, 10 ether);
 
         vm.prank(owner);
         usdc.approve(address(permit2), 1e6);

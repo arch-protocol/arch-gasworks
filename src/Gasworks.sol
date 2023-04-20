@@ -21,6 +21,9 @@ contract Gasworks is ERC2771Recipient, Owned {
     string constant SWAPDATA_WITNESS_TYPE_STRING =
         "SwapData witness)SwapData(address buyToken,address spender,address payable swapTarget, bytes swapCallData,uint256 swapValue,uint256 buyAmount)TokenPermissions(address token,uint256 amount)";
 
+    string constant MINTDATA_WITNESS_TYPE_STRING =
+        "MintData witness)MintData(ISetToken _setToken,uint256 _amountSetToken,uint256 _maxAmountInputToken, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)";
+
     event Received(address sender, address tokenContract, uint256 amount, address messageSender);
     event Swap(address buyToken, uint256 buyAmount, address sellToken, uint256 sellAmount);
     event Sent(address receiver, address tokenContract, uint256 amount);
@@ -168,6 +171,40 @@ contract Gasworks is ERC2771Recipient, Owned {
         emit Received(owner, transferDetails.to, transferDetails.requestedAmount, msg.sender);
 
         _fillQuoteInternal(swapData, transferDetails.requestedAmount, owner, permit.permitted.token);
+    }
+
+    function mintWithPermit2(
+        ISignatureTransfer.PermitTransferFrom memory permit,
+        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
+        address owner,
+        bytes32 witness,
+        bytes calldata sig,
+        MintData calldata mintData,
+        Permit2 permit2
+    ) external {
+        require(isPermitted(permit.permitted.token), "INVALID_SELL_TOKEN");
+        require(isPermitted(address(mintData._setToken)), "INVALID_BUY_TOKEN");
+
+        permit2.permitWitnessTransferFrom(permit, transferDetails, owner, witness, MINTDATA_WITNESS_TYPE_STRING, sig);
+
+        ERC20 token = ERC20(permit.permitted.token);
+
+        emit Received(owner, permit.permitted.token, permit.permitted.amount, msg.sender);
+
+        token.safeApprove(address(exchangeIssuance), mintData._maxAmountInputToken);
+
+        exchangeIssuance.issueExactSetFromToken(
+            mintData._setToken,
+            IERC20(permit.permitted.token),
+            mintData._amountSetToken,
+            mintData._maxAmountInputToken,
+            mintData._componentQuotes,
+            mintData._issuanceModule,
+            mintData._isDebtIssuance
+        );
+
+        mintData._setToken.transfer(owner, mintData._amountSetToken);
+        token.safeTransfer(owner, token.balanceOf(address(this)));
     }
 
     function _fillQuoteInternal(SwapData calldata swap, uint256 sellAmount, address _owner, address _sellToken)
