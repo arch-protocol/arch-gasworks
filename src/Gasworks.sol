@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.17.0;
 
-import "gsn/ERC2771Recipient.sol";
-import "solmate/src/tokens/ERC20.sol";
-import "solmate/src/utils/SafeTransferLib.sol";
-import "solmate/src/auth/Owned.sol";
-import "./interfaces/IExchangeIssuanceZeroEx.sol";
-import "permit2/src/interfaces/ISignatureTransfer.sol";
+import {ERC2771Recipient} from "gsn/ERC2771Recipient.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {ISetToken} from "./interfaces/ISetToken.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {Owned} from "solmate/src/auth/Owned.sol";
+import {IExchangeIssuanceZeroEx} from "./interfaces/IExchangeIssuanceZeroEx.sol";
+import {Permit2} from "permit2/src/Permit2.sol";
+import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract Gasworks is ERC2771Recipient, Owned {
     using SafeTransferLib for ERC20;
@@ -14,7 +17,9 @@ contract Gasworks is ERC2771Recipient, Owned {
 
     address private constant biconomyForwarder = 0x86C80a8aa58e0A4fa09A69624c31Ab2a6CAD56b8;
     IExchangeIssuanceZeroEx private immutable exchangeIssuance;
-    ISignatureTransfer private immutable signatureTransfer;
+
+    string constant SWAPDATA_WITNESS_TYPE_STRING =
+        "SwapData witness)SwapData(address buyToken,address spender,address payable swapTarget, bytes swapCallData,uint256 swapValue,uint256 buyAmount)TokenPermissions(address token,uint256 amount)";
 
     event Received(address sender, address tokenContract, uint256 amount, address messageSender);
     event Swap(address buyToken, uint256 buyAmount, address sellToken, uint256 sellAmount);
@@ -74,7 +79,6 @@ contract Gasworks is ERC2771Recipient, Owned {
     constructor(address _forwarder) Owned(_msgSender()) {
         _setTrustedForwarder(_forwarder);
         exchangeIssuance = IExchangeIssuanceZeroEx(payable(0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320));
-        signatureTransfer = ISignatureTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
     }
 
     function setTrustedForwarder(address _forwarder) external onlyOwner {
@@ -147,25 +151,23 @@ contract Gasworks is ERC2771Recipient, Owned {
         token.safeTransfer(permit._owner, token.balanceOf(address(this)));
     }
 
-    function swapWithPermi2(
+    function swapWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit,
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
         bytes32 witness,
-        string calldata witnessTypeString,
-        bytes calldata signature,
-        SwapData calldata swapData
+        bytes calldata sig,
+        SwapData calldata swapData,
+        Permit2 permit2
     ) external {
         require(isPermitted(permit.permitted.token), "INVALID_SELL_TOKEN");
         require(isPermitted(swapData.buyToken), "INVALID_BUY_TOKEN");
 
-        signatureTransfer.permitWitnessTransferFrom(
-            permit, transferDetails, owner, witness, witnessTypeString, signature
-        );
+        permit2.permitWitnessTransferFrom(permit, transferDetails, owner, witness, SWAPDATA_WITNESS_TYPE_STRING, sig);
 
         emit Received(owner, transferDetails.to, transferDetails.requestedAmount, msg.sender);
 
-        _fillQuoteInternal(swapData, transferDetails.requestedAmount, owner, transferDetails.to);
+        _fillQuoteInternal(swapData, transferDetails.requestedAmount, owner, permit.permitted.token);
     }
 
     function _fillQuoteInternal(SwapData calldata swap, uint256 sellAmount, address _owner, address _sellToken)
