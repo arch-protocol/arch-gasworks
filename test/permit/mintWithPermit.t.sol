@@ -18,14 +18,14 @@ contract GaslessTest is Test {
 
     address private constant biconomyForwarder = 0x86C80a8aa58e0A4fa09A69624c31Ab2a6CAD56b8;
 
-    address internal constant usdcAddress = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
-    address internal constant AP60Address = 0x6cA9C8914a14D63a6700556127D09e7721ff7D3b;
-    address internal constant debtModule = 0xf2dC2f456b98Af9A6bEEa072AF152a7b0EaA40C9;
-    bool internal constant _isDebtIssuance = true;
+    address internal constant USDC_ADDRESS = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    address internal constant AP60_ADDRESS = 0x6cA9C8914a14D63a6700556127D09e7721ff7D3b;
+    address internal constant DEBT_MODULE = 0xf2dC2f456b98Af9A6bEEa072AF152a7b0EaA40C9;
+    bool internal constant IS_DEBT_ISSUANCE = true;
 
     Gasworks internal gasworks;
-    ERC20 internal constant usdc = ERC20(usdcAddress);
-    ISetToken internal constant AP60 = ISetToken(AP60Address);
+    ERC20 internal constant usdc = ERC20(USDC_ADDRESS);
+    ISetToken internal constant AP60 = ISetToken(AP60_ADDRESS);
     SigUtils internal sigUtils;
 
     uint256 internal alicePrivateKey;
@@ -51,10 +51,10 @@ contract GaslessTest is Test {
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-arch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(amountToMint));
-        inputs[3] = Conversor.iToHex(abi.encode(AP60Address));
+        inputs[3] = Conversor.iToHex(abi.encode(AP60_ADDRESS));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _maxAmountInputToken) = abi.decode(res, (bytes[], uint256));
-        mintData = Gasworks.MintData(AP60, amountToMint, _maxAmountInputToken, quotes, debtModule, _isDebtIssuance);
+        mintData = Gasworks.MintData(AP60, amountToMint, _maxAmountInputToken, quotes, DEBT_MODULE, IS_DEBT_ISSUANCE);
     }
 
     ///                                                          ///
