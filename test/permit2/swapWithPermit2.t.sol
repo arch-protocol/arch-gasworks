@@ -13,8 +13,9 @@ import {Permit2} from "permit2/src/Permit2.sol";
 import {TokenProvider} from "permit2/test/utils/TokenProvider.sol";
 import {SignatureVerification} from "permit2/src/libraries/SignatureVerification.sol";
 import {InvalidNonce, SignatureExpired} from "permit2/src/PermitErrors.sol";
+import {Permit2Utils} from "test/utils/Permit2Utils.sol";
 
-contract GaslessTest is Test, PermitSignature, TokenProvider {
+contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
     /*//////////////////////////////////////////////////////////////
                               VARIABLES
     //////////////////////////////////////////////////////////////*/
@@ -30,7 +31,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider {
     address internal immutable USDC_ADDRESS = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
     address internal immutable web3Address = 0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A;
 
-    Gasworks internal swap;
+    Gasworks internal gasworks;
     ERC20 internal usdc;
     ERC20 internal web3;
 
@@ -47,9 +48,9 @@ contract GaslessTest is Test, PermitSignature, TokenProvider {
     function setUp() public {
         usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
         web3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
-        swap = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
-        swap.setTokens(address(usdc));
-        swap.setTokens(address(web3));
+        gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
+        gasworks.setTokens(address(usdc));
+        gasworks.setTokens(address(web3));
         permit2 = Permit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
         DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
 
@@ -73,91 +74,87 @@ contract GaslessTest is Test, PermitSignature, TokenProvider {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              UTILS
-    //////////////////////////////////////////////////////////////*/
-
-    function getTransferDetails(address to, uint256 amount)
-        private
-        pure
-        returns (ISignatureTransfer.SignatureTransferDetails memory)
-    {
-        return ISignatureTransfer.SignatureTransferDetails({to: to, requestedAmount: amount});
-    }
-
-    function getSignature(
-        ISignatureTransfer.PermitTransferFrom memory permit,
-        uint256 privateKey,
-        bytes32 typehash,
-        bytes32 witness,
-        bytes32 domainSeparator
-    ) internal returns (bytes memory sig) {
-        bytes32 tokenPermissions = keccak256(abi.encode(_TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
-
-        bytes32 msgHash = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                domainSeparator,
-                keccak256(abi.encode(typehash, tokenPermissions, address(swap), permit.nonce, permit.deadline, witness))
-            )
-        );
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
-        return bytes.concat(r, s, bytes1(v));
-    }
-
-    /*//////////////////////////////////////////////////////////////
                               REVERT
     //////////////////////////////////////////////////////////////*/
 
     function testCannotSwapWithPermit2InvalidType() public {
         bytes32 witness = keccak256(abi.encode(swapData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitWitnessTransfer(address(usdc), 0);
-        bytes memory sig =
-            getSignature(permit, ownerPrivateKey, FULL_EXAMPLE_WITNESS_TYPEHASH, witness, DOMAIN_SEPARATOR);
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            FULL_EXAMPLE_WITNESS_TYPEHASH,
+            witness,
+            DOMAIN_SEPARATOR,
+            _TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(swap), 1e6);
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
 
         vm.expectRevert(SignatureVerification.InvalidSigner.selector);
-        permit2.permitWitnessTransferFrom(permit, transferDetails, owner, witness, "fake typedef", sig);
+        permit2.permitWitnessTransferFrom(permit, transferDetails, owner, witness, "fake typedef", signature);
     }
 
     function testCannotSwapWithPermit2InvalidTypehash() public {
         bytes32 witness = keccak256(abi.encode(swapData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
-        bytes memory sig = getSignature(permit, ownerPrivateKey, "fake typehash", witness, DOMAIN_SEPARATOR);
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            "fake typehash",
+            witness,
+            DOMAIN_SEPARATOR,
+            _TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(swap), 1e6);
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
 
         vm.expectRevert(SignatureVerification.InvalidSigner.selector);
-        swap.swapWithPermit2(permit, transferDetails, owner, witness, sig, swapData, permit2);
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData, permit2);
     }
 
     function testCannotSwapWithPermit2IncorrectSigLength() public {
         bytes32 witness = keccak256(abi.encode(swapData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
-        bytes memory sig =
-            getSignature(permit, ownerPrivateKey, FULL_EXAMPLE_WITNESS_TYPEHASH, witness, DOMAIN_SEPARATOR);
-        bytes memory sigExtra = bytes.concat(sig, bytes1(uint8(0)));
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            FULL_EXAMPLE_WITNESS_TYPEHASH,
+            witness,
+            DOMAIN_SEPARATOR,
+            _TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+        bytes memory sigExtra = bytes.concat(signature, bytes1(uint8(0)));
         assertEq(sigExtra.length, 66);
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(swap), 1e6);
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
 
         vm.expectRevert(SignatureVerification.InvalidSignatureLength.selector);
-        swap.swapWithPermit2(permit, transferDetails, owner, witness, sigExtra, swapData, permit2);
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, sigExtra, swapData, permit2);
     }
 
     function testCannotSwapWithPermit2InvalidNonce() public {
         uint256 nonce = 0;
         bytes32 witness = keccak256(abi.encode(swapData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), nonce);
-        bytes memory sig =
-            getSignature(permit, ownerPrivateKey, FULL_EXAMPLE_WITNESS_TYPEHASH, witness, DOMAIN_SEPARATOR);
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            FULL_EXAMPLE_WITNESS_TYPEHASH,
+            witness,
+            DOMAIN_SEPARATOR,
+            _TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(swap), 1e6);
-        swap.swapWithPermit2(permit, transferDetails, owner, witness, sig, swapData, permit2);
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData, permit2);
 
         vm.expectRevert(InvalidNonce.selector);
-        swap.swapWithPermit2(permit, transferDetails, owner, witness, sig, swapData, permit2);
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData, permit2);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -167,31 +164,45 @@ contract GaslessTest is Test, PermitSignature, TokenProvider {
     function testSwapWithPermit2() public {
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
         bytes32 witness = keccak256(abi.encode(swapData));
-        bytes memory sig =
-            getSignature(permit, ownerPrivateKey, FULL_EXAMPLE_WITNESS_TYPEHASH, witness, DOMAIN_SEPARATOR);
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(swap), 1e6);
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            FULL_EXAMPLE_WITNESS_TYPEHASH,
+            witness,
+            DOMAIN_SEPARATOR,
+            _TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
 
-        swap.swapWithPermit2(permit, transferDetails, owner, witness, sig, swapData, permit2);
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData, permit2);
 
         assertEq(usdc.balanceOf(owner), 0);
-        assertEq(usdc.balanceOf(address(swap)), 0);
-        assertEq(usdc.allowance(owner, address(swap)), 0);
+        assertEq(usdc.balanceOf(address(gasworks)), 0);
+        assertEq(usdc.allowance(owner, address(gasworks)), 0);
         assertGe(web3.balanceOf(owner), swapData.buyAmount);
     }
 
     function testSwapWithPermit2RandomNonce(uint256 nonce) public {
         bytes32 witness = keccak256(abi.encode(swapData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), nonce);
-        bytes memory sig =
-            getSignature(permit, ownerPrivateKey, FULL_EXAMPLE_WITNESS_TYPEHASH, witness, DOMAIN_SEPARATOR);
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            FULL_EXAMPLE_WITNESS_TYPEHASH,
+            witness,
+            DOMAIN_SEPARATOR,
+            _TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(swap), 1e6);
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
 
-        swap.swapWithPermit2(permit, transferDetails, owner, witness, sig, swapData, permit2);
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData, permit2);
 
         assertEq(usdc.balanceOf(owner), 0);
-        assertEq(usdc.balanceOf(address(swap)), 0);
-        assertEq(usdc.allowance(owner, address(swap)), 0);
+        assertEq(usdc.balanceOf(address(gasworks)), 0);
+        assertEq(usdc.allowance(owner, address(gasworks)), 0);
         assertGe(web3.balanceOf(owner), swapData.buyAmount);
     }
 }

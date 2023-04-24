@@ -47,11 +47,12 @@ contract GaslessTest is Test {
         vm.deal(biconomyForwarder, 10 ether);
         uint256 amountToMint = 10e18;
 
-        string[] memory inputs = new string[](4);
+        string[] memory inputs = new string[](5);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-arch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(amountToMint));
         inputs[3] = Conversor.iToHex(abi.encode(AP60_ADDRESS));
+        inputs[4] = Conversor.iToHex(abi.encode(true));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _maxAmountInputToken) = abi.decode(res, (bytes[], uint256));
         mintData = Gasworks.MintData(AP60, amountToMint, _maxAmountInputToken, quotes, DEBT_MODULE, IS_DEBT_ISSUANCE);
