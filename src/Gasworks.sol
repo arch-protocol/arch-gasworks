@@ -13,16 +13,19 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract Gasworks is ERC2771Recipient, Owned {
     using SafeTransferLib for ERC20;
+    using SafeTransferLib for IERC20;
     using SafeTransferLib for ISetToken;
 
-    address private constant biconomyForwarder = 0x86C80a8aa58e0A4fa09A69624c31Ab2a6CAD56b8;
     IExchangeIssuanceZeroEx private immutable exchangeIssuance;
 
-    string constant SWAPDATA_WITNESS_TYPE_STRING =
+    string private constant SWAPDATA_WITNESS_TYPE_STRING =
         "SwapData witness)SwapData(address buyToken,address spender,address payable swapTarget, bytes swapCallData,uint256 swapValue,uint256 buyAmount)TokenPermissions(address token,uint256 amount)";
 
-    string constant MINTDATA_WITNESS_TYPE_STRING =
+    string private constant MINTDATA_WITNESS_TYPE_STRING =
         "MintData witness)MintData(ISetToken _setToken,uint256 _amountSetToken,uint256 _maxAmountInputToken, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)";
+
+    string private constant REDEEMDATA_WITNESS_TYPE_STRING =
+        "RedeemData witness)RedeemData(ISetToken _setToken,IERC20 _outputToken,uint256 _amountSetToken,uint256 _minOutputReceive, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)";
 
     event Received(address sender, address tokenContract, uint256 amount, address messageSender);
     event Swap(address buyToken, uint256 buyAmount, address sellToken, uint256 sellAmount);
@@ -71,6 +74,23 @@ contract Gasworks is ERC2771Recipient, Owned {
         uint256 _amountSetToken;
         // Maximum amount of input tokens to be used to issue SetTokens.
         uint256 _maxAmountInputToken;
+        // The encoded 0x transactions to execute
+        bytes[] _componentQuotes;
+        // The address of the issuance module for the SetToken
+        address _issuanceModule;
+        // Is the SetToken using debt issuance?
+        bool _isDebtIssuance;
+    }
+
+    struct RedeemData {
+        // Address of the SetToken to be redeemed
+        ISetToken _setToken;
+        // Address of the token to buy with the SetToken
+        IERC20 _outputToken;
+        // Amount of SetTokens to issue
+        uint256 _amountSetToken;
+        // Minimum amount of output tokens to receive
+        uint256 _minOutputReceive;
         // The encoded 0x transactions to execute
         bytes[] _componentQuotes;
         // The address of the issuance module for the SetToken
@@ -150,8 +170,8 @@ contract Gasworks is ERC2771Recipient, Owned {
             mintData._isDebtIssuance
         );
 
-        mintData._setToken.transfer(permit._owner, mintData._amountSetToken);
-        token.safeTransfer(permit._owner, token.balanceOf(address(this)));
+        ERC20(address(mintData._setToken)).safeTransfer(permit._owner, mintData._amountSetToken);
+        token.safeTransfer(owner, token.balanceOf(address(this)));
     }
 
     function swapWithPermit2(
@@ -203,8 +223,41 @@ contract Gasworks is ERC2771Recipient, Owned {
             mintData._isDebtIssuance
         );
 
-        mintData._setToken.transfer(owner, mintData._amountSetToken);
+        ERC20(address(mintData._setToken)).safeTransfer(owner, mintData._amountSetToken);
         token.safeTransfer(owner, token.balanceOf(address(this)));
+    }
+
+    function redeemWithPermit2(
+        ISignatureTransfer.PermitTransferFrom memory permit,
+        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
+        address owner,
+        bytes32 witness,
+        bytes calldata sig,
+        RedeemData calldata redeemData,
+        Permit2 permit2
+    ) external {
+        require(isPermitted(address(redeemData._outputToken)), "INVALID_BUY_TOKEN");
+        require(isPermitted(address(redeemData._setToken)), "INVALID_SELL_TOKEN");
+        ERC20 outputToken = ERC20(address(redeemData._outputToken));
+
+        permit2.permitWitnessTransferFrom(permit, transferDetails, owner, witness, REDEEMDATA_WITNESS_TYPE_STRING, sig);
+
+        emit Received(owner, address(redeemData._setToken), redeemData._amountSetToken, msg.sender);
+
+        redeemData._setToken.approve(address(exchangeIssuance), redeemData._amountSetToken);
+
+        exchangeIssuance.redeemExactSetForToken(
+            redeemData._setToken,
+            redeemData._outputToken,
+            redeemData._amountSetToken,
+            redeemData._minOutputReceive,
+            redeemData._componentQuotes,
+            redeemData._issuanceModule,
+            redeemData._isDebtIssuance
+        );
+
+        outputToken.safeTransfer(owner, outputToken.balanceOf(address(this)));
+        ERC20(address(redeemData._setToken)).safeTransfer(owner, redeemData._setToken.balanceOf(address(this)));
     }
 
     function _fillQuoteInternal(SwapData calldata swap, uint256 sellAmount, address _owner, address _sellToken)
