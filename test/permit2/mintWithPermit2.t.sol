@@ -98,7 +98,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         permit2.permitWitnessTransferFrom(permit, transferDetails, owner, witness, "fake typedef", signature);
     }
 
-    function testCannotSwapWithPermit2InvalidTypehash() public {
+    function testCannotMintWithPermit2InvalidTypehash() public {
         bytes32 witness = keccak256(abi.encode(mintData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
         bytes memory signature = getSignature(
@@ -118,7 +118,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         gasworks.mintWithPermit2(permit, transferDetails, owner, witness, signature, mintData, permit2);
     }
 
-    function testCannotSwapWithPermit2IncorrectSigLength() public {
+    function testCannotMintWithPermit2IncorrectSigLength() public {
         bytes32 witness = keccak256(abi.encode(mintData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
         bytes memory signature = getSignature(
@@ -140,7 +140,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         gasworks.mintWithPermit2(permit, transferDetails, owner, witness, sigExtra, mintData, permit2);
     }
 
-    function testCannotSwapWithPermit2InvalidNonce() public {
+    function testCannotMintWithPermit2InvalidNonce() public {
         uint256 nonce = 0;
         bytes32 witness = keccak256(abi.encode(mintData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), nonce);
