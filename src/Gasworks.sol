@@ -119,7 +119,6 @@ contract Gasworks is ERC2771Recipient, Owned {
     /**
      * Swaps an exact amount of SetTokens in 0x for a given amount of ERC20 tokens.
      * Using a safePermit for the ERC20 token transfer
-     * Method must be called by BiconomyForwarder
      *
      * @param permit              Permit data of the ERC20 token used (USDC)
      * @param swapData            Data of the swap to perform
@@ -142,7 +141,6 @@ contract Gasworks is ERC2771Recipient, Owned {
      * Issues an exact amount of SetTokens for given amount of input ERC20 tokens.
      * Using a safePermit for the ERC20 token transfer
      * The excess amount of tokens is returned in an equivalent amount of ether.
-     * Method must be called by BiconomyForwarder
      *
      * @param permit              Permit data of the ERC20 token used (USDC)
      * @param mintData            Data of the issuance to perform
@@ -174,6 +172,18 @@ contract Gasworks is ERC2771Recipient, Owned {
         token.safeTransfer(owner, token.balanceOf(address(this)));
     }
 
+    /**
+     * Swaps an exact amount of SetTokens in 0x for a given amount of ERC20 tokens.
+     * Using a permit for the ERC20 token transfer (through Permit2)
+     *
+     * @param permit              Permit data of the ERC20 token used
+     * @param transferDetails     Details of the transfer to perform
+     * @param owner               Owner of the tokens to transfer
+     * @param witness             Payload of data we want to validate (encoded in bytes32)
+     * @param signature           Signature of the owner of the tokens
+     * @param swapData            Data of the swap to perform
+     * @param permit2             Permit2 contract to use
+     */
     function swapWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit,
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
@@ -195,6 +205,19 @@ contract Gasworks is ERC2771Recipient, Owned {
         _fillQuoteInternal(swapData, transferDetails.requestedAmount, owner, permit.permitted.token);
     }
 
+    /**
+     * Issues an exact amount of SetTokens for given amount of input ERC20 tokens.
+     * Using a permit for the ERC20 token transfer (through Permit2)
+     * The excess amount of tokens is returned in an equivalent amount of ether.
+     *
+     * @param permit              Permit data of the ERC20 token used
+     * @param transferDetails     Details of the transfer to perform
+     * @param owner               Owner of the tokens to transfer
+     * @param witness             Payload of data we want to validate (encoded in bytes32)
+     * @param signature           Signature of the owner of the tokens
+     * @param mintData            Data of the issuance to perform
+     * @param permit2             Permit2 contract to use
+     */
     function mintWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit,
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
@@ -231,6 +254,18 @@ contract Gasworks is ERC2771Recipient, Owned {
         token.safeTransfer(owner, token.balanceOf(address(this)));
     }
 
+    /**
+     * Redeems an exact amount of SetTokens to a given amount of output ERC20 tokens.
+     * Using a permit for the SetToken (through Permit2)
+     *
+     * @param permit              Permit data of the ERC20 token used
+     * @param transferDetails     Details of the transfer to perform
+     * @param owner               Owner of the tokens to transfer
+     * @param witness             Payload of data we want to validate (encoded in bytes32)
+     * @param signature           Signature of the owner of the tokens
+     * @param redeemData          Data of the redemption to perform
+     * @param permit2             Permit2 contract to use
+     */
     function redeemWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit,
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
