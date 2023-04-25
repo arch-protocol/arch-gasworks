@@ -179,14 +179,16 @@ contract Gasworks is ERC2771Recipient, Owned {
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
         bytes32 witness,
-        bytes calldata sig,
+        bytes calldata signature,
         SwapData calldata swapData,
         Permit2 permit2
     ) external {
         require(isPermitted(permit.permitted.token), "INVALID_SELL_TOKEN");
         require(isPermitted(swapData.buyToken), "INVALID_BUY_TOKEN");
 
-        permit2.permitWitnessTransferFrom(permit, transferDetails, owner, witness, SWAPDATA_WITNESS_TYPE_STRING, sig);
+        permit2.permitWitnessTransferFrom(
+            permit, transferDetails, owner, witness, SWAPDATA_WITNESS_TYPE_STRING, signature
+        );
 
         emit Received(owner, transferDetails.to, transferDetails.requestedAmount, msg.sender);
 
@@ -198,14 +200,16 @@ contract Gasworks is ERC2771Recipient, Owned {
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
         bytes32 witness,
-        bytes calldata sig,
+        bytes calldata signature,
         MintData calldata mintData,
         Permit2 permit2
     ) external {
         require(isPermitted(permit.permitted.token), "INVALID_SELL_TOKEN");
         require(isPermitted(address(mintData._setToken)), "INVALID_BUY_TOKEN");
 
-        permit2.permitWitnessTransferFrom(permit, transferDetails, owner, witness, MINTDATA_WITNESS_TYPE_STRING, sig);
+        permit2.permitWitnessTransferFrom(
+            permit, transferDetails, owner, witness, MINTDATA_WITNESS_TYPE_STRING, signature
+        );
 
         ERC20 token = ERC20(permit.permitted.token);
 
@@ -232,7 +236,7 @@ contract Gasworks is ERC2771Recipient, Owned {
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
         bytes32 witness,
-        bytes calldata sig,
+        bytes calldata signature,
         RedeemData calldata redeemData,
         Permit2 permit2
     ) external {
@@ -240,7 +244,9 @@ contract Gasworks is ERC2771Recipient, Owned {
         require(isPermitted(address(redeemData._setToken)), "INVALID_SELL_TOKEN");
         ERC20 outputToken = ERC20(address(redeemData._outputToken));
 
-        permit2.permitWitnessTransferFrom(permit, transferDetails, owner, witness, REDEEMDATA_WITNESS_TYPE_STRING, sig);
+        permit2.permitWitnessTransferFrom(
+            permit, transferDetails, owner, witness, REDEEMDATA_WITNESS_TYPE_STRING, signature
+        );
 
         emit Received(owner, address(redeemData._setToken), redeemData._amountSetToken, msg.sender);
 

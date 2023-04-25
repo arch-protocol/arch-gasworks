@@ -21,7 +21,7 @@ contract Permit2Utils is Test {
         bytes32 domainSeparator,
         bytes32 tokenPermissionsHash,
         address caller
-    ) internal returns (bytes memory sig) {
+    ) internal returns (bytes memory signature) {
         bytes32 tokenPermissions = keccak256(abi.encode(tokenPermissionsHash, permit.permitted));
 
         bytes32 msgHash = keccak256(
