@@ -21,15 +21,9 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
     //////////////////////////////////////////////////////////////*/
     using SafeTransferLib for ERC20;
 
-    string constant WITNESS_TYPE_STRING =
-        "SwapData witness)SwapData(address buyToken,address spender,address payable swapTarget, bytes swapCallData,uint256 swapValue,uint256 buyAmount)TokenPermissions(address token,uint256 amount)";
-
-    bytes32 constant FULL_EXAMPLE_WITNESS_TYPEHASH = keccak256(
+    bytes32 internal constant WITNESS_TYPEHASH = keccak256(
         "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,SwapData witness)SwapData(address buyToken,address spender,address payable swapTarget, bytes swapCallData,uint256 swapValue,uint256 buyAmount)TokenPermissions(address token,uint256 amount)"
     );
-
-    address internal immutable USDC_ADDRESS = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
-    address internal immutable web3Address = 0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A;
 
     Gasworks internal gasworks;
     ERC20 internal usdc;
@@ -70,7 +64,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         bytes memory res = vm.ffi(inputs);
         (address spender, address payable swapTarget, bytes memory quote, uint256 value, uint256 buyAmount) =
             abi.decode(res, (address, address, bytes, uint256, uint256));
-        swapData = Gasworks.SwapData(web3Address, spender, swapTarget, quote, value, buyAmount);
+        swapData = Gasworks.SwapData(address(web3), spender, swapTarget, quote, value, buyAmount);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -83,7 +77,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
-            FULL_EXAMPLE_WITNESS_TYPEHASH,
+            WITNESS_TYPEHASH,
             witness,
             DOMAIN_SEPARATOR,
             _TOKEN_PERMISSIONS_TYPEHASH,
@@ -121,7 +115,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
-            FULL_EXAMPLE_WITNESS_TYPEHASH,
+            WITNESS_TYPEHASH,
             witness,
             DOMAIN_SEPARATOR,
             _TOKEN_PERMISSIONS_TYPEHASH,
@@ -143,7 +137,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
-            FULL_EXAMPLE_WITNESS_TYPEHASH,
+            WITNESS_TYPEHASH,
             witness,
             DOMAIN_SEPARATOR,
             _TOKEN_PERMISSIONS_TYPEHASH,
@@ -167,7 +161,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
-            FULL_EXAMPLE_WITNESS_TYPEHASH,
+            WITNESS_TYPEHASH,
             witness,
             DOMAIN_SEPARATOR,
             _TOKEN_PERMISSIONS_TYPEHASH,
@@ -189,7 +183,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
-            FULL_EXAMPLE_WITNESS_TYPEHASH,
+            WITNESS_TYPEHASH,
             witness,
             DOMAIN_SEPARATOR,
             _TOKEN_PERMISSIONS_TYPEHASH,
