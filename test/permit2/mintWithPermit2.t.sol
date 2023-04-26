@@ -22,7 +22,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
     //////////////////////////////////////////////////////////////*/
     using SafeTransferLib for ERC20;
     using SafeTransferLib for ISetToken;
-    
+
     bytes32 constant FULL_EXAMPLE_WITNESS_TYPEHASH = keccak256(
         "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,MintData witness)MintData(ISetToken _setToken,uint256 _amountSetToken,uint256 _maxAmountInputToken, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)"
     );
