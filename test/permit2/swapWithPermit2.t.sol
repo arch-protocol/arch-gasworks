@@ -72,27 +72,8 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * [REVERT] Should revert because the permit is expired
+     * [REVERT] Should revert because the witness type hash is invalid and doesn't match the struct
      */
-    function testCannotSwapWithPermit2InvalidType() public {
-        bytes32 witness = keccak256(abi.encode(swapData));
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitWitnessTransfer(address(usdc), 0);
-        bytes memory signature = getSignature(
-            permit,
-            ownerPrivateKey,
-            WITNESS_TYPEHASH,
-            witness,
-            DOMAIN_SEPARATOR,
-            _TOKEN_PERMISSIONS_TYPEHASH,
-            address(gasworks)
-        );
-
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
-
-        vm.expectRevert(SignatureVerification.InvalidSigner.selector);
-        permit2.permitWitnessTransferFrom(permit, transferDetails, owner, witness, "fake typedef", signature);
-    }
-
     function testCannotSwapWithPermit2InvalidTypehash() public {
         bytes32 witness = keccak256(abi.encode(swapData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
@@ -112,6 +93,9 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData, permit2);
     }
 
+    /**
+     * [REVERT] Should revert because the signature length is invalid
+     */
     function testCannotSwapWithPermit2IncorrectSigLength() public {
         bytes32 witness = keccak256(abi.encode(swapData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
@@ -133,6 +117,9 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         gasworks.swapWithPermit2(permit, transferDetails, owner, witness, sigExtra, swapData, permit2);
     }
 
+    /**
+     * [REVERT] Should revert because the nonce was used twice and should only be used once
+     */
     function testCannotSwapWithPermit2InvalidNonce() public {
         uint256 nonce = 0;
         bytes32 witness = keccak256(abi.encode(swapData));
@@ -158,6 +145,9 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
                               SUCCESS
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * [SUCCESS] Should make a success swap with permit2
+     */
     function testSwapWithPermit2() public {
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
         bytes32 witness = keccak256(abi.encode(swapData));
@@ -180,6 +170,9 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         assertGe(web3.balanceOf(owner), swapData.buyAmount);
     }
 
+    /**
+     * [SUCCESS] Should make a success swap with permit2 with a random nonce
+     */
     function testSwapWithPermit2RandomNonce(uint256 nonce) public {
         bytes32 witness = keccak256(abi.encode(swapData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), nonce);

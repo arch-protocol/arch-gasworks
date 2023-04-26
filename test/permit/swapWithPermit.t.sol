@@ -202,7 +202,7 @@ contract GaslessTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * [SUCCESS] Should make a success gasworks with permit with a limited amount allowed
+     * [SUCCESS] Should make a success swap with permit with a limited amount allowed
      */
     function testSwapWithLimitedPermit() public {
         SigUtils.Permit memory permit = SigUtils.Permit({
@@ -233,7 +233,7 @@ contract GaslessTest is Test {
     }
 
     /**
-     * [SUCCESS] Should make a success gasworks with permit with max amount allowed
+     * [SUCCESS] Should make a success swap with permit with max amount allowed
      */
     function testSwapWithMaxPermit() public {
         SigUtils.Permit memory permit = SigUtils.Permit({

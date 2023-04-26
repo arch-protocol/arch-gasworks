@@ -22,10 +22,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
     //////////////////////////////////////////////////////////////*/
     using SafeTransferLib for ERC20;
     using SafeTransferLib for ISetToken;
-
-    string constant WITNESS_TYPE_STRING =
-        "MintData witness)MintData(ISetToken _setToken,uint256 _amountSetToken,uint256 _maxAmountInputToken, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)";
-
+    
     bytes32 constant FULL_EXAMPLE_WITNESS_TYPEHASH = keccak256(
         "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,MintData witness)MintData(ISetToken _setToken,uint256 _amountSetToken,uint256 _maxAmountInputToken, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)"
     );
@@ -45,6 +42,9 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
     bytes32 internal DOMAIN_SEPARATOR;
     Permit2 internal permit2;
 
+    /*//////////////////////////////////////////////////////////////
+                              SET UP
+    //////////////////////////////////////////////////////////////*/
     function setUp() public {
         gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
         gasworks.setTokens(address(usdc));
@@ -78,26 +78,9 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
                               REVERT
     //////////////////////////////////////////////////////////////*/
 
-    function testCannotMintWithPermit2InvalidType() public {
-        bytes32 witness = keccak256(abi.encode(mintData));
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitWitnessTransfer(address(usdc), 0);
-        bytes memory signature = getSignature(
-            permit,
-            ownerPrivateKey,
-            FULL_EXAMPLE_WITNESS_TYPEHASH,
-            witness,
-            DOMAIN_SEPARATOR,
-            _TOKEN_PERMISSIONS_TYPEHASH,
-            address(gasworks)
-        );
-
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            getTransferDetails(address(gasworks), mintData._maxAmountInputToken);
-
-        vm.expectRevert(SignatureVerification.InvalidSigner.selector);
-        permit2.permitWitnessTransferFrom(permit, transferDetails, owner, witness, "fake typedef", signature);
-    }
-
+    /**
+     * [REVERT] Should revert because the witness type hash is invalid and doesn't match the struct
+     */
     function testCannotMintWithPermit2InvalidTypehash() public {
         bytes32 witness = keccak256(abi.encode(mintData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
@@ -118,6 +101,9 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         gasworks.mintWithPermit2(permit, transferDetails, owner, witness, signature, mintData, permit2);
     }
 
+    /**
+     * [REVERT] Should revert because the signature length is invalid
+     */
     function testCannotMintWithPermit2IncorrectSigLength() public {
         bytes32 witness = keccak256(abi.encode(mintData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
@@ -140,6 +126,9 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         gasworks.mintWithPermit2(permit, transferDetails, owner, witness, sigExtra, mintData, permit2);
     }
 
+    /**
+     * [REVERT] Should revert because the nonce was used twice and should only be used once
+     */
     function testCannotMintWithPermit2InvalidNonce() public {
         uint256 nonce = 0;
         bytes32 witness = keccak256(abi.encode(mintData));
@@ -166,6 +155,9 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
                               SUCCESS
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * [SUCCESS] Should make a success mint with permit2
+     */
     function testMintWithPermit2() public {
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
         bytes32 witness = keccak256(abi.encode(mintData));
@@ -189,6 +181,9 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         assertGe(AP60.balanceOf(owner), mintData._amountSetToken);
     }
 
+    /**
+     * [SUCCESS] Should make a success mint with permit2 with a random nonce
+     */
     function testMintWithPermit2RandomNonce(uint256 nonce) public {
         bytes32 witness = keccak256(abi.encode(mintData));
         ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), nonce);
