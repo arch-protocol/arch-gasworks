@@ -13,6 +13,18 @@ contract Permit2Utils is Test {
         return ISignatureTransfer.SignatureTransferDetails({to: to, requestedAmount: amount});
     }
 
+    function defaultERC20PermitTransfer(address token0, uint256 nonce)
+        internal
+        view
+        returns (ISignatureTransfer.PermitTransferFrom memory)
+    {
+        return ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({token: token0, amount: 10 ** 18}),
+            nonce: nonce,
+            deadline: block.timestamp + 100
+        });
+    }
+
     function getSignature(
         ISignatureTransfer.PermitTransferFrom memory permit,
         uint256 privateKey,

@@ -7,7 +7,6 @@ import {ISetToken} from "./interfaces/ISetToken.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {Owned} from "solmate/src/auth/Owned.sol";
 import {IExchangeIssuanceZeroEx} from "./interfaces/IExchangeIssuanceZeroEx.sol";
-import {Permit2} from "permit2/src/Permit2.sol";
 import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ITradeIssuerV2} from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
@@ -20,6 +19,7 @@ contract Gasworks is ERC2771Recipient, Owned {
     using SafeTransferLib for ISetToken;
 
     IExchangeIssuanceZeroEx private immutable exchangeIssuance;
+    ISignatureTransfer public immutable signatureTransfer;
     ITradeIssuerV2 private immutable tradeIssuer;
 
     string private constant SWAPDATA_WITNESS_TYPE_STRING =
@@ -124,6 +124,7 @@ contract Gasworks is ERC2771Recipient, Owned {
     constructor(address _forwarder) Owned(_msgSender()) {
         _setTrustedForwarder(_forwarder);
         exchangeIssuance = IExchangeIssuanceZeroEx(payable(0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320));
+        signatureTransfer = ISignatureTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
         tradeIssuer = ITradeIssuerV2(0xbbCA2AcBd87Ce7A5e01fb56914d41F6a7e5C5A56);
     }
 
@@ -205,7 +206,6 @@ contract Gasworks is ERC2771Recipient, Owned {
      * @param witness             Payload of data we want to validate (encoded in bytes32)
      * @param signature           Signature of the owner of the tokens
      * @param swapData            Data of the swap to perform
-     * @param permit2             Permit2 contract to use
      */
     function swapWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit,
@@ -213,13 +213,12 @@ contract Gasworks is ERC2771Recipient, Owned {
         address owner,
         bytes32 witness,
         bytes calldata signature,
-        SwapData calldata swapData,
-        Permit2 permit2
+        SwapData calldata swapData
     ) external {
         require(isPermitted(permit.permitted.token), "INVALID_SELL_TOKEN");
         require(isPermitted(swapData.buyToken), "INVALID_BUY_TOKEN");
 
-        permit2.permitWitnessTransferFrom(
+        signatureTransfer.permitWitnessTransferFrom(
             permit, transferDetails, owner, witness, SWAPDATA_WITNESS_TYPE_STRING, signature
         );
 
@@ -239,7 +238,6 @@ contract Gasworks is ERC2771Recipient, Owned {
      * @param witness             Payload of data we want to validate (encoded in bytes32)
      * @param signature           Signature of the owner of the tokens
      * @param mintData            Data of the issuance to perform
-     * @param permit2             Permit2 contract to use
      */
     function mintWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit,
@@ -247,13 +245,12 @@ contract Gasworks is ERC2771Recipient, Owned {
         address owner,
         bytes32 witness,
         bytes calldata signature,
-        MintData calldata mintData,
-        Permit2 permit2
+        MintData calldata mintData
     ) external {
         require(isPermitted(permit.permitted.token), "INVALID_SELL_TOKEN");
         require(isPermitted(address(mintData._setToken)), "INVALID_BUY_TOKEN");
 
-        permit2.permitWitnessTransferFrom(
+        signatureTransfer.permitWitnessTransferFrom(
             permit, transferDetails, owner, witness, MINTDATA_WITNESS_TYPE_STRING, signature
         );
 
@@ -287,7 +284,6 @@ contract Gasworks is ERC2771Recipient, Owned {
      * @param witness             Payload of data we want to validate (encoded in bytes32)
      * @param signature           Signature of the owner of the tokens
      * @param redeemData          Data of the redemption to perform
-     * @param permit2             Permit2 contract to use
      */
     function redeemWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit,
@@ -295,14 +291,13 @@ contract Gasworks is ERC2771Recipient, Owned {
         address owner,
         bytes32 witness,
         bytes calldata signature,
-        RedeemData calldata redeemData,
-        Permit2 permit2
+        RedeemData calldata redeemData
     ) external {
         require(isPermitted(address(redeemData._outputToken)), "INVALID_BUY_TOKEN");
         require(isPermitted(address(redeemData._setToken)), "INVALID_SELL_TOKEN");
         ERC20 outputToken = ERC20(address(redeemData._outputToken));
 
-        permit2.permitWitnessTransferFrom(
+        signatureTransfer.permitWitnessTransferFrom(
             permit, transferDetails, owner, witness, REDEEMDATA_WITNESS_TYPE_STRING, signature
         );
 
