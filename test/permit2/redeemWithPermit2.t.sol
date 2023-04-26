@@ -28,14 +28,12 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
     bytes32 public constant _TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
 
-    address internal constant usdcAddress = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
-    address internal constant AP60Address = 0x6cA9C8914a14D63a6700556127D09e7721ff7D3b;
     address internal constant debtModule = 0xf2dC2f456b98Af9A6bEEa072AF152a7b0EaA40C9;
     bool internal constant _isDebtIssuance = true;
 
     Gasworks internal gasworks;
-    IERC20 internal constant usdc = IERC20(usdcAddress);
-    ISetToken internal constant AP60 = ISetToken(AP60Address);
+    IERC20 internal constant usdc = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+    ISetToken internal constant AP60 = ISetToken(0x6cA9C8914a14D63a6700556127D09e7721ff7D3b);
 
     uint256 internal ownerPrivateKey;
     address internal owner;
