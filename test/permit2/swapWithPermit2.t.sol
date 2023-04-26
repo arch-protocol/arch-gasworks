@@ -8,14 +8,13 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {Conversor} from "test/utils/HexUtils.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
-import {PermitSignature} from "permit2/test/utils/PermitSignature.sol";
-import {Permit2} from "permit2/src/Permit2.sol";
-import {TokenProvider} from "permit2/test/utils/TokenProvider.sol";
 import {SignatureVerification} from "permit2/src/libraries/SignatureVerification.sol";
 import {InvalidNonce, SignatureExpired} from "permit2/src/PermitErrors.sol";
 import {Permit2Utils} from "test/utils/Permit2Utils.sol";
+import {EIP712} from "permit2/src/EIP712.sol";
+import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
 
-contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
+contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
                               VARIABLES
     //////////////////////////////////////////////////////////////*/
@@ -25,28 +24,28 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,SwapData witness)SwapData(address buyToken,address spender,address payable swapTarget, bytes swapCallData,uint256 swapValue,uint256 buyAmount)TokenPermissions(address token,uint256 amount)"
     );
 
+    bytes32 public constant _TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
+
     Gasworks internal gasworks;
-    ERC20 internal usdc;
-    ERC20 internal web3;
+    ERC20 internal usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+    ERC20 internal web3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
 
     uint256 internal ownerPrivateKey;
     address internal owner;
     Gasworks.SwapData internal swapData;
     bytes32 internal DOMAIN_SEPARATOR;
-    Permit2 internal permit2;
+    address internal permit2;
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
     //////////////////////////////////////////////////////////////*/
 
     function setUp() public {
-        usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
-        web3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
         gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
         gasworks.setTokens(address(usdc));
         gasworks.setTokens(address(web3));
-        permit2 = Permit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
-        DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
+        permit2 = deployPermit2();
+        DOMAIN_SEPARATOR = EIP712(permit2).DOMAIN_SEPARATOR();
 
         ownerPrivateKey = 0xA11CE;
         owner = vm.addr(ownerPrivateKey);
@@ -55,7 +54,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         usdc.safeTransfer(owner, 1e6);
 
         vm.prank(owner);
-        usdc.approve(address(permit2), 1e6);
+        usdc.approve(permit2, 1e6);
 
         string[] memory inputs = new string[](3);
         inputs[0] = "node";
@@ -90,7 +89,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
 
         vm.expectRevert(SignatureVerification.InvalidSigner.selector);
-        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData, permit2);
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData);
     }
 
     /**
@@ -114,7 +113,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
 
         vm.expectRevert(SignatureVerification.InvalidSignatureLength.selector);
-        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, sigExtra, swapData, permit2);
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, sigExtra, swapData);
     }
 
     /**
@@ -135,10 +134,10 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         );
 
         ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
-        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData, permit2);
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData);
 
         vm.expectRevert(InvalidNonce.selector);
-        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData, permit2);
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -162,7 +161,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         );
         ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
 
-        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData, permit2);
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData);
 
         assertEq(usdc.balanceOf(owner), 0);
         assertEq(usdc.balanceOf(address(gasworks)), 0);
@@ -188,7 +187,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
 
         ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
 
-        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData, permit2);
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData);
 
         assertEq(usdc.balanceOf(owner), 0);
         assertEq(usdc.balanceOf(address(gasworks)), 0);

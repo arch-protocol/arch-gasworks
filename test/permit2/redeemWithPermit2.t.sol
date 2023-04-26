@@ -8,15 +8,14 @@ import {SigUtils} from "test/utils/SigUtils.sol";
 import {Conversor} from "test/utils/HexUtils.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
-import {PermitSignature} from "permit2/test/utils/PermitSignature.sol";
-import {Permit2} from "permit2/src/Permit2.sol";
-import {TokenProvider} from "permit2/test/utils/TokenProvider.sol";
 import {SignatureVerification} from "permit2/src/libraries/SignatureVerification.sol";
 import {InvalidNonce, SignatureExpired} from "permit2/src/PermitErrors.sol";
 import {Permit2Utils} from "test/utils/Permit2Utils.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {EIP712} from "permit2/src/EIP712.sol";
+import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
 
-contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
+contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
                               VARIABLES
     //////////////////////////////////////////////////////////////*/
@@ -26,6 +25,8 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
     bytes32 constant FULL_EXAMPLE_WITNESS_TYPEHASH = keccak256(
         "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,RedeemData witness)RedeemData(ISetToken _setToken,IERC20 _outputToken,uint256 _amountSetToken,uint256 _minOutputReceive, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)"
     );
+
+    bytes32 public constant _TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
 
     address internal constant usdcAddress = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
     address internal constant AP60Address = 0x6cA9C8914a14D63a6700556127D09e7721ff7D3b;
@@ -40,7 +41,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
     address internal owner;
     Gasworks.RedeemData internal redeemData;
     bytes32 internal DOMAIN_SEPARATOR;
-    Permit2 internal permit2;
+    address internal permit2;
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
@@ -49,8 +50,8 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
         gasworks.setTokens(address(usdc));
         gasworks.setTokens(address(AP60));
-        permit2 = Permit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
-        DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
+        permit2 = deployPermit2();
+        DOMAIN_SEPARATOR = EIP712(permit2).DOMAIN_SEPARATOR();
 
         ownerPrivateKey = 0xA11CE;
         owner = vm.addr(ownerPrivateKey);
@@ -71,7 +72,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         redeemData = Gasworks.RedeemData(AP60, usdc, setAmount, _minOutputReceive, quotes, debtModule, _isDebtIssuance);
 
         vm.prank(owner);
-        AP60.approve(address(permit2), type(uint256).max);
+        AP60.approve(permit2, type(uint256).max);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -98,7 +99,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
             getTransferDetails(address(gasworks), redeemData._amountSetToken);
 
         vm.expectRevert(SignatureVerification.InvalidSigner.selector);
-        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData, permit2);
+        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData);
     }
 
     /**
@@ -123,7 +124,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
             getTransferDetails(address(gasworks), redeemData._amountSetToken);
 
         vm.expectRevert(SignatureVerification.InvalidSignatureLength.selector);
-        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, sigExtra, redeemData, permit2);
+        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, sigExtra, redeemData);
     }
 
     /**
@@ -145,10 +146,10 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
 
         ISignatureTransfer.SignatureTransferDetails memory transferDetails =
             getTransferDetails(address(gasworks), redeemData._amountSetToken);
-        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData, permit2);
+        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData);
 
         vm.expectRevert(InvalidNonce.selector);
-        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData, permit2);
+        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -174,7 +175,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         ISignatureTransfer.SignatureTransferDetails memory transferDetails =
             getTransferDetails(address(gasworks), redeemData._amountSetToken);
 
-        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData, permit2);
+        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData);
 
         assertEq(usdc.balanceOf(address(gasworks)), 0);
         assertEq(usdc.allowance(owner, address(gasworks)), 0);
@@ -200,7 +201,7 @@ contract GaslessTest is Test, PermitSignature, TokenProvider, Permit2Utils {
         ISignatureTransfer.SignatureTransferDetails memory transferDetails =
             getTransferDetails(address(gasworks), redeemData._amountSetToken);
 
-        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData, permit2);
+        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData);
 
         assertEq(usdc.balanceOf(address(gasworks)), 0);
         assertEq(usdc.allowance(owner, address(gasworks)), 0);
