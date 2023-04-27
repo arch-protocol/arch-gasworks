@@ -63,7 +63,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-arch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(setAmount));
-        inputs[3] = Conversor.iToHex(abi.encode(AP60Address));
+        inputs[3] = Conversor.iToHex(abi.encode(address(AP60)));
         inputs[4] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _minOutputReceive) = abi.decode(res, (bytes[], uint256));
