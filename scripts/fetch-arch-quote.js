@@ -15,14 +15,17 @@ async function generateJwt(payload) {
   return jwt;
 }
 
-async function main(quantity, token) {
+async function main(quantity, token, operation) {
   const qty = encoder.decode(["uint256"], quantity)[0]
   const tokenAddress = encoder.decode(["address"], token)[0]
+  const opt = encoder.decode(["bool"], operation)[0]
 
   archTokens[tokenAddress].basketAmountInWei = qty.toString()
 
   const jwt = await generateJwt(archTokens[tokenAddress])
-  const quoteUrl = `https://dev-api.archfinance.io/basket-issuance/issuance-components/${tokenAddress}?${qs.stringify(
+  const baseUrl = "https://dev-api.archfinance.io/basket-issuance/"
+  const opType = opt ? "issuance" : "redemption"
+  const quoteUrl = `${baseUrl}${opType}-components/${tokenAddress}?${qs.stringify(
     archTokens[tokenAddress]
   )}`
   try {
@@ -31,7 +34,7 @@ async function main(quantity, token) {
     })
   
     const quote = response.data
-    const value = quote.maxAmountInWei
+    const value = opt ? quote.maxAmountInWei : quote.minAmountInWei
     encoded = encoder.encode(["bytes[]", "uint256"], [quote.encodedComponentQuotes, value])
   
     process.stdout.write(encoded)
@@ -43,11 +46,11 @@ async function main(quantity, token) {
 
 const args = process.argv.slice(2)
 
-if (args.length != 2) {
+if (args.length != 3) {
   console.log(`please supply the correct parameters:
-    quantity token
+    quantity token operation
   `)
   process.exit(1)
 }
 
-main(args[0], args[1])
+main(args[0], args[1], args[2])
