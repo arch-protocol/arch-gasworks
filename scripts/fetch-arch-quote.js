@@ -35,7 +35,9 @@ async function main(quantity, token, operation) {
   
     const quote = response.data
     const value = opt ? quote.maxAmountInWei : quote.minAmountInWei
-    encoded = encoder.encode(["bytes[]", "uint256"], [quote.encodedComponentQuotes, value])
+    const data = quote.callInstructions ? quote.callInstructions : quote.encodedComponentQuotes
+    const encodedType = quote.callInstructions ? "tuple(address target, address allowanceTarget, address sellToken, uint256 sellAmount, address buyToken, uint256 minBuyAmount, bytes callData)[]" : "bytes[]"
+    encoded = encoder.encode([encodedType, "uint256"], [data, value])
   
     process.stdout.write(encoded)
   } catch (error) {
