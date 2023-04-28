@@ -177,7 +177,7 @@ contract Gasworks is ERC2771Recipient, Owned {
      * Swaps an exact amount of SetTokens in 0x for a given amount of ERC20 tokens.
      * Using a permit for the ERC20 token transfer (through Permit2)
      *
-     * @param permit              Permit data of the ERC20 token used
+     * @param permit2             Permit2 data of the ERC20 token used
      * @param transferDetails     Details of the transfer to perform
      * @param owner               Owner of the tokens to transfer
      * @param witness             Payload of data we want to validate (encoded in bytes32)
@@ -185,23 +185,23 @@ contract Gasworks is ERC2771Recipient, Owned {
      * @param swapData            Data of the swap to perform
      */
     function swapWithPermit2(
-        ISignatureTransfer.PermitTransferFrom memory permit,
+        ISignatureTransfer.PermitTransferFrom memory permit2,
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
         bytes32 witness,
         bytes calldata signature,
         SwapData calldata swapData
     ) external {
-        require(isPermitted(permit.permitted.token), "INVALID_SELL_TOKEN");
+        require(isPermitted(permit2.permitted.token), "INVALID_SELL_TOKEN");
         require(isPermitted(swapData.buyToken), "INVALID_BUY_TOKEN");
 
         signatureTransfer.permitWitnessTransferFrom(
-            permit, transferDetails, owner, witness, SWAPDATA_WITNESS_TYPE_STRING, signature
+            permit2, transferDetails, owner, witness, SWAPDATA_WITNESS_TYPE_STRING, signature
         );
 
         emit Received(owner, transferDetails.to, transferDetails.requestedAmount, msg.sender);
 
-        _fillQuoteInternal(swapData, transferDetails.requestedAmount, owner, permit.permitted.token);
+        _fillQuoteInternal(swapData, transferDetails.requestedAmount, owner, permit2.permitted.token);
     }
 
     /**
@@ -209,7 +209,7 @@ contract Gasworks is ERC2771Recipient, Owned {
      * Using a permit for the ERC20 token transfer (through Permit2)
      * The excess amount of tokens is returned in an equivalent amount of ether.
      *
-     * @param permit              Permit data of the ERC20 token used
+     * @param permit2             Permit2 data of the ERC20 token used
      * @param transferDetails     Details of the transfer to perform
      * @param owner               Owner of the tokens to transfer
      * @param witness             Payload of data we want to validate (encoded in bytes32)
@@ -217,29 +217,29 @@ contract Gasworks is ERC2771Recipient, Owned {
      * @param mintData            Data of the issuance to perform
      */
     function mintWithPermit2(
-        ISignatureTransfer.PermitTransferFrom memory permit,
+        ISignatureTransfer.PermitTransferFrom memory permit2,
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
         bytes32 witness,
         bytes calldata signature,
         MintData calldata mintData
     ) external {
-        require(isPermitted(permit.permitted.token), "INVALID_SELL_TOKEN");
+        require(isPermitted(permit2.permitted.token), "INVALID_SELL_TOKEN");
         require(isPermitted(address(mintData._setToken)), "INVALID_BUY_TOKEN");
 
         signatureTransfer.permitWitnessTransferFrom(
-            permit, transferDetails, owner, witness, MINTDATA_WITNESS_TYPE_STRING, signature
+            permit2, transferDetails, owner, witness, MINTDATA_WITNESS_TYPE_STRING, signature
         );
 
-        ERC20 token = ERC20(permit.permitted.token);
+        ERC20 token = ERC20(permit2.permitted.token);
 
-        emit Received(owner, permit.permitted.token, permit.permitted.amount, msg.sender);
+        emit Received(owner, permit2.permitted.token, permit2.permitted.amount, msg.sender);
 
         token.safeApprove(address(exchangeIssuance), mintData._maxAmountInputToken);
 
         exchangeIssuance.issueExactSetFromToken(
             mintData._setToken,
-            IERC20(permit.permitted.token),
+            IERC20(permit2.permitted.token),
             mintData._amountSetToken,
             mintData._maxAmountInputToken,
             mintData._componentQuotes,
@@ -255,7 +255,7 @@ contract Gasworks is ERC2771Recipient, Owned {
      * Redeems an exact amount of SetTokens to a given amount of output ERC20 tokens.
      * Using a permit for the SetToken (through Permit2)
      *
-     * @param permit              Permit data of the ERC20 token used
+     * @param permit2             Permit2 data of the ERC20 token used
      * @param transferDetails     Details of the transfer to perform
      * @param owner               Owner of the tokens to transfer
      * @param witness             Payload of data we want to validate (encoded in bytes32)
@@ -263,7 +263,7 @@ contract Gasworks is ERC2771Recipient, Owned {
      * @param redeemData          Data of the redemption to perform
      */
     function redeemWithPermit2(
-        ISignatureTransfer.PermitTransferFrom memory permit,
+        ISignatureTransfer.PermitTransferFrom memory permit2,
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
         bytes32 witness,
@@ -275,7 +275,7 @@ contract Gasworks is ERC2771Recipient, Owned {
         ERC20 outputToken = ERC20(address(redeemData._outputToken));
 
         signatureTransfer.permitWitnessTransferFrom(
-            permit, transferDetails, owner, witness, REDEEMDATA_WITNESS_TYPE_STRING, signature
+            permit2, transferDetails, owner, witness, REDEEMDATA_WITNESS_TYPE_STRING, signature
         );
 
         emit Received(owner, address(redeemData._setToken), redeemData._amountSetToken, msg.sender);
