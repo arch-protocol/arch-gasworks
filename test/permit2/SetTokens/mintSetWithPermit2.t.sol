@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17.0;
 
-import {Test} from "forge-std/Test.sol";
-import {Gasworks} from "src/Gasworks.sol";
-import {ISetToken} from "src/interfaces/ISetToken.sol";
-import {SigUtils} from "test/utils/SigUtils.sol";
-import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {Conversor} from "test/utils/HexUtils.sol";
-import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
-import {SignatureVerification} from "permit2/src/libraries/SignatureVerification.sol";
-import {InvalidNonce, SignatureExpired} from "permit2/src/PermitErrors.sol";
-import {Permit2Utils} from "test/utils/Permit2Utils.sol";
-import {EIP712} from "permit2/src/EIP712.sol";
-import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
+import { Test } from "forge-std/Test.sol";
+import { Gasworks } from "src/Gasworks.sol";
+import { ISetToken } from "src/interfaces/ISetToken.sol";
+import { SigUtils } from "test/utils/SigUtils.sol";
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { Conversor } from "test/utils/HexUtils.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
+import { SignatureVerification } from "permit2/src/libraries/SignatureVerification.sol";
+import { InvalidNonce, SignatureExpired } from "permit2/src/PermitErrors.sol";
+import { Permit2Utils } from "test/utils/Permit2Utils.sol";
+import { EIP712 } from "permit2/src/EIP712.sol";
+import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
 
 contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
@@ -26,7 +26,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,MintData witness)MintData(ISetToken _setToken,uint256 _amountSetToken,uint256 _maxAmountInputToken, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)"
     );
 
-    bytes32 public constant _TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
+    bytes32 public constant _TOKEN_PERMISSIONS_TYPEHASH =
+        keccak256("TokenPermissions(address token,uint256 amount)");
 
     address internal constant debtModule = 0xf2dC2f456b98Af9A6bEEa072AF152a7b0EaA40C9;
     bool internal constant _isDebtIssuance = true;
@@ -68,7 +69,9 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[5] = Conversor.iToHex(abi.encode(true));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _maxAmountInputToken) = abi.decode(res, (bytes[], uint256));
-        mintData = Gasworks.MintData(AP60, amountToMint, _maxAmountInputToken, quotes, debtModule, _isDebtIssuance);
+        mintData = Gasworks.MintData(
+            AP60, amountToMint, _maxAmountInputToken, quotes, debtModule, _isDebtIssuance
+        );
 
         vm.prank(owner);
         usdc.approve(permit2, mintData._maxAmountInputToken);
@@ -83,7 +86,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testCannotMintWithPermit2InvalidTypehash() public {
         bytes32 witness = keccak256(abi.encode(mintData));
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(usdc), 0);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -106,7 +110,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testCannotMintWithPermit2IncorrectSigLength() public {
         bytes32 witness = keccak256(abi.encode(mintData));
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(usdc), 0);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -132,7 +137,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     function testCannotMintWithPermit2InvalidNonce() public {
         uint256 nonce = 0;
         bytes32 witness = keccak256(abi.encode(mintData));
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), nonce);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(usdc), nonce);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -159,7 +165,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      * [SUCCESS] Should make a success mint with permit2
      */
     function testMintWithPermit2() public {
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(usdc), 0);
         bytes32 witness = keccak256(abi.encode(mintData));
         bytes memory signature = getSignature(
             permit,
@@ -186,7 +193,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testMintWithPermit2RandomNonce(uint256 nonce) public {
         bytes32 witness = keccak256(abi.encode(mintData));
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), nonce);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(usdc), nonce);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,

@@ -4,4 +4,15 @@ out = 'out'
 solc_version = "0.8.17" 
 libs = ['lib']
 
+
+[etherscan]
+mainnet = { key = "${ETHERSCAN_MAINNET_KEY}" }
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
+
+[fuzz]
+runs = 128
+
+[fmt]
+line_length = 100
+tab_width = 4
+bracket_spacing = true

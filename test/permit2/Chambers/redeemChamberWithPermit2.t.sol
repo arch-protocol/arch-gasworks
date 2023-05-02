@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17.0;
 
-import {Test} from "forge-std/Test.sol";
-import {Gasworks} from "src/Gasworks.sol";
-import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Conversor} from "test/utils/HexUtils.sol";
-import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
-import {SignatureVerification} from "permit2/src/libraries/SignatureVerification.sol";
-import {InvalidNonce, SignatureExpired} from "permit2/src/PermitErrors.sol";
-import {Permit2Utils} from "test/utils/Permit2Utils.sol";
-import {ChamberTestUtils} from "chambers-peripherals/test/utils/ChamberTestUtils.sol";
-import {ITradeIssuerV2} from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
-import {IChamber} from "chambers/interfaces/IChamber.sol";
-import {IIssuerWizard} from "chambers/interfaces/IIssuerWizard.sol";
-import {EIP712} from "permit2/src/EIP712.sol";
-import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
-import {IWETH} from "src/interfaces/IWETH.sol";
+import { Test } from "forge-std/Test.sol";
+import { Gasworks } from "src/Gasworks.sol";
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Conversor } from "test/utils/HexUtils.sol";
+import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
+import { SignatureVerification } from "permit2/src/libraries/SignatureVerification.sol";
+import { InvalidNonce, SignatureExpired } from "permit2/src/PermitErrors.sol";
+import { Permit2Utils } from "test/utils/Permit2Utils.sol";
+import { ChamberTestUtils } from "chambers-peripherals/test/utils/ChamberTestUtils.sol";
+import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
+import { IChamber } from "chambers/interfaces/IChamber.sol";
+import { IIssuerWizard } from "chambers/interfaces/IIssuerWizard.sol";
+import { EIP712 } from "permit2/src/EIP712.sol";
+import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
+import { IWETH } from "src/interfaces/IWETH.sol";
 
 contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
@@ -74,13 +74,20 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         inputs[4] = Conversor.iToHex(abi.encode(address(usdc)));
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
-        (ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions, uint256 _minOutputReceive) =
-            abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _minOutputReceive
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
         redeemData = Gasworks.RedeemChamberData(
-            ADDY, IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449), usdc, _minOutputReceive, amountToRedeem
+            ADDY,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            usdc,
+            _minOutputReceive,
+            amountToRedeem
         );
 
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(ADDY), nonce);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(ADDY), nonce);
         bytes32 witness = keccak256(abi.encode(redeemData));
         bytes memory signature = getSignature(
             permit,
@@ -98,7 +105,14 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             getTransferDetails(address(gasworks), amountToRedeem);
 
         gasworks.redeemChamberWithPermit2(
-            permit, transferDetails, owner, witness, signature, redeemData, _contractCallInstructions, false
+            permit,
+            transferDetails,
+            owner,
+            witness,
+            signature,
+            redeemData,
+            _contractCallInstructions,
+            false
         );
         assertGe(usdc.balanceOf(owner), _minOutputReceive);
     }
@@ -115,8 +129,10 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         inputs[4] = Conversor.iToHex(abi.encode(address(WETH)));
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
-        (ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions, uint256 _minOutputReceive) =
-            abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _minOutputReceive
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
         redeemData = Gasworks.RedeemChamberData(
             ADDY,
             IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
@@ -125,7 +141,8 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToRedeem
         );
 
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(ADDY), nonce);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(ADDY), nonce);
         bytes32 witness = keccak256(abi.encode(redeemData));
         bytes memory signature = getSignature(
             permit,
@@ -143,7 +160,14 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             getTransferDetails(address(gasworks), amountToRedeem);
 
         gasworks.redeemChamberWithPermit2(
-            permit, transferDetails, owner, witness, signature, redeemData, _contractCallInstructions, true
+            permit,
+            transferDetails,
+            owner,
+            witness,
+            signature,
+            redeemData,
+            _contractCallInstructions,
+            true
         );
         assertGe(owner.balance, _minOutputReceive);
     }
@@ -160,8 +184,10 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         inputs[4] = Conversor.iToHex(abi.encode(address(WETH)));
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
-        (ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions, uint256 _minOutputReceive) =
-            abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _minOutputReceive
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
         redeemData = Gasworks.RedeemChamberData(
             ADDY,
             IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
@@ -170,7 +196,8 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToRedeem
         );
 
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(ADDY), nonce);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(ADDY), nonce);
         bytes32 witness = keccak256(abi.encode(redeemData));
         bytes memory signature = getSignature(
             permit,
@@ -188,7 +215,14 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             getTransferDetails(address(gasworks), amountToRedeem);
 
         gasworks.redeemChamberWithPermit2(
-            permit, transferDetails, owner, witness, signature, redeemData, _contractCallInstructions, false
+            permit,
+            transferDetails,
+            owner,
+            witness,
+            signature,
+            redeemData,
+            _contractCallInstructions,
+            false
         );
         assertGe(WETH.balanceOf(owner), _minOutputReceive);
     }

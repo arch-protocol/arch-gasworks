@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17 .0;
 
-import {Test} from "forge-std/Test.sol";
-import {Gasworks} from "src/Gasworks.sol";
-import {SigUtils} from "test/utils/SigUtils.sol";
-import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {Conversor} from "test/utils/HexUtils.sol";
-import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
-import {SignatureVerification} from "permit2/src/libraries/SignatureVerification.sol";
-import {InvalidNonce, SignatureExpired} from "permit2/src/PermitErrors.sol";
-import {Permit2Utils} from "test/utils/Permit2Utils.sol";
-import {EIP712} from "permit2/src/EIP712.sol";
-import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
+import { Test } from "forge-std/Test.sol";
+import { Gasworks } from "src/Gasworks.sol";
+import { SigUtils } from "test/utils/SigUtils.sol";
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { Conversor } from "test/utils/HexUtils.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
+import { SignatureVerification } from "permit2/src/libraries/SignatureVerification.sol";
+import { InvalidNonce, SignatureExpired } from "permit2/src/PermitErrors.sol";
+import { Permit2Utils } from "test/utils/Permit2Utils.sol";
+import { EIP712 } from "permit2/src/EIP712.sol";
+import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
 
 contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
@@ -24,7 +24,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,SwapData witness)SwapData(address buyToken,address spender,address payable swapTarget, bytes swapCallData,uint256 swapValue,uint256 buyAmount)TokenPermissions(address token,uint256 amount)"
     );
 
-    bytes32 public constant _TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
+    bytes32 public constant _TOKEN_PERMISSIONS_TYPEHASH =
+        keccak256("TokenPermissions(address token,uint256 amount)");
 
     Gasworks internal gasworks;
     ERC20 internal usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
@@ -61,8 +62,13 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[1] = "scripts/fetch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(1e6));
         bytes memory res = vm.ffi(inputs);
-        (address spender, address payable swapTarget, bytes memory quote, uint256 value, uint256 buyAmount) =
-            abi.decode(res, (address, address, bytes, uint256, uint256));
+        (
+            address spender,
+            address payable swapTarget,
+            bytes memory quote,
+            uint256 value,
+            uint256 buyAmount
+        ) = abi.decode(res, (address, address, bytes, uint256, uint256));
         swapData = Gasworks.SwapData(address(web3), spender, swapTarget, quote, value, buyAmount);
     }
 
@@ -75,7 +81,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testCannotSwapWithPermit2InvalidTypehash() public {
         bytes32 witness = keccak256(abi.encode(swapData));
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(usdc), 0);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -86,7 +93,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             address(gasworks)
         );
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), 1e6);
 
         vm.expectRevert(SignatureVerification.InvalidSigner.selector);
         gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData);
@@ -97,7 +105,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testCannotSwapWithPermit2IncorrectSigLength() public {
         bytes32 witness = keccak256(abi.encode(swapData));
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(usdc), 0);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -110,7 +119,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         bytes memory sigExtra = bytes.concat(signature, bytes1(uint8(0)));
         assertEq(sigExtra.length, 66);
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), 1e6);
 
         vm.expectRevert(SignatureVerification.InvalidSignatureLength.selector);
         gasworks.swapWithPermit2(permit, transferDetails, owner, witness, sigExtra, swapData);
@@ -122,7 +132,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     function testCannotSwapWithPermit2InvalidNonce() public {
         uint256 nonce = 0;
         bytes32 witness = keccak256(abi.encode(swapData));
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), nonce);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(usdc), nonce);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -133,7 +144,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             address(gasworks)
         );
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), 1e6);
         gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData);
 
         vm.expectRevert(InvalidNonce.selector);
@@ -148,7 +160,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      * [SUCCESS] Should make a success swap with permit2
      */
     function testSwapWithPermit2() public {
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), 0);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(usdc), 0);
         bytes32 witness = keccak256(abi.encode(swapData));
         bytes memory signature = getSignature(
             permit,
@@ -159,7 +172,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             _TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), 1e6);
 
         gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData);
 
@@ -174,7 +188,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testSwapWithPermit2RandomNonce(uint256 nonce) public {
         bytes32 witness = keccak256(abi.encode(swapData));
-        ISignatureTransfer.PermitTransferFrom memory permit = defaultERC20PermitTransfer(address(usdc), nonce);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(usdc), nonce);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -185,7 +200,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             address(gasworks)
         );
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails = getTransferDetails(address(gasworks), 1e6);
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), 1e6);
 
         gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData);
 

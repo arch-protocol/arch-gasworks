@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17.0;
 
-import {Test} from "forge-std/Test.sol";
-import {Gasworks} from "src/Gasworks.sol";
-import {SigUtils} from "test/utils/SigUtils.sol";
-import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {Conversor} from "test/utils/HexUtils.sol";
-import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import { Test } from "forge-std/Test.sol";
+import { Gasworks } from "src/Gasworks.sol";
+import { SigUtils } from "test/utils/SigUtils.sol";
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { Conversor } from "test/utils/HexUtils.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
 contract GaslessTest is Test {
     using SafeTransferLib for ERC20;
@@ -52,8 +52,13 @@ contract GaslessTest is Test {
         inputs[1] = "scripts/fetch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(1e6));
         bytes memory res = vm.ffi(inputs);
-        (address spender, address payable swapTarget, bytes memory quote, uint256 value, uint256 buyAmount) =
-            abi.decode(res, (address, address, bytes, uint256, uint256));
+        (
+            address spender,
+            address payable swapTarget,
+            bytes memory quote,
+            uint256 value,
+            uint256 buyAmount
+        ) = abi.decode(res, (address, address, bytes, uint256, uint256));
         swapData = Gasworks.SwapData(web3Address, spender, swapTarget, quote, value, buyAmount);
     }
 
@@ -83,7 +88,15 @@ contract GaslessTest is Test {
         vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s
+                address(usdc),
+                1e18,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
             ),
             swapData
         );
@@ -110,7 +123,15 @@ contract GaslessTest is Test {
         vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s
+                address(usdc),
+                1e18,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
             ),
             swapData
         );
@@ -136,7 +157,15 @@ contract GaslessTest is Test {
         vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s
+                address(usdc),
+                1e18,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
             ),
             swapData
         );
@@ -162,7 +191,15 @@ contract GaslessTest is Test {
         vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc), 1e18, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s
+                address(usdc),
+                1e18,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
             ),
             swapData
         );
@@ -172,8 +209,13 @@ contract GaslessTest is Test {
      * [REVERT] Should revert because balance is less than required amount
      */
     function testCannotSwapWithInvalidBalance() public {
-        SigUtils.Permit memory permit =
-            SigUtils.Permit({owner: owner, spender: address(gasworks), value: 2e18, nonce: 0, deadline: 2 ** 256 - 1});
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: 2e18,
+            nonce: 0,
+            deadline: 2 ** 256 - 1
+        });
 
         bytes32 digest = sigUtils.getTypedDataHash(permit);
 
@@ -220,7 +262,15 @@ contract GaslessTest is Test {
         vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc), 1e6, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s
+                address(usdc),
+                1e6,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
             ),
             swapData
         );
@@ -251,7 +301,15 @@ contract GaslessTest is Test {
         vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc), 1e6, permit.owner, permit.spender, permit.value, permit.deadline, v, r, s
+                address(usdc),
+                1e6,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
             ),
             swapData
         );

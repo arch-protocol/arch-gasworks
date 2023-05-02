@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.17.0;
 
-import {ERC2771Recipient} from "gsn/ERC2771Recipient.sol";
-import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {ISetToken} from "./interfaces/ISetToken.sol";
-import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-import {Owned} from "solmate/src/auth/Owned.sol";
-import {IExchangeIssuanceZeroEx} from "./interfaces/IExchangeIssuanceZeroEx.sol";
-import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
-import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {ITradeIssuerV2} from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
-import {IChamber} from "chambers/interfaces/IChamber.sol";
-import {IIssuerWizard} from "chambers/interfaces/IIssuerWizard.sol";
-import {IWETH} from "./interfaces/IWETH.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import { ERC2771Recipient } from "gsn/ERC2771Recipient.sol";
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { ISetToken } from "./interfaces/ISetToken.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import { Owned } from "solmate/src/auth/Owned.sol";
+import { IExchangeIssuanceZeroEx } from "./interfaces/IExchangeIssuanceZeroEx.sol";
+import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
+import { IChamber } from "chambers/interfaces/IChamber.sol";
+import { IIssuerWizard } from "chambers/interfaces/IIssuerWizard.sol";
+import { IWETH } from "./interfaces/IWETH.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 contract Gasworks is ERC2771Recipient, Owned {
     using SafeTransferLib for ERC20;
@@ -139,12 +139,13 @@ contract Gasworks is ERC2771Recipient, Owned {
 
     constructor(address _forwarder) Owned(_msgSender()) {
         _setTrustedForwarder(_forwarder);
-        exchangeIssuance = IExchangeIssuanceZeroEx(payable(0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320));
+        exchangeIssuance =
+            IExchangeIssuanceZeroEx(payable(0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320));
         signatureTransfer = ISignatureTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
         tradeIssuer = ITradeIssuerV2(0xbbCA2AcBd87Ce7A5e01fb56914d41F6a7e5C5A56);
     }
 
-    receive() external payable {}
+    receive() external payable { }
 
     function setTrustedForwarder(address _forwarder) external onlyOwner {
         _setTrustedForwarder(_forwarder);
@@ -242,7 +243,9 @@ contract Gasworks is ERC2771Recipient, Owned {
 
         emit Received(owner, transferDetails.to, transferDetails.requestedAmount, msg.sender);
 
-        _fillQuoteInternal(swapData, transferDetails.requestedAmount, owner, permit2.permitted.token);
+        _fillQuoteInternal(
+            swapData, transferDetails.requestedAmount, owner, permit2.permitted.token
+        );
     }
 
     /**
@@ -334,7 +337,9 @@ contract Gasworks is ERC2771Recipient, Owned {
         );
 
         outputToken.safeTransfer(owner, outputToken.balanceOf(address(this)));
-        ERC20(address(redeemData._setToken)).safeTransfer(owner, redeemData._setToken.balanceOf(address(this)));
+        ERC20(address(redeemData._setToken)).safeTransfer(
+            owner, redeemData._setToken.balanceOf(address(this))
+        );
     }
 
     /**
@@ -437,16 +442,19 @@ contract Gasworks is ERC2771Recipient, Owned {
         }
     }
 
-    function _fillQuoteInternal(SwapData calldata swap, uint256 sellAmount, address _owner, address _sellToken)
-        internal
-    {
+    function _fillQuoteInternal(
+        SwapData calldata swap,
+        uint256 sellAmount,
+        address _owner,
+        address _sellToken
+    ) internal {
         ERC20 sellToken = ERC20(_sellToken);
         ERC20 buyToken = ERC20(swap.buyToken);
         uint256 beforeBalance = buyToken.balanceOf(address(this));
 
         sellToken.safeApprove(swap.spender, type(uint256).max);
 
-        (bool success,) = swap.swapTarget.call{value: swap.swapValue}(swap.swapCallData);
+        (bool success,) = swap.swapTarget.call{ value: swap.swapValue }(swap.swapCallData);
         require(success, "SWAP_CALL_FAILED");
 
         emit Swap(swap.buyToken, swap.buyAmount, _sellToken, sellAmount);
@@ -461,7 +469,15 @@ contract Gasworks is ERC2771Recipient, Owned {
 
     function safePermit(ERC20 token, PermitData calldata permit) internal {
         uint256 nonceBefore = token.nonces(permit._owner);
-        token.permit(permit._owner, permit._spender, permit._value, permit._deadline, permit._v, permit._r, permit._s);
+        token.permit(
+            permit._owner,
+            permit._spender,
+            permit._value,
+            permit._deadline,
+            permit._v,
+            permit._r,
+            permit._s
+        );
         uint256 nonceAfter = token.nonces(permit._owner);
         require(nonceAfter == nonceBefore + 1, "SafeERC20: permit did not succeed");
     }

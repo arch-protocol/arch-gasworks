@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17.0;
 
-import {Test} from "forge-std/Test.sol";
-import {Gasworks} from "src/Gasworks.sol";
-import {ISetToken} from "src/interfaces/ISetToken.sol";
-import {SigUtils} from "test/utils/SigUtils.sol";
-import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {Conversor} from "test/utils/HexUtils.sol";
-import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import { Test } from "forge-std/Test.sol";
+import { Gasworks } from "src/Gasworks.sol";
+import { ISetToken } from "src/interfaces/ISetToken.sol";
+import { SigUtils } from "test/utils/SigUtils.sol";
+import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { Conversor } from "test/utils/HexUtils.sol";
+import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 
 contract GaslessTest is Test {
     using SafeTransferLib for ERC20;
@@ -59,7 +59,9 @@ contract GaslessTest is Test {
         inputs[4] = Conversor.iToHex(abi.encode(true));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _maxAmountInputToken) = abi.decode(res, (bytes[], uint256));
-        mintData = Gasworks.MintData(AP60, amountToMint, _maxAmountInputToken, quotes, debtModule, isDebtIssuance);
+        mintData = Gasworks.MintData(
+            AP60, amountToMint, _maxAmountInputToken, quotes, debtModule, isDebtIssuance
+        );
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -137,7 +139,10 @@ contract GaslessTest is Test {
         );
 
         assertEq(usdc.balanceOf(address(gasworks)), 0);
-        assertEq(usdc.allowance(owner, address(gasworks)), type(uint256).max - mintData._maxAmountInputToken);
+        assertEq(
+            usdc.allowance(owner, address(gasworks)),
+            type(uint256).max - mintData._maxAmountInputToken
+        );
         assertEq(usdc.nonces(owner), 1);
         assertGe(AP60.balanceOf(owner), mintData._amountSetToken);
     }
