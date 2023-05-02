@@ -12,11 +12,13 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ITradeIssuerV2} from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
 import {IChamber} from "chambers/interfaces/IChamber.sol";
 import {IIssuerWizard} from "chambers/interfaces/IIssuerWizard.sol";
+import {IWETH} from "./interfaces/IWETH.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 contract Gasworks is ERC2771Recipient, Owned {
     using SafeTransferLib for ERC20;
-    using SafeTransferLib for IERC20;
     using SafeTransferLib for ISetToken;
+    using Address for address payable;
 
     IExchangeIssuanceZeroEx private immutable exchangeIssuance;
     ISignatureTransfer public immutable signatureTransfer;
@@ -32,7 +34,10 @@ contract Gasworks is ERC2771Recipient, Owned {
         "RedeemData witness)RedeemData(ISetToken _setToken,IERC20 _outputToken,uint256 _amountSetToken,uint256 _minOutputReceive, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)";
 
     string private constant MINT_CHAMBER_WITNESS_TYPE_STRING =
-        "MintChamberData witness)MintChamberData(ContractCallInstruction[] _contractCallInstructions,IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _maxPayAmount,uint256 _mintAmount)ContractCallInstruction(address _target,address _allowanceTarget,IERC20 _sellToken,uint256 _sellAmount,IERC20 _buyToken,uint256 _minBuyAmount,bytes _calldata)TokenPermissions(address token,uint256 amount)";
+        "MintChamberData witness)MintChamberData(IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _maxPayAmount,uint256 _mintAmount)TokenPermissions(address token,uint256 amount)";
+
+    string private constant REDEEM_CHAMBER_WITNESS_TYPE_STRING =
+        "RedeemChamberData witness)RedeemChamberData(IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _minReceiveAmount,uint256 _redeemAmount)TokenPermissions(address token,uint256 amount)";
 
     event Received(address sender, address tokenContract, uint256 amount, address messageSender);
     event Swap(address buyToken, uint256 buyAmount, address sellToken, uint256 sellAmount);
@@ -90,8 +95,6 @@ contract Gasworks is ERC2771Recipient, Owned {
     }
 
     struct MintChamberData {
-        // The encoded transactions to execute
-        ITradeIssuerV2.ContractCallInstruction[] _contractCallInstructions;
         // The address of the chamber to mint
         IChamber _chamber;
         // The address of the issuer wizard that will mint the Chamber
@@ -121,12 +124,27 @@ contract Gasworks is ERC2771Recipient, Owned {
         bool _isDebtIssuance;
     }
 
+    struct RedeemChamberData {
+        // The address of the chamber to redeem
+        IChamber _chamber;
+        // The address of the issuer wizard that will mint the Chamber
+        IIssuerWizard _issuerWizard;
+        // The address of the token used to mint
+        IERC20 _baseToken;
+        // Min amount of baseToken to receive after redemption
+        uint256 _minReceiveAmount;
+        // The amount of Chamber to redeem
+        uint256 _redeemAmount;
+    }
+
     constructor(address _forwarder) Owned(_msgSender()) {
         _setTrustedForwarder(_forwarder);
         exchangeIssuance = IExchangeIssuanceZeroEx(payable(0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320));
         signatureTransfer = ISignatureTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
         tradeIssuer = ITradeIssuerV2(0xbbCA2AcBd87Ce7A5e01fb56914d41F6a7e5C5A56);
     }
+
+    receive() external payable {}
 
     function setTrustedForwarder(address _forwarder) external onlyOwner {
         _setTrustedForwarder(_forwarder);
@@ -319,30 +337,42 @@ contract Gasworks is ERC2771Recipient, Owned {
         ERC20(address(redeemData._setToken)).safeTransfer(owner, redeemData._setToken.balanceOf(address(this)));
     }
 
+    /**
+     * Mints an exact amount of Chamber from a given amount of input ERC20 tokens.
+     * Using a permit for the ERC20 token (through Permit2)
+     *
+     * @param permit2                       Permit2 data of the ERC20 token used
+     * @param transferDetails               Details of the transfer to perform
+     * @param owner                         Owner of the tokens to transfer
+     * @param witness                       Payload of data we want to validate (encoded in bytes32)
+     * @param signature                     Signature of the owner of the tokens
+     * @param mintChamberData               Data of the chamber issuance to perform
+     * @param contractCallInstructions      Calls required to get all chamber components
+     */
     function mintChamberWithPermit2(
-        ISignatureTransfer.PermitTransferFrom memory permit,
+        ISignatureTransfer.PermitTransferFrom memory permit2,
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
         bytes32 witness,
         bytes calldata signature,
         MintChamberData calldata mintChamberData,
-        Permit2 permit2
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
     ) external {
-        require(isPermitted(permit.permitted.token), "INVALID_SELL_TOKEN");
+        require(isPermitted(permit2.permitted.token), "INVALID_SELL_TOKEN");
         require(isPermitted(address(mintChamberData._chamber)), "INVALID_BUY_TOKEN");
 
-        permit2.permitWitnessTransferFrom(
-            permit, transferDetails, owner, witness, MINT_CHAMBER_WITNESS_TYPE_STRING, signature
+        signatureTransfer.permitWitnessTransferFrom(
+            permit2, transferDetails, owner, witness, MINT_CHAMBER_WITNESS_TYPE_STRING, signature
         );
 
-        ERC20 token = ERC20(permit.permitted.token);
+        ERC20 token = ERC20(permit2.permitted.token);
 
-        emit Received(owner, permit.permitted.token, permit.permitted.amount, msg.sender);
+        emit Received(owner, permit2.permitted.token, permit2.permitted.amount, msg.sender);
 
-        token.safeApprove(address(exchangeIssuance), mintChamberData._maxPayAmount);
+        token.safeApprove(address(tradeIssuer), mintChamberData._maxPayAmount);
 
         tradeIssuer.mintChamberFromToken(
-            mintChamberData._contractCallInstructions,
+            contractCallInstructions,
             mintChamberData._chamber,
             mintChamberData._issuerWizard,
             mintChamberData._baseToken,
@@ -354,8 +384,57 @@ contract Gasworks is ERC2771Recipient, Owned {
         token.safeTransfer(owner, token.balanceOf(address(this)));
     }
 
-    function redeemChamberWithPermit2() external {
-        // TODO
+    /**
+     * Redeems an exact amount of Chamber to a given amount of ERC20 tokens.
+     * Using a permit for the Chamber token (through Permit2)
+     *
+     * @param permit2                       Permit2 data of the ERC20 token used
+     * @param transferDetails               Details of the transfer to perform
+     * @param owner                         Owner of the tokens to transfer
+     * @param witness                       Payload of data we want to validate (encoded in bytes32)
+     * @param signature                     Signature of the owner of the tokens
+     * @param redeemChamberData             Data of the chamber redeem to perform
+     * @param contractCallInstructions      Calls required to get all chamber components
+     */
+    function redeemChamberWithPermit2(
+        ISignatureTransfer.PermitTransferFrom memory permit2,
+        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
+        address owner,
+        bytes32 witness,
+        bytes calldata signature,
+        RedeemChamberData calldata redeemChamberData,
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
+        bool toNative
+    ) external {
+        require(isPermitted(permit2.permitted.token), "INVALID_SELL_TOKEN");
+        require(isPermitted(address(redeemChamberData._baseToken)), "INVALID_BUY_TOKEN");
+
+        signatureTransfer.permitWitnessTransferFrom(
+            permit2, transferDetails, owner, witness, REDEEM_CHAMBER_WITNESS_TYPE_STRING, signature
+        );
+
+        ERC20 token = ERC20(permit2.permitted.token);
+
+        emit Received(owner, permit2.permitted.token, permit2.permitted.amount, msg.sender);
+
+        token.safeApprove(address(tradeIssuer), redeemChamberData._redeemAmount);
+
+        tradeIssuer.redeemChamberToToken(
+            contractCallInstructions,
+            redeemChamberData._chamber,
+            redeemChamberData._issuerWizard,
+            redeemChamberData._baseToken,
+            redeemChamberData._minReceiveAmount,
+            redeemChamberData._redeemAmount
+        );
+        ERC20 baseToken = ERC20(address(redeemChamberData._baseToken));
+        uint256 baseTokenBalance = baseToken.balanceOf(address(this));
+        if (toNative) {
+            IWETH(address(baseToken)).withdraw(baseTokenBalance);
+            payable(owner).sendValue(baseTokenBalance);
+        } else {
+            baseToken.safeTransfer(owner, baseToken.balanceOf(address(this)));
+        }
     }
 
     function _fillQuoteInternal(SwapData calldata swap, uint256 sellAmount, address _owner, address _sellToken)
