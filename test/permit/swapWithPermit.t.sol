@@ -15,13 +15,9 @@ contract GaslessTest is Test {
                               VARIABLES
     //////////////////////////////////////////////////////////////*/
 
-    address internal immutable usdcAddress = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
-    address internal immutable web3Address = 0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A;
-    address private constant biconomyForwarder = 0x86C80a8aa58e0A4fa09A69624c31Ab2a6CAD56b8;
-
     Gasworks internal gasworks;
-    ERC20 internal usdc;
-    ERC20 internal web3;
+    ERC20 internal constant USDC = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+    ERC20 internal constant WEB3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
     SigUtils internal sigUtils;
 
     uint256 internal ownerPrivateKey;
@@ -32,20 +28,16 @@ contract GaslessTest is Test {
                               SET UP
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
-        usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
-        web3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
         gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
-        gasworks.setTokens(address(usdc));
-        gasworks.setTokens(address(web3));
-        sigUtils = new SigUtils(usdc.DOMAIN_SEPARATOR());
+        gasworks.setTokens(address(USDC));
+        gasworks.setTokens(address(WEB3));
+        sigUtils = new SigUtils(USDC.DOMAIN_SEPARATOR());
 
         ownerPrivateKey = 0xA11CE;
         owner = vm.addr(ownerPrivateKey);
 
         vm.prank(0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245);
-        usdc.safeTransfer(owner, 1e6);
-
-        vm.deal(biconomyForwarder, 10 ether);
+        USDC.safeTransfer(owner, 1e6);
 
         string[] memory inputs = new string[](3);
         inputs[0] = "node";
@@ -59,7 +51,7 @@ contract GaslessTest is Test {
             uint256 value,
             uint256 buyAmount
         ) = abi.decode(res, (address, address, bytes, uint256, uint256));
-        swapData = Gasworks.SwapData(web3Address, spender, swapTarget, quote, value, buyAmount);
+        swapData = Gasworks.SwapData(address(WEB3), spender, swapTarget, quote, value, buyAmount);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -74,7 +66,7 @@ contract GaslessTest is Test {
             owner: owner,
             spender: address(gasworks),
             value: 1e18,
-            nonce: usdc.nonces(owner),
+            nonce: USDC.nonces(owner),
             deadline: 2 ** 255 - 1
         });
 
@@ -85,10 +77,9 @@ contract GaslessTest is Test {
         vm.warp(2 ** 255 + 1); // fast forwards one second past the deadline
 
         vm.expectRevert("Permit: permit is expired");
-        vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc),
+                address(USDC),
                 1e18,
                 permit.owner,
                 permit.spender,
@@ -111,7 +102,7 @@ contract GaslessTest is Test {
             owner: owner,
             spender: address(gasworks),
             value: 1e18,
-            nonce: usdc.nonces(owner),
+            nonce: USDC.nonces(owner),
             deadline: 2 ** 256 - 1
         });
 
@@ -120,10 +111,9 @@ contract GaslessTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xB0B, digest); // 0xB0B signs but 0xA11CE is owner
 
         vm.expectRevert("Permit: invalid signature");
-        vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc),
+                address(USDC),
                 1e18,
                 permit.owner,
                 permit.spender,
@@ -154,10 +144,9 @@ contract GaslessTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
         vm.expectRevert("Permit: invalid signature");
-        vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc),
+                address(USDC),
                 1e18,
                 permit.owner,
                 permit.spender,
@@ -188,10 +177,9 @@ contract GaslessTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
         vm.expectRevert("TRANSFER_FROM_FAILED");
-        vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc),
+                address(USDC),
                 1e18,
                 permit.owner,
                 permit.spender,
@@ -222,11 +210,10 @@ contract GaslessTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
         vm.expectRevert("TRANSFER_FROM_FAILED");
-        vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc),
-                2e18, // owner was only minted 1 usdc
+                address(USDC),
+                2e18, // owner was only minted 1 USDC
                 permit.owner,
                 permit.spender,
                 permit.value,
@@ -251,7 +238,7 @@ contract GaslessTest is Test {
             owner: owner,
             spender: address(gasworks),
             value: 1e6,
-            nonce: usdc.nonces(owner),
+            nonce: USDC.nonces(owner),
             deadline: 2 ** 256 - 1
         });
 
@@ -259,10 +246,9 @@ contract GaslessTest is Test {
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
-        vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc),
+                address(USDC),
                 1e6,
                 permit.owner,
                 permit.spender,
@@ -275,11 +261,11 @@ contract GaslessTest is Test {
             swapData
         );
 
-        assertEq(usdc.balanceOf(owner), 0);
-        assertEq(usdc.balanceOf(address(gasworks)), 0);
-        assertEq(usdc.allowance(owner, address(gasworks)), 0);
-        assertEq(usdc.nonces(owner), 1);
-        assertGe(web3.balanceOf(owner), swapData.buyAmount);
+        assertEq(USDC.balanceOf(owner), 0);
+        assertEq(USDC.balanceOf(address(gasworks)), 0);
+        assertEq(USDC.allowance(owner, address(gasworks)), 0);
+        assertEq(USDC.nonces(owner), 1);
+        assertGe(WEB3.balanceOf(owner), swapData.buyAmount);
     }
 
     /**
@@ -290,7 +276,7 @@ contract GaslessTest is Test {
             owner: owner,
             spender: address(gasworks),
             value: type(uint256).max,
-            nonce: usdc.nonces(owner),
+            nonce: USDC.nonces(owner),
             deadline: 2 ** 256 - 1
         });
 
@@ -298,10 +284,9 @@ contract GaslessTest is Test {
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
-        vm.prank(biconomyForwarder);
         gasworks.swapWithPermit(
             Gasworks.PermitData(
-                address(usdc),
+                address(USDC),
                 1e6,
                 permit.owner,
                 permit.spender,
@@ -314,11 +299,11 @@ contract GaslessTest is Test {
             swapData
         );
 
-        assertEq(usdc.balanceOf(owner), 0);
-        assertEq(usdc.balanceOf(address(gasworks)), 0);
+        assertEq(USDC.balanceOf(owner), 0);
+        assertEq(USDC.balanceOf(address(gasworks)), 0);
 
-        assertEq(usdc.allowance(owner, address(gasworks)), type(uint256).max - 1e6);
-        assertEq(usdc.nonces(owner), 1);
-        assertGe(web3.balanceOf(owner), swapData.buyAmount);
+        assertEq(USDC.allowance(owner, address(gasworks)), type(uint256).max - 1e6);
+        assertEq(USDC.nonces(owner), 1);
+        assertGe(WEB3.balanceOf(owner), swapData.buyAmount);
     }
 }
