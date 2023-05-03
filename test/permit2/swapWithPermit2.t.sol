@@ -24,7 +24,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,SwapData witness)SwapData(address buyToken,address spender,address payable swapTarget, bytes swapCallData,uint256 swapValue,uint256 buyAmount)TokenPermissions(address token,uint256 amount)"
     );
 
-    bytes32 public constant _TOKEN_PERMISSIONS_TYPEHASH =
+    bytes32 public constant TOKEN_PERMISSIONS_TYPEHASH =
         keccak256("TokenPermissions(address token,uint256 amount)");
 
     Gasworks internal gasworks;
@@ -89,7 +89,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             "fake typehash",
             witness,
             DOMAIN_SEPARATOR,
-            _TOKEN_PERMISSIONS_TYPEHASH,
+            TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
 
@@ -113,7 +113,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             WITNESS_TYPEHASH,
             witness,
             DOMAIN_SEPARATOR,
-            _TOKEN_PERMISSIONS_TYPEHASH,
+            TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
         bytes memory sigExtra = bytes.concat(signature, bytes1(uint8(0)));
@@ -140,7 +140,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             WITNESS_TYPEHASH,
             witness,
             DOMAIN_SEPARATOR,
-            _TOKEN_PERMISSIONS_TYPEHASH,
+            TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
 
@@ -169,7 +169,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             WITNESS_TYPEHASH,
             witness,
             DOMAIN_SEPARATOR,
-            _TOKEN_PERMISSIONS_TYPEHASH,
+            TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
         ISignatureTransfer.SignatureTransferDetails memory transferDetails =
@@ -196,7 +196,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             WITNESS_TYPEHASH,
             witness,
             DOMAIN_SEPARATOR,
-            _TOKEN_PERMISSIONS_TYPEHASH,
+            TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
 
