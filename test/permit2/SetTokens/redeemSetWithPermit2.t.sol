@@ -14,6 +14,7 @@ import { Permit2Utils } from "test/utils/Permit2Utils.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { EIP712 } from "permit2/src/EIP712.sol";
 import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
+import { IWETH } from "src/interfaces/IWETH.sol";
 
 contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
@@ -35,6 +36,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     Gasworks internal gasworks;
     IERC20 internal constant USDC = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     ISetToken internal constant AP60 = ISetToken(0x6cA9C8914a14D63a6700556127D09e7721ff7D3b);
+    IWETH public constant WETH = IWETH(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
 
     uint256 internal ownerPrivateKey;
     address internal owner;
@@ -49,6 +51,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
         gasworks.setTokens(address(USDC));
         gasworks.setTokens(address(AP60));
+        gasworks.setTokens(address(WETH));
         permit2 = deployPermit2();
         DOMAIN_SEPARATOR = EIP712(permit2).DOMAIN_SEPARATOR();
 
@@ -102,7 +105,9 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             getTransferDetails(address(gasworks), redeemData._amountSetToken);
 
         vm.expectRevert(SignatureVerification.InvalidSigner.selector);
-        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData);
+        gasworks.redeemWithPermit2(
+            permit, transferDetails, owner, witness, signature, redeemData, false
+        );
     }
 
     /**
@@ -128,7 +133,9 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             getTransferDetails(address(gasworks), redeemData._amountSetToken);
 
         vm.expectRevert(SignatureVerification.InvalidSignatureLength.selector);
-        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, sigExtra, redeemData);
+        gasworks.redeemWithPermit2(
+            permit, transferDetails, owner, witness, sigExtra, redeemData, false
+        );
     }
 
     /**
@@ -151,10 +158,14 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
         ISignatureTransfer.SignatureTransferDetails memory transferDetails =
             getTransferDetails(address(gasworks), redeemData._amountSetToken);
-        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData);
+        gasworks.redeemWithPermit2(
+            permit, transferDetails, owner, witness, signature, redeemData, false
+        );
 
         vm.expectRevert(InvalidNonce.selector);
-        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData);
+        gasworks.redeemWithPermit2(
+            permit, transferDetails, owner, witness, signature, redeemData, false
+        );
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -162,9 +173,9 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * [SUCCESS] Should make a success redeem with permit2
+     * [SUCCESS] Should make a redeem of SetTokens for ERC20 token using permit2
      */
-    function testRedeemWithPermit2() public {
+    function testRedeemToERC20WithPermit2() public {
         ISignatureTransfer.PermitTransferFrom memory permit =
             defaultERC20PermitTransfer(address(AP60), 0);
         bytes32 witness = keccak256(abi.encode(redeemData));
@@ -181,17 +192,114 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         ISignatureTransfer.SignatureTransferDetails memory transferDetails =
             getTransferDetails(address(gasworks), redeemData._amountSetToken);
 
-        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData);
+        gasworks.redeemWithPermit2(
+            permit, transferDetails, owner, witness, signature, redeemData, false
+        );
 
         assertEq(USDC.balanceOf(address(gasworks)), 0);
         assertEq(USDC.allowance(owner, address(gasworks)), 0);
-        assertGe(AP60.balanceOf(owner), redeemData._amountSetToken);
+        assertGe(AP60.balanceOf(owner), 0);
+        assertGe(USDC.balanceOf(owner), redeemData._minOutputReceive);
     }
 
     /**
-     * [SUCCESS] Should make a success redeem with permit2 with a random nonce
+     * [SUCCESS] Should make a redeem to native token using permit2
      */
-    function testRedeemWithPermit2RandomNonce(uint256 nonce) public {
+    function testRedeemToNativeTokenWithPermit2() public {
+        string[] memory inputs = new string[](6);
+        inputs[0] = "node";
+        inputs[1] = "scripts/fetch-arch-quote.js";
+        inputs[2] = Conversor.iToHex(abi.encode(1e18));
+        inputs[3] = Conversor.iToHex(abi.encode(address(AP60)));
+        inputs[4] = Conversor.iToHex(abi.encode(address(WETH)));
+        inputs[5] = Conversor.iToHex(abi.encode(false));
+        bytes memory res = vm.ffi(inputs);
+        (bytes[] memory quotes, uint256 _minOutputReceive) = abi.decode(res, (bytes[], uint256));
+        redeemData = Gasworks.RedeemData(
+            AP60,
+            IERC20(address(WETH)),
+            1e18,
+            _minOutputReceive,
+            quotes,
+            DEBT_MODULE,
+            IS_DEBT_ISSUANCE
+        );
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(AP60), 0);
+        bytes32 witness = keccak256(abi.encode(redeemData));
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            DOMAIN_SEPARATOR,
+            _TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), redeemData._amountSetToken);
+
+        gasworks.redeemWithPermit2(
+            permit, transferDetails, owner, witness, signature, redeemData, true
+        );
+
+        assertGe(AP60.balanceOf(owner), 0);
+        assertGe(owner.balance, redeemData._minOutputReceive);
+    }
+
+    /**
+     * [SUCCESS] Should make a redeem to wrapped native token using permit2
+     */
+    function testRedeemToWrappedNativeTokenWithPermit2() public {
+        string[] memory inputs = new string[](6);
+        inputs[0] = "node";
+        inputs[1] = "scripts/fetch-arch-quote.js";
+        inputs[2] = Conversor.iToHex(abi.encode(1e18));
+        inputs[3] = Conversor.iToHex(abi.encode(address(AP60)));
+        inputs[4] = Conversor.iToHex(abi.encode(address(WETH)));
+        inputs[5] = Conversor.iToHex(abi.encode(false));
+        bytes memory res = vm.ffi(inputs);
+        (bytes[] memory quotes, uint256 _minOutputReceive) = abi.decode(res, (bytes[], uint256));
+        redeemData = Gasworks.RedeemData(
+            AP60,
+            IERC20(address(WETH)),
+            1e18,
+            _minOutputReceive,
+            quotes,
+            DEBT_MODULE,
+            IS_DEBT_ISSUANCE
+        );
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(AP60), 0);
+        bytes32 witness = keccak256(abi.encode(redeemData));
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            DOMAIN_SEPARATOR,
+            _TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), redeemData._amountSetToken);
+
+        gasworks.redeemWithPermit2(
+            permit, transferDetails, owner, witness, signature, redeemData, false
+        );
+
+        assertEq(WETH.balanceOf(address(gasworks)), 0);
+        assertEq(WETH.allowance(owner, address(gasworks)), 0);
+        assertGe(AP60.balanceOf(owner), 0);
+        assertGe(WETH.balanceOf(owner), redeemData._minOutputReceive);
+    }
+
+    /**
+     * [SUCCESS] Should make a redeem of SetTokens for ERC20 token using permit2 and a random nonce
+     */
+    function testRedeemToERC20WithPermit2RandomNonce(uint256 nonce) public {
         ISignatureTransfer.PermitTransferFrom memory permit =
             defaultERC20PermitTransfer(address(AP60), nonce);
         bytes32 witness = keccak256(abi.encode(redeemData));
@@ -208,10 +316,13 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         ISignatureTransfer.SignatureTransferDetails memory transferDetails =
             getTransferDetails(address(gasworks), redeemData._amountSetToken);
 
-        gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData);
+        gasworks.redeemWithPermit2(
+            permit, transferDetails, owner, witness, signature, redeemData, false
+        );
 
         assertEq(USDC.balanceOf(address(gasworks)), 0);
         assertEq(USDC.allowance(owner, address(gasworks)), 0);
-        assertGe(AP60.balanceOf(owner), redeemData._amountSetToken);
+        assertGe(AP60.balanceOf(owner), 0);
+        assertGe(USDC.balanceOf(owner), redeemData._minOutputReceive);
     }
 }

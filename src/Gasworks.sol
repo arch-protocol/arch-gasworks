@@ -312,7 +312,8 @@ contract Gasworks is ERC2771Recipient, Owned {
         address owner,
         bytes32 witness,
         bytes calldata signature,
-        RedeemData calldata redeemData
+        RedeemData calldata redeemData,
+        bool toNative
     ) external {
         require(isPermitted(address(redeemData._outputToken)), "INVALID_BUY_TOKEN");
         require(isPermitted(address(redeemData._setToken)), "INVALID_SELL_TOKEN");
@@ -336,7 +337,13 @@ contract Gasworks is ERC2771Recipient, Owned {
             redeemData._isDebtIssuance
         );
 
-        outputToken.safeTransfer(owner, outputToken.balanceOf(address(this)));
+        uint256 outputTokenBalance = outputToken.balanceOf(address(this));
+        if (toNative) {
+            IWETH(address(outputToken)).withdraw(outputTokenBalance);
+            payable(owner).sendValue(outputTokenBalance);
+        } else {
+            outputToken.safeTransfer(owner, outputToken.balanceOf(address(this)));
+        }
         ERC20(address(redeemData._setToken)).safeTransfer(
             owner, redeemData._setToken.balanceOf(address(this))
         );
