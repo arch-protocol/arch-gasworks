@@ -3,6 +3,7 @@ pragma solidity ^0.8.17.0;
 
 import { Test } from "forge-std/Test.sol";
 import { Gasworks } from "src/Gasworks.sol";
+import { IGasworks } from "src/interfaces/IGasworks.sol";
 import { SigUtils } from "test/utils/SigUtils.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { Conversor } from "test/utils/HexUtils.sol";
@@ -22,7 +23,7 @@ contract GaslessTest is Test {
 
     uint256 internal ownerPrivateKey;
     address internal owner;
-    Gasworks.SwapData internal swapData;
+    IGasworks.SwapData internal swapData;
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
@@ -51,7 +52,7 @@ contract GaslessTest is Test {
             uint256 value,
             uint256 buyAmount
         ) = abi.decode(res, (address, address, bytes, uint256, uint256));
-        swapData = Gasworks.SwapData(address(WEB3), spender, swapTarget, quote, value, buyAmount);
+        swapData = IGasworks.SwapData(address(WEB3), spender, swapTarget, quote, value, buyAmount);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -78,7 +79,7 @@ contract GaslessTest is Test {
 
         vm.expectRevert("Permit: permit is expired");
         gasworks.swapWithPermit(
-            Gasworks.PermitData(
+            IGasworks.PermitData(
                 address(USDC),
                 1e18,
                 permit.owner,
@@ -112,7 +113,7 @@ contract GaslessTest is Test {
 
         vm.expectRevert("Permit: invalid signature");
         gasworks.swapWithPermit(
-            Gasworks.PermitData(
+            IGasworks.PermitData(
                 address(USDC),
                 1e18,
                 permit.owner,
@@ -145,7 +146,7 @@ contract GaslessTest is Test {
 
         vm.expectRevert("Permit: invalid signature");
         gasworks.swapWithPermit(
-            Gasworks.PermitData(
+            IGasworks.PermitData(
                 address(USDC),
                 1e18,
                 permit.owner,
@@ -178,7 +179,7 @@ contract GaslessTest is Test {
 
         vm.expectRevert("TRANSFER_FROM_FAILED");
         gasworks.swapWithPermit(
-            Gasworks.PermitData(
+            IGasworks.PermitData(
                 address(USDC),
                 1e18,
                 permit.owner,
@@ -211,9 +212,112 @@ contract GaslessTest is Test {
 
         vm.expectRevert("TRANSFER_FROM_FAILED");
         gasworks.swapWithPermit(
-            Gasworks.PermitData(
+            IGasworks.PermitData(
                 address(USDC),
                 2e18, // owner was only minted 1 USDC
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
+            ),
+            swapData
+        );
+    }
+
+    /**
+     * [REVERT] Should revert because amount bought is less than required amount
+     */
+    function testCannotSwapWithUnderboughtAsset() public {
+        swapData.buyAmount = 1000 ether; // set buy amount to 1000 ether
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: 1e6,
+            nonce: 0,
+            deadline: 2 ** 256 - 1
+        });
+
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IGasworks.Underbought.selector, address(WEB3), 1000 ether)
+        );
+        gasworks.swapWithPermit(
+            IGasworks.PermitData(
+                address(USDC),
+                1e6,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
+            ),
+            swapData
+        );
+    }
+
+    /**
+     * [REVERT] Should revert because low level call to swapTarget failed
+     */
+    function testCannotSwapWithSwapCallFailed() public {
+        swapData.swapCallData = bytes("swapCallData");
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: 1e6,
+            nonce: 0,
+            deadline: 2 ** 256 - 1
+        });
+
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+
+        vm.expectRevert(IGasworks.SwapCallFailed.selector);
+        gasworks.swapWithPermit(
+            IGasworks.PermitData(
+                address(USDC),
+                1e6,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
+            ),
+            swapData
+        );
+    }
+
+    /**
+     * [REVERT] Should revert because token is not permitted
+     */
+    function testCannotSwapWithInvalidToken() public {
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: 1e6,
+            nonce: USDC.nonces(owner),
+            deadline: 2 ** 256 - 1
+        });
+
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+
+        vm.expectRevert(abi.encodeWithSelector(IGasworks.InvalidToken.selector, address(0x123123)));
+        gasworks.swapWithPermit(
+            IGasworks.PermitData(
+                address(0x123123),
+                1e6,
                 permit.owner,
                 permit.spender,
                 permit.value,
@@ -247,7 +351,7 @@ contract GaslessTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
         gasworks.swapWithPermit(
-            Gasworks.PermitData(
+            IGasworks.PermitData(
                 address(USDC),
                 1e6,
                 permit.owner,
@@ -285,7 +389,7 @@ contract GaslessTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
         gasworks.swapWithPermit(
-            Gasworks.PermitData(
+            IGasworks.PermitData(
                 address(USDC),
                 1e6,
                 permit.owner,
