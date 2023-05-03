@@ -25,7 +25,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     using SafeERC20 for IERC20;
 
     Gasworks internal gasworks;
-    IERC20 internal constant usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    IERC20 internal constant USDC = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     IChamber internal constant ADDY = IChamber(0xE15A66b7B8e385CAa6F69FD0d55984B96D7263CF);
     IWETH public constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
@@ -42,7 +42,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
         gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
-        gasworks.setTokens(address(usdc));
+        gasworks.setTokens(address(USDC));
         gasworks.setTokens(address(ADDY));
         gasworks.setTokens(address(WETH));
         permit2 = deployPermit2();
@@ -71,7 +71,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         inputs[1] = "scripts/fetch-arch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(amountToRedeem));
         inputs[3] = Conversor.iToHex(abi.encode(address(ADDY)));
-        inputs[4] = Conversor.iToHex(abi.encode(address(usdc)));
+        inputs[4] = Conversor.iToHex(abi.encode(address(USDC)));
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
         (
@@ -81,7 +81,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         redeemData = Gasworks.RedeemChamberData(
             ADDY,
             IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
-            usdc,
+            USDC,
             _minOutputReceive,
             amountToRedeem
         );
@@ -114,7 +114,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             _contractCallInstructions,
             false
         );
-        assertGe(usdc.balanceOf(owner), _minOutputReceive);
+        assertGe(USDC.balanceOf(owner), _minOutputReceive);
     }
 
     /**

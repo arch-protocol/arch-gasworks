@@ -24,7 +24,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     using SafeERC20 for IERC20;
 
     Gasworks internal gasworks;
-    IERC20 internal constant usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    IERC20 internal constant USDC = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     IChamber internal constant ADDY = IChamber(0xE15A66b7B8e385CAa6F69FD0d55984B96D7263CF);
 
     uint256 internal ownerPrivateKey;
@@ -38,7 +38,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
         gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
-        gasworks.setTokens(address(usdc));
+        gasworks.setTokens(address(USDC));
         gasworks.setTokens(address(ADDY));
         permit2 = deployPermit2();
         DOMAIN_SEPARATOR = EIP712(permit2).DOMAIN_SEPARATOR();
@@ -47,10 +47,10 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         owner = vm.addr(ownerPrivateKey);
 
         vm.prank(0x0A59649758aa4d66E25f08Dd01271e891fe52199);
-        usdc.safeTransfer(owner, 150e6);
+        USDC.safeTransfer(owner, 150e6);
 
         vm.prank(owner);
-        usdc.approve(permit2, type(uint256).max);
+        USDC.approve(permit2, type(uint256).max);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         inputs[1] = "scripts/fetch-arch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(amountToMint));
         inputs[3] = Conversor.iToHex(abi.encode(address(ADDY)));
-        inputs[4] = Conversor.iToHex(abi.encode(address(usdc)));
+        inputs[4] = Conversor.iToHex(abi.encode(address(USDC)));
         inputs[5] = Conversor.iToHex(abi.encode(true));
         bytes memory res = vm.ffi(inputs);
         (
@@ -77,13 +77,13 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         mintData = Gasworks.MintChamberData(
             ADDY,
             IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
-            usdc,
+            USDC,
             _maxPayAmount,
             amountToMint
         );
 
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(usdc), 0);
+            defaultERC20PermitTransfer(address(USDC), 0);
         bytes32 witness = keccak256(abi.encode(mintData));
         bytes memory signature = getSignature(
             permit,
