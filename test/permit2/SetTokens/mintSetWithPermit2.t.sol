@@ -29,11 +29,11 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     bytes32 public constant _TOKEN_PERMISSIONS_TYPEHASH =
         keccak256("TokenPermissions(address token,uint256 amount)");
 
-    address internal constant debtModule = 0xf2dC2f456b98Af9A6bEEa072AF152a7b0EaA40C9;
-    bool internal constant _isDebtIssuance = true;
+    address internal constant DEBT_MODULE = 0xf2dC2f456b98Af9A6bEEa072AF152a7b0EaA40C9;
+    bool internal constant IS_DEBT_ISSUANCE = true;
 
     Gasworks internal gasworks;
-    ERC20 internal constant usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+    ERC20 internal constant USDC = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     ISetToken internal constant AP60 = ISetToken(0x6cA9C8914a14D63a6700556127D09e7721ff7D3b);
 
     uint256 internal ownerPrivateKey;
@@ -47,7 +47,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
         gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
-        gasworks.setTokens(address(usdc));
+        gasworks.setTokens(address(USDC));
         gasworks.setTokens(address(AP60));
         permit2 = deployPermit2();
         DOMAIN_SEPARATOR = EIP712(permit2).DOMAIN_SEPARATOR();
@@ -56,7 +56,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         owner = vm.addr(ownerPrivateKey);
 
         vm.prank(0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245);
-        usdc.safeTransfer(owner, 150e6);
+        USDC.safeTransfer(owner, 150e6);
 
         uint256 amountToMint = 10e18;
 
@@ -65,16 +65,16 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[1] = "scripts/fetch-arch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(amountToMint));
         inputs[3] = Conversor.iToHex(abi.encode(address(AP60)));
-        inputs[4] = Conversor.iToHex(abi.encode(address(usdc)));
+        inputs[4] = Conversor.iToHex(abi.encode(address(USDC)));
         inputs[5] = Conversor.iToHex(abi.encode(true));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _maxAmountInputToken) = abi.decode(res, (bytes[], uint256));
         mintData = Gasworks.MintData(
-            AP60, amountToMint, _maxAmountInputToken, quotes, debtModule, _isDebtIssuance
+            AP60, amountToMint, _maxAmountInputToken, quotes, DEBT_MODULE, IS_DEBT_ISSUANCE
         );
 
         vm.prank(owner);
-        usdc.approve(permit2, mintData._maxAmountInputToken);
+        USDC.approve(permit2, mintData._maxAmountInputToken);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -87,7 +87,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     function testCannotMintWithPermit2InvalidTypehash() public {
         bytes32 witness = keccak256(abi.encode(mintData));
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(usdc), 0);
+            defaultERC20PermitTransfer(address(USDC), 0);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -111,7 +111,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     function testCannotMintWithPermit2IncorrectSigLength() public {
         bytes32 witness = keccak256(abi.encode(mintData));
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(usdc), 0);
+            defaultERC20PermitTransfer(address(USDC), 0);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -138,7 +138,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         uint256 nonce = 0;
         bytes32 witness = keccak256(abi.encode(mintData));
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(usdc), nonce);
+            defaultERC20PermitTransfer(address(USDC), nonce);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -166,7 +166,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testMintWithPermit2() public {
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(usdc), 0);
+            defaultERC20PermitTransfer(address(USDC), 0);
         bytes32 witness = keccak256(abi.encode(mintData));
         bytes memory signature = getSignature(
             permit,
@@ -183,8 +183,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
         gasworks.mintWithPermit2(permit, transferDetails, owner, witness, signature, mintData);
 
-        assertEq(usdc.balanceOf(address(gasworks)), 0);
-        assertEq(usdc.allowance(owner, address(gasworks)), 0);
+        assertEq(USDC.balanceOf(address(gasworks)), 0);
+        assertEq(USDC.allowance(owner, address(gasworks)), 0);
         assertGe(AP60.balanceOf(owner), mintData._amountSetToken);
     }
 
@@ -194,7 +194,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     function testMintWithPermit2RandomNonce(uint256 nonce) public {
         bytes32 witness = keccak256(abi.encode(mintData));
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(usdc), nonce);
+            defaultERC20PermitTransfer(address(USDC), nonce);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -210,8 +210,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
         gasworks.mintWithPermit2(permit, transferDetails, owner, witness, signature, mintData);
 
-        assertEq(usdc.balanceOf(address(gasworks)), 0);
-        assertEq(usdc.allowance(owner, address(gasworks)), 0);
+        assertEq(USDC.balanceOf(address(gasworks)), 0);
+        assertEq(USDC.allowance(owner, address(gasworks)), 0);
         assertGe(AP60.balanceOf(owner), mintData._amountSetToken);
     }
 }

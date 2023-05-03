@@ -29,11 +29,11 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     bytes32 public constant _TOKEN_PERMISSIONS_TYPEHASH =
         keccak256("TokenPermissions(address token,uint256 amount)");
 
-    address internal constant debtModule = 0xf2dC2f456b98Af9A6bEEa072AF152a7b0EaA40C9;
-    bool internal constant _isDebtIssuance = true;
+    address internal constant DEBT_MODULE = 0xf2dC2f456b98Af9A6bEEa072AF152a7b0EaA40C9;
+    bool internal constant IS_DEBT_ISSUANCE = true;
 
     Gasworks internal gasworks;
-    IERC20 internal constant usdc = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+    IERC20 internal constant USDC = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     ISetToken internal constant AP60 = ISetToken(0x6cA9C8914a14D63a6700556127D09e7721ff7D3b);
 
     uint256 internal ownerPrivateKey;
@@ -47,7 +47,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
         gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
-        gasworks.setTokens(address(usdc));
+        gasworks.setTokens(address(USDC));
         gasworks.setTokens(address(AP60));
         permit2 = deployPermit2();
         DOMAIN_SEPARATOR = EIP712(permit2).DOMAIN_SEPARATOR();
@@ -65,12 +65,12 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[1] = "scripts/fetch-arch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(setAmount));
         inputs[3] = Conversor.iToHex(abi.encode(address(AP60)));
-        inputs[4] = Conversor.iToHex(abi.encode(address(usdc)));
+        inputs[4] = Conversor.iToHex(abi.encode(address(USDC)));
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _minOutputReceive) = abi.decode(res, (bytes[], uint256));
         redeemData = Gasworks.RedeemData(
-            AP60, usdc, setAmount, _minOutputReceive, quotes, debtModule, _isDebtIssuance
+            AP60, USDC, setAmount, _minOutputReceive, quotes, DEBT_MODULE, IS_DEBT_ISSUANCE
         );
 
         vm.prank(owner);
@@ -183,8 +183,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
         gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData);
 
-        assertEq(usdc.balanceOf(address(gasworks)), 0);
-        assertEq(usdc.allowance(owner, address(gasworks)), 0);
+        assertEq(USDC.balanceOf(address(gasworks)), 0);
+        assertEq(USDC.allowance(owner, address(gasworks)), 0);
         assertGe(AP60.balanceOf(owner), redeemData._amountSetToken);
     }
 
@@ -210,8 +210,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
         gasworks.redeemWithPermit2(permit, transferDetails, owner, witness, signature, redeemData);
 
-        assertEq(usdc.balanceOf(address(gasworks)), 0);
-        assertEq(usdc.allowance(owner, address(gasworks)), 0);
+        assertEq(USDC.balanceOf(address(gasworks)), 0);
+        assertEq(USDC.allowance(owner, address(gasworks)), 0);
         assertGe(AP60.balanceOf(owner), redeemData._amountSetToken);
     }
 }

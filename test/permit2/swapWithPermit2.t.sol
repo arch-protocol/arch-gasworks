@@ -28,8 +28,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         keccak256("TokenPermissions(address token,uint256 amount)");
 
     Gasworks internal gasworks;
-    ERC20 internal usdc = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
-    ERC20 internal web3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
+    ERC20 internal constant USDC = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+    ERC20 internal constant WEB3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
 
     uint256 internal ownerPrivateKey;
     address internal owner;
@@ -43,8 +43,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
     function setUp() public {
         gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
-        gasworks.setTokens(address(usdc));
-        gasworks.setTokens(address(web3));
+        gasworks.setTokens(address(USDC));
+        gasworks.setTokens(address(WEB3));
         permit2 = deployPermit2();
         DOMAIN_SEPARATOR = EIP712(permit2).DOMAIN_SEPARATOR();
 
@@ -52,10 +52,10 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         owner = vm.addr(ownerPrivateKey);
 
         vm.prank(0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245);
-        usdc.safeTransfer(owner, 1e6);
+        USDC.safeTransfer(owner, 1e6);
 
         vm.prank(owner);
-        usdc.approve(permit2, 1e6);
+        USDC.approve(permit2, 1e6);
 
         string[] memory inputs = new string[](3);
         inputs[0] = "node";
@@ -69,7 +69,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             uint256 value,
             uint256 buyAmount
         ) = abi.decode(res, (address, address, bytes, uint256, uint256));
-        swapData = Gasworks.SwapData(address(web3), spender, swapTarget, quote, value, buyAmount);
+        swapData = Gasworks.SwapData(address(WEB3), spender, swapTarget, quote, value, buyAmount);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -82,7 +82,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     function testCannotSwapWithPermit2InvalidTypehash() public {
         bytes32 witness = keccak256(abi.encode(swapData));
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(usdc), 0);
+            defaultERC20PermitTransfer(address(USDC), 0);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -106,7 +106,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     function testCannotSwapWithPermit2IncorrectSigLength() public {
         bytes32 witness = keccak256(abi.encode(swapData));
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(usdc), 0);
+            defaultERC20PermitTransfer(address(USDC), 0);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -133,7 +133,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         uint256 nonce = 0;
         bytes32 witness = keccak256(abi.encode(swapData));
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(usdc), nonce);
+            defaultERC20PermitTransfer(address(USDC), nonce);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -161,7 +161,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testSwapWithPermit2() public {
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(usdc), 0);
+            defaultERC20PermitTransfer(address(USDC), 0);
         bytes32 witness = keccak256(abi.encode(swapData));
         bytes memory signature = getSignature(
             permit,
@@ -177,10 +177,10 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
         gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData);
 
-        assertEq(usdc.balanceOf(owner), 0);
-        assertEq(usdc.balanceOf(address(gasworks)), 0);
-        assertEq(usdc.allowance(owner, address(gasworks)), 0);
-        assertGe(web3.balanceOf(owner), swapData.buyAmount);
+        assertEq(USDC.balanceOf(owner), 0);
+        assertEq(USDC.balanceOf(address(gasworks)), 0);
+        assertEq(USDC.allowance(owner, address(gasworks)), 0);
+        assertGe(WEB3.balanceOf(owner), swapData.buyAmount);
     }
 
     /**
@@ -189,7 +189,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     function testSwapWithPermit2RandomNonce(uint256 nonce) public {
         bytes32 witness = keccak256(abi.encode(swapData));
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(usdc), nonce);
+            defaultERC20PermitTransfer(address(USDC), nonce);
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
@@ -205,9 +205,9 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
         gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData);
 
-        assertEq(usdc.balanceOf(owner), 0);
-        assertEq(usdc.balanceOf(address(gasworks)), 0);
-        assertEq(usdc.allowance(owner, address(gasworks)), 0);
-        assertGe(web3.balanceOf(owner), swapData.buyAmount);
+        assertEq(USDC.balanceOf(owner), 0);
+        assertEq(USDC.balanceOf(address(gasworks)), 0);
+        assertEq(USDC.allowance(owner, address(gasworks)), 0);
+        assertGe(WEB3.balanceOf(owner), swapData.buyAmount);
     }
 }
