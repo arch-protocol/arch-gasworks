@@ -23,11 +23,11 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for ISetToken;
 
-    bytes32 constant WITNESS_TYPEHASH = keccak256(
+    bytes32 internal constant WITNESS_TYPEHASH = keccak256(
         "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,MintData witness)MintData(ISetToken _setToken,uint256 _amountSetToken,uint256 _maxAmountInputToken, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)"
     );
 
-    bytes32 public constant TOKEN_PERMISSIONS_TYPEHASH =
+    bytes32 internal constant TOKEN_PERMISSIONS_TYPEHASH =
         keccak256("TokenPermissions(address token,uint256 amount)");
 
     address internal constant DEBT_MODULE = 0xf2dC2f456b98Af9A6bEEa072AF152a7b0EaA40C9;
@@ -155,6 +155,33 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         gasworks.mintWithPermit2(permit, transferDetails, owner, witness, signature, mintData);
 
         vm.expectRevert(InvalidNonce.selector);
+        gasworks.mintWithPermit2(permit, transferDetails, owner, witness, signature, mintData);
+    }
+
+    /**
+     * [REVERT] Should revert because the signature is expired
+     */
+    function testCannotMintWithPermit2SignatureExpired() public {
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(USDC), 0);
+        bytes32 witness = keccak256(abi.encode(mintData));
+        permit.deadline = 2 ** 255 - 1;
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), mintData._maxAmountInputToken);
+
+        vm.warp(2 ** 255 + 1);
+
+        vm.expectRevert(abi.encodeWithSelector(SignatureExpired.selector, permit.deadline));
         gasworks.mintWithPermit2(permit, transferDetails, owner, witness, signature, mintData);
     }
 

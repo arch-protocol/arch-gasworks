@@ -6,7 +6,6 @@ import { Gasworks } from "src/Gasworks.sol";
 import { ISetToken } from "src/interfaces/ISetToken.sol";
 import { SigUtils } from "test/utils/SigUtils.sol";
 import { Conversor } from "test/utils/HexUtils.sol";
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import { SignatureVerification } from "permit2/src/libraries/SignatureVerification.sol";
 import { InvalidNonce, SignatureExpired } from "permit2/src/PermitErrors.sol";
@@ -21,14 +20,12 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
                               VARIABLES
     //////////////////////////////////////////////////////////////*/
-    using SafeTransferLib for IERC20;
-    using SafeTransferLib for ISetToken;
 
-    bytes32 constant WITNESS_TYPEHASH = keccak256(
+    bytes32 internal constant WITNESS_TYPEHASH = keccak256(
         "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,RedeemData witness)RedeemData(ISetToken _setToken,IERC20 _outputToken,uint256 _amountSetToken,uint256 _minOutputReceive, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)"
     );
 
-    bytes32 public constant TOKEN_PERMISSIONS_TYPEHASH =
+    bytes32 internal constant TOKEN_PERMISSIONS_TYPEHASH =
         keccak256("TokenPermissions(address token,uint256 amount)");
 
     address internal constant DEBT_MODULE = 0xf2dC2f456b98Af9A6bEEa072AF152a7b0EaA40C9;
@@ -59,9 +56,6 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         ownerPrivateKey = 0xA11CE;
         owner = vm.addr(ownerPrivateKey);
 
-        vm.prank(0x3797C03Ad704f4f0A5B0FB4391a39a0919926461);
-        AP60.transfer(owner, 30e18);
-
         uint256 setAmount = 1e18;
 
         string[] memory inputs = new string[](6);
@@ -76,6 +70,9 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         redeemData = IGasworks.RedeemSetData(
             AP60, USDC, setAmount, _minOutputReceive, quotes, DEBT_MODULE, IS_DEBT_ISSUANCE
         );
+
+        vm.prank(0x3797C03Ad704f4f0A5B0FB4391a39a0919926461);
+        AP60.transfer(owner, 30e18);
 
         vm.prank(owner);
         AP60.approve(permit2, type(uint256).max);
@@ -164,6 +161,35 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         );
 
         vm.expectRevert(InvalidNonce.selector);
+        gasworks.redeemWithPermit2(
+            permit, transferDetails, owner, witness, signature, redeemData, false
+        );
+    }
+
+    /**
+     * [REVERT] Should revert because the signature is expired
+     */
+    function testCannotRedeemWithPermit2SignatureExpired() public {
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(AP60), 0);
+        bytes32 witness = keccak256(abi.encode(redeemData));
+        permit.deadline = 2 ** 255 - 1;
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), redeemData._amountSetToken);
+
+        vm.warp(2 ** 255 + 1);
+
+        vm.expectRevert(abi.encodeWithSelector(SignatureExpired.selector, permit.deadline));
         gasworks.redeemWithPermit2(
             permit, transferDetails, owner, witness, signature, redeemData, false
         );
