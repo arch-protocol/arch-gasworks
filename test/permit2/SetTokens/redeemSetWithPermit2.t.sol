@@ -15,6 +15,7 @@ import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"
 import { EIP712 } from "permit2/src/EIP712.sol";
 import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
 import { WETH } from "solmate/src/tokens/WETH.sol";
+import { IGasworks } from "src/interfaces/IGasworks.sol";
 
 contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
@@ -40,8 +41,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
     uint256 internal ownerPrivateKey;
     address internal owner;
-    Gasworks.RedeemSetData internal redeemData;
-    bytes32 internal DOMAIN_SEPARATOR;
+    IGasworks.RedeemSetData internal redeemData;
+    bytes32 internal domainSeparator;
     address internal permit2;
 
     /*//////////////////////////////////////////////////////////////
@@ -53,7 +54,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         gasworks.setTokens(address(AP60));
         gasworks.setTokens(address(WRAPPED_ETH));
         permit2 = deployPermit2();
-        DOMAIN_SEPARATOR = EIP712(permit2).DOMAIN_SEPARATOR();
+        domainSeparator = EIP712(permit2).DOMAIN_SEPARATOR();
 
         ownerPrivateKey = 0xA11CE;
         owner = vm.addr(ownerPrivateKey);
@@ -72,7 +73,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _minOutputReceive) = abi.decode(res, (bytes[], uint256));
-        redeemData = Gasworks.RedeemSetData(
+        redeemData = IGasworks.RedeemSetData(
             AP60, USDC, setAmount, _minOutputReceive, quotes, DEBT_MODULE, IS_DEBT_ISSUANCE
         );
 
@@ -96,7 +97,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ownerPrivateKey,
             "fake typehash",
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
@@ -122,7 +123,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ownerPrivateKey,
             WITNESS_TYPEHASH,
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
@@ -151,7 +152,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ownerPrivateKey,
             WITNESS_TYPEHASH,
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
@@ -163,6 +164,64 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         );
 
         vm.expectRevert(InvalidNonce.selector);
+        gasworks.redeemWithPermit2(
+            permit, transferDetails, owner, witness, signature, redeemData, false
+        );
+    }
+
+    /**
+     * [REVERT] Should revert because the redeemData is invalid
+     */
+    function testCannotRedeemWithPermit2InvalidPayload() public {
+        redeemData._minOutputReceive = 1000 ether;
+        bytes32 witness = keccak256(abi.encode(redeemData));
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(AP60), 0);
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), redeemData._amountSetToken);
+
+        vm.expectRevert();
+        gasworks.redeemWithPermit2(
+            permit, transferDetails, owner, witness, signature, redeemData, false
+        );
+    }
+
+    /**
+     * [REVERT] Should revert because the buyToken is not permitted
+     */
+    function testCannotRedeemToERC20WithPermit2InvalidToken() public {
+        redeemData._outputToken = IERC20(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(AP60), 0);
+        bytes32 witness = keccak256(abi.encode(redeemData));
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), redeemData._amountSetToken);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGasworks.InvalidToken.selector, address(redeemData._outputToken)
+            )
+        );
         gasworks.redeemWithPermit2(
             permit, transferDetails, owner, witness, signature, redeemData, false
         );
@@ -184,7 +243,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ownerPrivateKey,
             WITNESS_TYPEHASH,
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
@@ -215,7 +274,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _minOutputReceive) = abi.decode(res, (bytes[], uint256));
-        redeemData = Gasworks.RedeemSetData(
+        redeemData = IGasworks.RedeemSetData(
             AP60,
             IERC20(address(WRAPPED_ETH)),
             1e18,
@@ -232,7 +291,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ownerPrivateKey,
             WITNESS_TYPEHASH,
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
@@ -261,7 +320,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _minOutputReceive) = abi.decode(res, (bytes[], uint256));
-        redeemData = Gasworks.RedeemSetData(
+        redeemData = IGasworks.RedeemSetData(
             AP60,
             IERC20(address(WRAPPED_ETH)),
             1e18,
@@ -278,7 +337,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ownerPrivateKey,
             WITNESS_TYPEHASH,
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
@@ -308,7 +367,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ownerPrivateKey,
             WITNESS_TYPEHASH,
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );

@@ -3,6 +3,7 @@ pragma solidity ^0.8.17.0;
 
 import { Test } from "forge-std/Test.sol";
 import { Gasworks } from "src/Gasworks.sol";
+import { IGasworks } from "src/interfaces/IGasworks.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Conversor } from "test/utils/HexUtils.sol";
@@ -29,8 +30,8 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
 
     uint256 internal ownerPrivateKey;
     address internal owner;
-    Gasworks.MintChamberData internal mintData;
-    bytes32 internal DOMAIN_SEPARATOR;
+    IGasworks.MintChamberData internal mintData;
+    bytes32 internal domainSeparator;
     address internal permit2;
 
     /*//////////////////////////////////////////////////////////////
@@ -41,7 +42,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         gasworks.setTokens(address(USDC));
         gasworks.setTokens(address(ADDY));
         permit2 = deployPermit2();
-        DOMAIN_SEPARATOR = EIP712(permit2).DOMAIN_SEPARATOR();
+        domainSeparator = EIP712(permit2).DOMAIN_SEPARATOR();
 
         ownerPrivateKey = 0xA11CE;
         owner = vm.addr(ownerPrivateKey);
@@ -74,7 +75,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
             uint256 _maxPayAmount
         ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-        mintData = Gasworks.MintChamberData(
+        mintData = IGasworks.MintChamberData(
             ADDY,
             IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
             USDC,
@@ -92,7 +93,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
                 "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,MintChamberData witness)MintChamberData(IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _maxPayAmount,uint256 _mintAmount)TokenPermissions(address token,uint256 amount)"
             ),
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             keccak256("TokenPermissions(address token,uint256 amount)"),
             address(gasworks)
         );

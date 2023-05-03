@@ -3,6 +3,7 @@ pragma solidity ^0.8.17.0;
 
 import { Test } from "forge-std/Test.sol";
 import { Gasworks } from "src/Gasworks.sol";
+import { IGasworks } from "src/interfaces/IGasworks.sol";
 import { ISetToken } from "src/interfaces/ISetToken.sol";
 import { SigUtils } from "test/utils/SigUtils.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
@@ -38,8 +39,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
     uint256 internal ownerPrivateKey;
     address internal owner;
-    Gasworks.MintSetData internal mintData;
-    bytes32 internal DOMAIN_SEPARATOR;
+    IGasworks.MintSetData internal mintData;
+    bytes32 internal domainSeparator;
     address internal permit2;
 
     /*//////////////////////////////////////////////////////////////
@@ -50,7 +51,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         gasworks.setTokens(address(USDC));
         gasworks.setTokens(address(AP60));
         permit2 = deployPermit2();
-        DOMAIN_SEPARATOR = EIP712(permit2).DOMAIN_SEPARATOR();
+        domainSeparator = EIP712(permit2).DOMAIN_SEPARATOR();
 
         ownerPrivateKey = 0xA11CE;
         owner = vm.addr(ownerPrivateKey);
@@ -69,7 +70,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[5] = Conversor.iToHex(abi.encode(true));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _maxAmountInputToken) = abi.decode(res, (bytes[], uint256));
-        mintData = Gasworks.MintSetData(
+        mintData = IGasworks.MintSetData(
             AP60, amountToMint, _maxAmountInputToken, quotes, DEBT_MODULE, IS_DEBT_ISSUANCE
         );
 
@@ -93,7 +94,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ownerPrivateKey,
             "fake typehash",
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
@@ -117,7 +118,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ownerPrivateKey,
             WITNESS_TYPEHASH,
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
@@ -144,7 +145,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ownerPrivateKey,
             WITNESS_TYPEHASH,
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
@@ -154,6 +155,59 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         gasworks.mintWithPermit2(permit, transferDetails, owner, witness, signature, mintData);
 
         vm.expectRevert(InvalidNonce.selector);
+        gasworks.mintWithPermit2(permit, transferDetails, owner, witness, signature, mintData);
+    }
+
+    /**
+     * [REVERT] Should revert because the mintData is invalid
+     */
+    function testCannotMintWithPermit2InvalidPayload() public {
+        mintData._componentQuotes[0] = new bytes(1);
+        bytes32 witness = keccak256(abi.encode(mintData));
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(USDC), 0);
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), mintData._maxAmountInputToken);
+
+        vm.expectRevert();
+        gasworks.mintWithPermit2(permit, transferDetails, owner, witness, signature, mintData);
+    }
+
+    /**
+     * [REVERT] Should revert because sellToken is not permitted
+     */
+    function testCannotMintWithPermit2InvalidToken() public {
+        bytes32 witness = keccak256(abi.encode(mintData));
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063, 0);
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), mintData._maxAmountInputToken);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGasworks.InvalidToken.selector, 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063
+            )
+        );
         gasworks.mintWithPermit2(permit, transferDetails, owner, witness, signature, mintData);
     }
 
@@ -173,7 +227,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ownerPrivateKey,
             WITNESS_TYPEHASH,
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
@@ -200,7 +254,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ownerPrivateKey,
             WITNESS_TYPEHASH,
             witness,
-            DOMAIN_SEPARATOR,
+            domainSeparator,
             TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
