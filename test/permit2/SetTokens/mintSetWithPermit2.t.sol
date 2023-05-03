@@ -38,7 +38,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
     uint256 internal ownerPrivateKey;
     address internal owner;
-    Gasworks.MintData internal mintData;
+    Gasworks.MintSetData internal mintData;
     bytes32 internal DOMAIN_SEPARATOR;
     address internal permit2;
 
@@ -69,7 +69,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[5] = Conversor.iToHex(abi.encode(true));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _maxAmountInputToken) = abi.decode(res, (bytes[], uint256));
-        mintData = Gasworks.MintData(
+        mintData = Gasworks.MintSetData(
             AP60, amountToMint, _maxAmountInputToken, quotes, DEBT_MODULE, IS_DEBT_ISSUANCE
         );
 

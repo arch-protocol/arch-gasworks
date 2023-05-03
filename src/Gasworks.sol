@@ -27,10 +27,10 @@ contract Gasworks is ERC2771Recipient, Owned {
     string private constant SWAPDATA_WITNESS_TYPE_STRING =
         "SwapData witness)SwapData(address buyToken,address spender,address payable swapTarget, bytes swapCallData,uint256 swapValue,uint256 buyAmount)TokenPermissions(address token,uint256 amount)";
 
-    string private constant MINTDATA_WITNESS_TYPE_STRING =
+    string private constant MINT_SET_WITNESS_TYPE_STRING =
         "MintData witness)MintData(ISetToken _setToken,uint256 _amountSetToken,uint256 _maxAmountInputToken, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)";
 
-    string private constant REDEEMDATA_WITNESS_TYPE_STRING =
+    string private constant REDEEM_SET_WITNESS_TYPE_STRING =
         "RedeemData witness)RedeemData(ISetToken _setToken,IERC20 _outputToken,uint256 _amountSetToken,uint256 _minOutputReceive, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)";
 
     string private constant MINT_CHAMBER_WITNESS_TYPE_STRING =
@@ -79,7 +79,7 @@ contract Gasworks is ERC2771Recipient, Owned {
         uint256 buyAmount;
     }
 
-    struct MintData {
+    struct MintSetData {
         // Address of the SetToken to be issued
         ISetToken _setToken;
         // Amount of SetTokens to issue
@@ -107,7 +107,7 @@ contract Gasworks is ERC2771Recipient, Owned {
         uint256 _mintAmount;
     }
 
-    struct RedeemData {
+    struct RedeemSetData {
         // Address of the SetToken to be redeemed
         ISetToken _setToken;
         // Address of the token to buy with the SetToken
@@ -188,7 +188,7 @@ contract Gasworks is ERC2771Recipient, Owned {
      * @param permit              Permit data of the ERC20 token used (USDC)
      * @param mintData            Data of the issuance to perform
      */
-    function mintWithPermit(PermitData calldata permit, MintData calldata mintData) external {
+    function mintWithPermit(PermitData calldata permit, MintSetData calldata mintData) external {
         require(isPermitted(permit._tokenContract), "INVALID_SELL_TOKEN");
         require(isPermitted(address(mintData._setToken)), "INVALID_TOKEN_TO_MINT");
 
@@ -266,13 +266,13 @@ contract Gasworks is ERC2771Recipient, Owned {
         address owner,
         bytes32 witness,
         bytes calldata signature,
-        MintData calldata mintData
+        MintSetData calldata mintData
     ) external {
         require(isPermitted(permit2.permitted.token), "INVALID_SELL_TOKEN");
         require(isPermitted(address(mintData._setToken)), "INVALID_BUY_TOKEN");
 
         signatureTransfer.permitWitnessTransferFrom(
-            permit2, transferDetails, owner, witness, MINTDATA_WITNESS_TYPE_STRING, signature
+            permit2, transferDetails, owner, witness, MINT_SET_WITNESS_TYPE_STRING, signature
         );
 
         ERC20 token = ERC20(permit2.permitted.token);
@@ -312,7 +312,7 @@ contract Gasworks is ERC2771Recipient, Owned {
         address owner,
         bytes32 witness,
         bytes calldata signature,
-        RedeemData calldata redeemData,
+        RedeemSetData calldata redeemData,
         bool toNative
     ) external {
         require(isPermitted(address(redeemData._outputToken)), "INVALID_BUY_TOKEN");
@@ -320,7 +320,7 @@ contract Gasworks is ERC2771Recipient, Owned {
         ERC20 outputToken = ERC20(address(redeemData._outputToken));
 
         signatureTransfer.permitWitnessTransferFrom(
-            permit2, transferDetails, owner, witness, REDEEMDATA_WITNESS_TYPE_STRING, signature
+            permit2, transferDetails, owner, witness, REDEEM_SET_WITNESS_TYPE_STRING, signature
         );
 
         emit Received(owner, address(redeemData._setToken), redeemData._amountSetToken, msg.sender);

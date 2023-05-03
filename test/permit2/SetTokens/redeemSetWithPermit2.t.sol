@@ -40,7 +40,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
     uint256 internal ownerPrivateKey;
     address internal owner;
-    Gasworks.RedeemData internal redeemData;
+    Gasworks.RedeemSetData internal redeemData;
     bytes32 internal DOMAIN_SEPARATOR;
     address internal permit2;
 
@@ -72,7 +72,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _minOutputReceive) = abi.decode(res, (bytes[], uint256));
-        redeemData = Gasworks.RedeemData(
+        redeemData = Gasworks.RedeemSetData(
             AP60, USDC, setAmount, _minOutputReceive, quotes, DEBT_MODULE, IS_DEBT_ISSUANCE
         );
 
@@ -215,7 +215,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _minOutputReceive) = abi.decode(res, (bytes[], uint256));
-        redeemData = Gasworks.RedeemData(
+        redeemData = Gasworks.RedeemSetData(
             AP60,
             IERC20(address(WETH)),
             1e18,
@@ -261,7 +261,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _minOutputReceive) = abi.decode(res, (bytes[], uint256));
-        redeemData = Gasworks.RedeemData(
+        redeemData = Gasworks.RedeemSetData(
             AP60,
             IERC20(address(WETH)),
             1e18,

@@ -10,7 +10,7 @@ const AP60TokenParams = {
 
 const ADDYTokenParams = {
   tokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-  slippagePercentageProportion: 0.01,
+  slippagePercentageProportion: 0.05,
   networkId: 1,
   issuanceModuleAddress: '0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449',
   isDebtIssuance: true,
