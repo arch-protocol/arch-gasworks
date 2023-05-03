@@ -15,13 +15,13 @@ contract Permit2Utils is Test {
 
     function defaultERC20PermitTransfer(address token0, uint256 nonce)
         internal
-        view
+        pure
         returns (ISignatureTransfer.PermitTransferFrom memory)
     {
         return ISignatureTransfer.PermitTransferFrom({
             permitted: ISignatureTransfer.TokenPermissions({ token: token0, amount: 10 ** 18 }),
             nonce: nonce,
-            deadline: block.timestamp + 100
+            deadline: 2 ** 256 - 1
         });
     }
 

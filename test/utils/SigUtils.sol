@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17.0;
 
 contract SigUtils {
-    bytes32 internal DOMAIN_SEPARATOR;
+    bytes32 internal domainSeparator;
 
-    constructor(bytes32 _DOMAIN_SEPARATOR) {
-        DOMAIN_SEPARATOR = _DOMAIN_SEPARATOR;
+    constructor(bytes32 _domainSeparator) {
+        domainSeparator = _domainSeparator;
     }
 
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
@@ -36,6 +36,6 @@ contract SigUtils {
 
     // computes the hash of the fully encoded EIP-712 message for the domain, which can be used to recover the signer
     function getTypedDataHash(Permit memory _permit) public view returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, getStructHash(_permit)));
+        return keccak256(abi.encodePacked("\x19\x01", domainSeparator, getStructHash(_permit)));
     }
 }

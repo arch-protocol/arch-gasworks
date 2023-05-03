@@ -1,5 +1,5 @@
 /// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17.0;
 
 library Conversor {
     function bytesToBytes32(bytes calldata b, uint256 offset) external pure returns (bytes32) {
