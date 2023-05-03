@@ -12,7 +12,7 @@ import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"
 import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
 import { IChamber } from "chambers/interfaces/IChamber.sol";
 import { IIssuerWizard } from "chambers/interfaces/IIssuerWizard.sol";
-import { IWETH } from "./interfaces/IWETH.sol";
+import { WETH } from "solmate/src/tokens/WETH.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 contract Gasworks is ERC2771Recipient, Owned {
@@ -339,7 +339,7 @@ contract Gasworks is ERC2771Recipient, Owned {
 
         uint256 outputTokenBalance = outputToken.balanceOf(address(this));
         if (toNative) {
-            IWETH(address(outputToken)).withdraw(outputTokenBalance);
+            WETH(payable(address(outputToken))).withdraw(outputTokenBalance);
             payable(owner).sendValue(outputTokenBalance);
         } else {
             outputToken.safeTransfer(owner, outputToken.balanceOf(address(this)));
@@ -442,7 +442,7 @@ contract Gasworks is ERC2771Recipient, Owned {
         ERC20 baseToken = ERC20(address(redeemChamberData._baseToken));
         uint256 baseTokenBalance = baseToken.balanceOf(address(this));
         if (toNative) {
-            IWETH(address(baseToken)).withdraw(baseTokenBalance);
+            WETH(payable(address(baseToken))).withdraw(baseTokenBalance);
             payable(owner).sendValue(baseTokenBalance);
         } else {
             baseToken.safeTransfer(owner, baseToken.balanceOf(address(this)));

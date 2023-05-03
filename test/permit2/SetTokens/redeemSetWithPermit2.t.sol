@@ -14,7 +14,7 @@ import { Permit2Utils } from "test/utils/Permit2Utils.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { EIP712 } from "permit2/src/EIP712.sol";
 import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
-import { IWETH } from "src/interfaces/IWETH.sol";
+import { WETH } from "solmate/src/tokens/WETH.sol";
 
 contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
@@ -36,7 +36,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     Gasworks internal gasworks;
     IERC20 internal constant USDC = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     ISetToken internal constant AP60 = ISetToken(0x6cA9C8914a14D63a6700556127D09e7721ff7D3b);
-    IWETH public constant WETH = IWETH(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
+    WETH public constant WRAPPED_ETH = WETH(payable(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270));
 
     uint256 internal ownerPrivateKey;
     address internal owner;
@@ -51,7 +51,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
         gasworks.setTokens(address(USDC));
         gasworks.setTokens(address(AP60));
-        gasworks.setTokens(address(WETH));
+        gasworks.setTokens(address(WRAPPED_ETH));
         permit2 = deployPermit2();
         DOMAIN_SEPARATOR = EIP712(permit2).DOMAIN_SEPARATOR();
 
@@ -211,13 +211,13 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[1] = "scripts/fetch-arch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(1e18));
         inputs[3] = Conversor.iToHex(abi.encode(address(AP60)));
-        inputs[4] = Conversor.iToHex(abi.encode(address(WETH)));
+        inputs[4] = Conversor.iToHex(abi.encode(address(WRAPPED_ETH)));
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _minOutputReceive) = abi.decode(res, (bytes[], uint256));
         redeemData = Gasworks.RedeemSetData(
             AP60,
-            IERC20(address(WETH)),
+            IERC20(address(WRAPPED_ETH)),
             1e18,
             _minOutputReceive,
             quotes,
@@ -257,13 +257,13 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         inputs[1] = "scripts/fetch-arch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(1e18));
         inputs[3] = Conversor.iToHex(abi.encode(address(AP60)));
-        inputs[4] = Conversor.iToHex(abi.encode(address(WETH)));
+        inputs[4] = Conversor.iToHex(abi.encode(address(WRAPPED_ETH)));
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory res = vm.ffi(inputs);
         (bytes[] memory quotes, uint256 _minOutputReceive) = abi.decode(res, (bytes[], uint256));
         redeemData = Gasworks.RedeemSetData(
             AP60,
-            IERC20(address(WETH)),
+            IERC20(address(WRAPPED_ETH)),
             1e18,
             _minOutputReceive,
             quotes,
@@ -290,10 +290,10 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             permit, transferDetails, owner, witness, signature, redeemData, false
         );
 
-        assertEq(WETH.balanceOf(address(gasworks)), 0);
-        assertEq(WETH.allowance(owner, address(gasworks)), 0);
+        assertEq(WRAPPED_ETH.balanceOf(address(gasworks)), 0);
+        assertEq(WRAPPED_ETH.allowance(owner, address(gasworks)), 0);
         assertGe(AP60.balanceOf(owner), 0);
-        assertGe(WETH.balanceOf(owner), redeemData._minOutputReceive);
+        assertGe(WRAPPED_ETH.balanceOf(owner), redeemData._minOutputReceive);
     }
 
     /**
