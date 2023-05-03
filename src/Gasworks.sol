@@ -1,10 +1,42 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+/**
+ *     SPDX-License-Identifier: Apache License 2.0
+ *
+ *     Copyright 2023 Smash Works Inc.
+ *
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
+ *             %@@@@@
+ *          @@@@@@@@@@@
+ *        #@@@@@     @@@           @@                   @@
+ *       @@@@@@       @@@         @@@@                  @@
+ *      @@@@@@         @@        @@  @@    @@@@@ @@@@@  @@@*@@
+ *     .@@@@@          @@@      @@@@@@@@   @@    @@     @@  @@
+ *     @@@@@(       (((((      @@@    @@@  @@    @@@@@  @@  @@
+ *    @@@@@@   (((((((
+ *    @@@@@#(((((((
+ *    @@@@@(((((
+ *      @@@((
+ */
+
 pragma solidity ^0.8.17.0;
 
 import { ERC2771Recipient } from "gsn/ERC2771Recipient.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { ISetToken } from "./interfaces/ISetToken.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Permit } from
+    "openzeppelin-contracts/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import { Owned } from "solmate/src/auth/Owned.sol";
 import { IExchangeIssuanceZeroEx } from "./interfaces/IExchangeIssuanceZeroEx.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
@@ -14,11 +46,21 @@ import { IChamber } from "chambers/interfaces/IChamber.sol";
 import { IIssuerWizard } from "chambers/interfaces/IIssuerWizard.sol";
 import { WETH } from "solmate/src/tokens/WETH.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { IGasworks } from "./interfaces/IGasworks.sol";
 
-contract Gasworks is ERC2771Recipient, Owned {
+contract Gasworks is IGasworks, ERC2771Recipient, Owned {
+    /*//////////////////////////////////////////////////////////////
+                              LIBRARIES
+    //////////////////////////////////////////////////////////////*/
+
     using SafeTransferLib for ERC20;
     using SafeTransferLib for ISetToken;
     using Address for address payable;
+    using SafeERC20 for IERC20Permit;
+
+    /*//////////////////////////////////////////////////////////////
+                                  STORAGE
+    //////////////////////////////////////////////////////////////*/
 
     IExchangeIssuanceZeroEx private immutable exchangeIssuance;
     ISignatureTransfer public immutable signatureTransfer;
@@ -39,103 +81,11 @@ contract Gasworks is ERC2771Recipient, Owned {
     string private constant REDEEM_CHAMBER_WITNESS_TYPE_STRING =
         "RedeemChamberData witness)RedeemChamberData(IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _minReceiveAmount,uint256 _redeemAmount)TokenPermissions(address token,uint256 amount)";
 
-    event Received(address sender, address tokenContract, uint256 amount, address messageSender);
-    event Swap(address buyToken, uint256 buyAmount, address sellToken, uint256 sellAmount);
-    event Sent(address receiver, address tokenContract, uint256 amount);
-
     mapping(address => bool) public tokens;
 
-    struct PermitData {
-        // The address of the token to which we want to sign a permit for
-        address _tokenContract;
-        // The amount of tokens we want to send to the contract
-        uint256 _amount;
-        // The owner of the tokens
-        address _owner;
-        // The contract that will spend our tokens
-        address _spender;
-        // The amount of the token we want to permit the contract to use
-        uint256 _value;
-        // The date until which the permit is accepted
-        uint256 _deadline;
-        // The signature of the owner
-        uint8 _v;
-        bytes32 _r;
-        bytes32 _s;
-    }
-
-    struct SwapData {
-        // The `buyTokenAddress` field from the API response.
-        address buyToken;
-        // The `allowanceTarget` field from the API response.
-        address spender;
-        // The `to` field from the API response.
-        address payable swapTarget;
-        // The `data` field from the API response.
-        bytes swapCallData;
-        // The `value` field from the API response.
-        uint256 swapValue;
-        // The `buyAmount` field from the API response.
-        uint256 buyAmount;
-    }
-
-    struct MintSetData {
-        // Address of the SetToken to be issued
-        ISetToken _setToken;
-        // Amount of SetTokens to issue
-        uint256 _amountSetToken;
-        // Maximum amount of input tokens to be used to issue SetTokens.
-        uint256 _maxAmountInputToken;
-        // The encoded 0x transactions to execute
-        bytes[] _componentQuotes;
-        // The address of the issuance module for the SetToken
-        address _issuanceModule;
-        // Is the SetToken using debt issuance?
-        bool _isDebtIssuance;
-    }
-
-    struct MintChamberData {
-        // The address of the chamber to mint
-        IChamber _chamber;
-        // The address of the issuer wizard that will mint the Chamber
-        IIssuerWizard _issuerWizard;
-        // The address of the token used to mint
-        IERC20 _baseToken;
-        // Maximum amount of baseToken to use to mint
-        uint256 _maxPayAmount;
-        // The amount of Chamber to mint
-        uint256 _mintAmount;
-    }
-
-    struct RedeemSetData {
-        // Address of the SetToken to be redeemed
-        ISetToken _setToken;
-        // Address of the token to buy with the SetToken
-        IERC20 _outputToken;
-        // Amount of SetTokens to issue
-        uint256 _amountSetToken;
-        // Minimum amount of output tokens to receive
-        uint256 _minOutputReceive;
-        // The encoded 0x transactions to execute
-        bytes[] _componentQuotes;
-        // The address of the issuance module for the SetToken
-        address _issuanceModule;
-        // Is the SetToken using debt issuance?
-        bool _isDebtIssuance;
-    }
-
-    struct RedeemChamberData {
-        // The address of the chamber to redeem
-        IChamber _chamber;
-        // The address of the issuer wizard that will mint the Chamber
-        IIssuerWizard _issuerWizard;
-        // The address of the token used to mint
-        IERC20 _baseToken;
-        // Min amount of baseToken to receive after redemption
-        uint256 _minReceiveAmount;
-        // The amount of Chamber to redeem
-        uint256 _redeemAmount;
-    }
+    /*//////////////////////////////////////////////////////////////
+                               CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
     constructor(address _forwarder) Owned(_msgSender()) {
         _setTrustedForwarder(_forwarder);
@@ -145,18 +95,18 @@ contract Gasworks is ERC2771Recipient, Owned {
         tradeIssuer = ITradeIssuerV2(0xbbCA2AcBd87Ce7A5e01fb56914d41F6a7e5C5A56);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            EXTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     receive() external payable { }
 
-    function setTrustedForwarder(address _forwarder) external onlyOwner {
-        _setTrustedForwarder(_forwarder);
+    function setTrustedForwarder(address forwarder) external onlyOwner {
+        _setTrustedForwarder(forwarder);
     }
 
-    function setTokens(address _token) external onlyOwner {
-        tokens[_token] = true;
-    }
-
-    function isPermitted(address _token) public view returns (bool) {
-        return tokens[_token];
+    function setTokens(address token) external onlyOwner {
+        tokens[token] = true;
     }
 
     /**
@@ -167,17 +117,24 @@ contract Gasworks is ERC2771Recipient, Owned {
      * @param swapData            Data of the swap to perform
      */
     function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external {
-        require(isPermitted(permit._tokenContract), "INVALID_SELL_TOKEN");
-        require(isPermitted(swapData.buyToken), "INVALID_BUY_TOKEN");
+        if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
+        if (!tokens[swapData.buyToken]) revert InvalidToken(swapData.buyToken);
+
+        IERC20Permit permitToken = IERC20Permit(permit._tokenContract);
+        permitToken.safePermit(
+            permit._owner,
+            permit._spender,
+            permit._value,
+            permit._deadline,
+            permit._v,
+            permit._r,
+            permit._s
+        );
 
         ERC20 token = ERC20(permit._tokenContract);
-        safePermit(token, permit);
-
         token.safeTransferFrom(permit._owner, address(this), permit._amount);
 
-        emit Received(permit._owner, permit._tokenContract, permit._amount, msg.sender);
-
-        _fillQuoteInternal(swapData, permit._amount, permit._owner, permit._tokenContract);
+        _fillQuoteInternal(swapData, permit._amount, permit._owner, ERC20(permit._tokenContract));
     }
 
     /**
@@ -189,15 +146,22 @@ contract Gasworks is ERC2771Recipient, Owned {
      * @param mintData            Data of the issuance to perform
      */
     function mintWithPermit(PermitData calldata permit, MintSetData calldata mintData) external {
-        require(isPermitted(permit._tokenContract), "INVALID_SELL_TOKEN");
-        require(isPermitted(address(mintData._setToken)), "INVALID_TOKEN_TO_MINT");
+        if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
+        if (!tokens[address(mintData._setToken)]) revert InvalidToken(address(mintData._setToken));
+
+        IERC20Permit permitToken = IERC20Permit(permit._tokenContract);
+        permitToken.safePermit(
+            permit._owner,
+            permit._spender,
+            permit._value,
+            permit._deadline,
+            permit._v,
+            permit._r,
+            permit._s
+        );
 
         ERC20 token = ERC20(permit._tokenContract);
-        safePermit(token, permit);
-
         token.safeTransferFrom(permit._owner, address(this), permit._amount);
-
-        emit Received(permit._owner, permit._tokenContract, permit._amount, msg.sender);
 
         token.safeApprove(address(exchangeIssuance), mintData._maxAmountInputToken);
 
@@ -212,6 +176,14 @@ contract Gasworks is ERC2771Recipient, Owned {
         );
 
         ERC20(address(mintData._setToken)).safeTransfer(permit._owner, mintData._amountSetToken);
+
+        emit MintWithPermit(
+            address(mintData._setToken),
+            mintData._amountSetToken,
+            address(token),
+            permit._amount - token.balanceOf(address(this))
+        );
+
         token.safeTransfer(owner, token.balanceOf(address(this)));
     }
 
@@ -234,17 +206,15 @@ contract Gasworks is ERC2771Recipient, Owned {
         bytes calldata signature,
         SwapData calldata swapData
     ) external {
-        require(isPermitted(permit2.permitted.token), "INVALID_SELL_TOKEN");
-        require(isPermitted(swapData.buyToken), "INVALID_BUY_TOKEN");
+        if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
+        if (!tokens[swapData.buyToken]) revert InvalidToken(swapData.buyToken);
 
         signatureTransfer.permitWitnessTransferFrom(
             permit2, transferDetails, owner, witness, SWAPDATA_WITNESS_TYPE_STRING, signature
         );
 
-        emit Received(owner, transferDetails.to, transferDetails.requestedAmount, msg.sender);
-
         _fillQuoteInternal(
-            swapData, transferDetails.requestedAmount, owner, permit2.permitted.token
+            swapData, transferDetails.requestedAmount, owner, ERC20(permit2.permitted.token)
         );
     }
 
@@ -268,16 +238,17 @@ contract Gasworks is ERC2771Recipient, Owned {
         bytes calldata signature,
         MintSetData calldata mintData
     ) external {
-        require(isPermitted(permit2.permitted.token), "INVALID_SELL_TOKEN");
-        require(isPermitted(address(mintData._setToken)), "INVALID_BUY_TOKEN");
+        if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
+        if (!tokens[address(mintData._setToken)]) {
+            revert InvalidToken(address(mintData._setToken));
+        }
 
         signatureTransfer.permitWitnessTransferFrom(
             permit2, transferDetails, owner, witness, MINT_SET_WITNESS_TYPE_STRING, signature
         );
 
         ERC20 token = ERC20(permit2.permitted.token);
-
-        emit Received(owner, permit2.permitted.token, permit2.permitted.amount, msg.sender);
+        uint256 balanceBefore = token.balanceOf(address(this));
 
         token.safeApprove(address(exchangeIssuance), mintData._maxAmountInputToken);
 
@@ -291,8 +262,14 @@ contract Gasworks is ERC2771Recipient, Owned {
             mintData._isDebtIssuance
         );
 
+        uint256 amountPaid = balanceBefore - token.balanceOf(address(this));
+
         ERC20(address(mintData._setToken)).safeTransfer(owner, mintData._amountSetToken);
         token.safeTransfer(owner, token.balanceOf(address(this)));
+
+        emit MintWithPermit2(
+            address(mintData._setToken), mintData._amountSetToken, address(token), amountPaid
+        );
     }
 
     /**
@@ -315,15 +292,18 @@ contract Gasworks is ERC2771Recipient, Owned {
         RedeemSetData calldata redeemData,
         bool toNative
     ) external {
-        require(isPermitted(address(redeemData._outputToken)), "INVALID_BUY_TOKEN");
-        require(isPermitted(address(redeemData._setToken)), "INVALID_SELL_TOKEN");
+        if (!tokens[address(redeemData._setToken)]) {
+            revert InvalidToken(address(redeemData._setToken));
+        }
+        if (!tokens[address(redeemData._outputToken)]) {
+            revert InvalidToken(address(redeemData._outputToken));
+        }
+
         ERC20 outputToken = ERC20(address(redeemData._outputToken));
 
         signatureTransfer.permitWitnessTransferFrom(
             permit2, transferDetails, owner, witness, REDEEM_SET_WITNESS_TYPE_STRING, signature
         );
-
-        emit Received(owner, address(redeemData._setToken), redeemData._amountSetToken, msg.sender);
 
         redeemData._setToken.approve(address(exchangeIssuance), redeemData._amountSetToken);
 
@@ -346,6 +326,13 @@ contract Gasworks is ERC2771Recipient, Owned {
         }
         ERC20(address(redeemData._setToken)).safeTransfer(
             owner, redeemData._setToken.balanceOf(address(this))
+        );
+
+        emit RedeemWithPermit2(
+            address(redeemData._setToken),
+            redeemData._amountSetToken,
+            address(outputToken),
+            outputTokenBalance
         );
     }
 
@@ -370,16 +357,17 @@ contract Gasworks is ERC2771Recipient, Owned {
         MintChamberData calldata mintChamberData,
         ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
     ) external {
-        require(isPermitted(permit2.permitted.token), "INVALID_SELL_TOKEN");
-        require(isPermitted(address(mintChamberData._chamber)), "INVALID_BUY_TOKEN");
+        if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
+        if (!tokens[address(mintChamberData._chamber)]) {
+            revert InvalidToken(address(mintChamberData._chamber));
+        }
 
         signatureTransfer.permitWitnessTransferFrom(
             permit2, transferDetails, owner, witness, MINT_CHAMBER_WITNESS_TYPE_STRING, signature
         );
 
         ERC20 token = ERC20(permit2.permitted.token);
-
-        emit Received(owner, permit2.permitted.token, permit2.permitted.amount, msg.sender);
+        uint256 beforeBalance = token.balanceOf(address(this));
 
         token.safeApprove(address(tradeIssuer), mintChamberData._maxPayAmount);
 
@@ -392,8 +380,17 @@ contract Gasworks is ERC2771Recipient, Owned {
             mintChamberData._mintAmount
         );
 
+        uint256 totalPaid = beforeBalance - token.balanceOf(address(this));
+
         ERC20(address(mintChamberData._chamber)).safeTransfer(owner, mintChamberData._mintAmount);
         token.safeTransfer(owner, token.balanceOf(address(this)));
+
+        emit MintWithPermit2(
+            address(mintChamberData._chamber),
+            mintChamberData._mintAmount,
+            address(token),
+            totalPaid
+        );
     }
 
     /**
@@ -418,16 +415,16 @@ contract Gasworks is ERC2771Recipient, Owned {
         ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
         bool toNative
     ) external {
-        require(isPermitted(permit2.permitted.token), "INVALID_SELL_TOKEN");
-        require(isPermitted(address(redeemChamberData._baseToken)), "INVALID_BUY_TOKEN");
+        if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
+        if (!tokens[address(redeemChamberData._baseToken)]) {
+            revert InvalidToken(address(redeemChamberData._baseToken));
+        }
 
         signatureTransfer.permitWitnessTransferFrom(
             permit2, transferDetails, owner, witness, REDEEM_CHAMBER_WITNESS_TYPE_STRING, signature
         );
 
         ERC20 token = ERC20(permit2.permitted.token);
-
-        emit Received(owner, permit2.permitted.token, permit2.permitted.amount, msg.sender);
 
         token.safeApprove(address(tradeIssuer), redeemChamberData._redeemAmount);
 
@@ -447,52 +444,59 @@ contract Gasworks is ERC2771Recipient, Owned {
         } else {
             baseToken.safeTransfer(owner, baseToken.balanceOf(address(this)));
         }
+
+        emit RedeemWithPermit2(
+            address(redeemChamberData._chamber),
+            redeemChamberData._redeemAmount,
+            address(baseToken),
+            baseTokenBalance
+        );
     }
 
+    /**
+     * Withdraws all the balance of a given ERC20 token to the owner of the contract
+     *
+     * @param token              Swap data of the trade to perform
+     */
+    function withdrawTokenBalance(ERC20 token) external onlyOwner {
+        uint256 balance = token.balanceOf(address(this));
+        if (balance == 0) revert ZeroBalance(address(token));
+        token.safeTransfer(owner, balance);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * Performs a low-lever call to swapTarget to perform a swap between two tokens
+     *
+     * @param swap              Swap data of the trade to perform
+     * @param sellAmount        Amount of sellToken to sell
+     * @param owner             Owner of the tokens to transfer
+     * @param sellToken         ERC20 token to sell
+     */
     function _fillQuoteInternal(
         SwapData calldata swap,
         uint256 sellAmount,
-        address _owner,
-        address _sellToken
+        address owner,
+        ERC20 sellToken
     ) internal {
-        ERC20 sellToken = ERC20(_sellToken);
         ERC20 buyToken = ERC20(swap.buyToken);
         uint256 beforeBalance = buyToken.balanceOf(address(this));
 
         sellToken.safeApprove(swap.spender, type(uint256).max);
 
         (bool success,) = swap.swapTarget.call{ value: swap.swapValue }(swap.swapCallData);
-        require(success, "SWAP_CALL_FAILED");
-
-        emit Swap(swap.buyToken, swap.buyAmount, _sellToken, sellAmount);
+        if (!success) revert SwapCallFailed();
 
         uint256 swapBalance = buyToken.balanceOf(address(this)) - beforeBalance;
 
-        require(swapBalance >= swap.buyAmount, "UNDERBOUGHT");
-        buyToken.safeTransfer(_owner, swapBalance);
+        if (swapBalance < swap.buyAmount) {
+            revert Underbought(address(buyToken), swap.buyAmount);
+        }
+        buyToken.safeTransfer(owner, swapBalance);
 
-        emit Sent(address(this), swap.buyToken, swap.buyAmount);
-    }
-
-    function safePermit(ERC20 token, PermitData calldata permit) internal {
-        uint256 nonceBefore = token.nonces(permit._owner);
-        token.permit(
-            permit._owner,
-            permit._spender,
-            permit._value,
-            permit._deadline,
-            permit._v,
-            permit._r,
-            permit._s
-        );
-        uint256 nonceAfter = token.nonces(permit._owner);
-        require(nonceAfter == nonceBefore + 1, "SafeERC20: permit did not succeed");
-    }
-
-    function withdrawTokenBalance(address _token) external onlyOwner {
-        ERC20 token = ERC20(_token);
-        uint256 balance = token.balanceOf(address(this));
-        require(balance > 0, "ZERO_BALANCE");
-        token.safeTransfer(owner, balance);
+        emit SwapWithPermit(swap.buyToken, swap.buyAmount, address(sellToken), sellAmount);
     }
 }
