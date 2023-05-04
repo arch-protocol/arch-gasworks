@@ -25,6 +25,13 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //////////////////////////////////////////////////////////////*/
     using SafeERC20 for IERC20;
 
+    bytes32 internal constant WITNESS_TYPEHASH = keccak256(
+        "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,RedeemChamberData witness)RedeemChamberData(IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _minReceiveAmount,uint256 _redeemAmount)TokenPermissions(address token,uint256 amount)"
+    );
+
+    bytes32 internal constant TOKEN_PERMISSIONS_TYPEHASH =
+        keccak256("TokenPermissions(address token,uint256 amount)");
+
     Gasworks internal gasworks;
     IERC20 internal constant USDC = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     IChamber internal constant ADDY = IChamber(0xE15A66b7B8e385CAa6F69FD0d55984B96D7263CF);
@@ -35,8 +42,9 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     IGasworks.RedeemChamberData internal redeemData;
     bytes32 internal domainSeparator;
     address internal permit2;
-    uint256 nonce = 0;
-    uint256 amountToRedeem = 1e18;
+    bytes internal res;
+    uint256 internal nonce = 0;
+    uint256 internal amountToRedeem = 1e18;
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
@@ -52,6 +60,15 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         ownerPrivateKey = 0xA11CE;
         owner = vm.addr(ownerPrivateKey);
 
+        string[] memory inputs = new string[](6);
+        inputs[0] = "node";
+        inputs[1] = "scripts/fetch-arch-quote.js";
+        inputs[2] = Conversor.iToHex(abi.encode(amountToRedeem));
+        inputs[3] = Conversor.iToHex(abi.encode(address(ADDY)));
+        inputs[4] = Conversor.iToHex(abi.encode(address(USDC)));
+        inputs[5] = Conversor.iToHex(abi.encode(false));
+        res = vm.ffi(inputs);
+
         vm.prank(0x0cC2CaeD31490B546c741BD93dbba8Ab387f7F2c);
         IERC20(address(ADDY)).safeTransfer(owner, 150e18);
 
@@ -60,21 +77,13 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              SUCCESS
+                              REVERT
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * [SUCCESS] Should make a redeem of ADDY to USDC with permit2
+     * [REVERT] Should revert because the witness type hash is invalid and doesn't match the struct
      */
-    function testRedeemChamberWithPermit2() public {
-        string[] memory inputs = new string[](6);
-        inputs[0] = "node";
-        inputs[1] = "scripts/fetch-arch-quote.js";
-        inputs[2] = Conversor.iToHex(abi.encode(amountToRedeem));
-        inputs[3] = Conversor.iToHex(abi.encode(address(ADDY)));
-        inputs[4] = Conversor.iToHex(abi.encode(address(USDC)));
-        inputs[5] = Conversor.iToHex(abi.encode(false));
-        bytes memory res = vm.ffi(inputs);
+    function testCannotRedeemChamberWithPermit2InvalidTypehash() public {
         (
             ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
             uint256 _minOutputReceive
@@ -86,19 +95,312 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             _minOutputReceive,
             amountToRedeem
         );
-
         ISignatureTransfer.PermitTransferFrom memory permit =
             defaultERC20PermitTransfer(address(ADDY), nonce);
         bytes32 witness = keccak256(abi.encode(redeemData));
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
-            keccak256(
-                "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,RedeemChamberData witness)RedeemChamberData(IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _minReceiveAmount,uint256 _redeemAmount)TokenPermissions(address token,uint256 amount)"
-            ),
+            "fake typehash",
             witness,
             domainSeparator,
-            keccak256("TokenPermissions(address token,uint256 amount)"),
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), amountToRedeem);
+
+        vm.expectRevert(SignatureVerification.InvalidSigner.selector);
+        gasworks.redeemChamberWithPermit2(
+            permit,
+            transferDetails,
+            owner,
+            witness,
+            signature,
+            redeemData,
+            _contractCallInstructions,
+            false
+        );
+    }
+
+    /**
+     * [REVERT] Should revert because the signature length is invalid
+     */
+    function testCannotRedeemChamberWithPermit2InvalidSignatureLength() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _minOutputReceive
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        redeemData = IGasworks.RedeemChamberData(
+            ADDY,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _minOutputReceive,
+            amountToRedeem
+        );
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(ADDY), nonce);
+        bytes32 witness = keccak256(abi.encode(redeemData));
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+        bytes memory sigExtra = bytes.concat(signature, bytes1(uint8(0)));
+        assertEq(sigExtra.length, 66);
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), amountToRedeem);
+
+        vm.expectRevert(SignatureVerification.InvalidSignatureLength.selector);
+        gasworks.redeemChamberWithPermit2(
+            permit,
+            transferDetails,
+            owner,
+            witness,
+            sigExtra,
+            redeemData,
+            _contractCallInstructions,
+            false
+        );
+    }
+
+    /**
+     * [REVERT] Should revert because the nonce was used twice and should only be used once
+     */
+    function testCannotRedeemChamberWithPermit2InvalidNonce() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _minOutputReceive
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        redeemData = IGasworks.RedeemChamberData(
+            ADDY,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _minOutputReceive,
+            amountToRedeem
+        );
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(ADDY), nonce);
+        bytes32 witness = keccak256(abi.encode(redeemData));
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), amountToRedeem);
+
+        gasworks.redeemChamberWithPermit2(
+            permit,
+            transferDetails,
+            owner,
+            witness,
+            signature,
+            redeemData,
+            _contractCallInstructions,
+            false
+        );
+
+        vm.expectRevert(InvalidNonce.selector);
+        gasworks.redeemChamberWithPermit2(
+            permit,
+            transferDetails,
+            owner,
+            witness,
+            signature,
+            redeemData,
+            _contractCallInstructions,
+            false
+        );
+    }
+
+    /**
+     * [REVERT] Should revert because the signature is expired
+     */
+    function testCannotRedeemChamberWithPermit2SignatureExpired() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _minOutputReceive
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        redeemData = IGasworks.RedeemChamberData(
+            ADDY,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _minOutputReceive,
+            amountToRedeem
+        );
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(ADDY), nonce);
+        permit.deadline = 2 ** 255 - 1;
+        bytes32 witness = keccak256(abi.encode(redeemData));
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), amountToRedeem);
+
+        vm.warp(2 ** 255 + 1);
+
+        vm.expectRevert(abi.encodeWithSelector(SignatureExpired.selector, permit.deadline));
+        gasworks.redeemChamberWithPermit2(
+            permit,
+            transferDetails,
+            owner,
+            witness,
+            signature,
+            redeemData,
+            _contractCallInstructions,
+            false
+        );
+    }
+
+    /**
+     * [REVERT] Should revert because the redeemData is invalid
+     */
+    function testCannotRedeemChamberWithPermit2InvalidRedeemData() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _minOutputReceive
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        redeemData = IGasworks.RedeemChamberData(
+            ADDY,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _minOutputReceive,
+            amountToRedeem
+        );
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(ADDY), nonce);
+        bytes32 witness = keccak256(abi.encode(redeemData));
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), amountToRedeem);
+
+        redeemData = IGasworks.RedeemChamberData(
+            ADDY,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _minOutputReceive,
+            amountToRedeem + 1
+        );
+
+        vm.expectRevert();
+        gasworks.redeemChamberWithPermit2(
+            permit,
+            transferDetails,
+            owner,
+            witness,
+            signature,
+            redeemData,
+            _contractCallInstructions,
+            false
+        );
+    }
+
+    /**
+     * [REVERT] Should revert because the buyToken is not permitted
+     */
+    function testCannotRedeemChamberWithPermit2InvalidBuyToken() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _minOutputReceive
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        redeemData = IGasworks.RedeemChamberData(
+            ADDY,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            IERC20(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063),
+            _minOutputReceive,
+            amountToRedeem
+        );
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(ADDY), nonce);
+        bytes32 witness = keccak256(abi.encode(redeemData));
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), amountToRedeem);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGasworks.InvalidToken.selector, 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063
+            )
+        );
+        gasworks.redeemChamberWithPermit2(
+            permit,
+            transferDetails,
+            owner,
+            witness,
+            signature,
+            redeemData,
+            _contractCallInstructions,
+            false
+        );
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              SUCCESS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * [SUCCESS] Should make a redeem of ADDY to USDC with permit2
+     */
+    function testRedeemChamberWithPermit2() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _minOutputReceive
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        redeemData = IGasworks.RedeemChamberData(
+            ADDY,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _minOutputReceive,
+            amountToRedeem
+        );
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(ADDY), nonce);
+        bytes32 witness = keccak256(abi.encode(redeemData));
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
 
@@ -129,7 +431,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         inputs[3] = Conversor.iToHex(abi.encode(address(ADDY)));
         inputs[4] = Conversor.iToHex(abi.encode(address(WRAPPED_ETH)));
         inputs[5] = Conversor.iToHex(abi.encode(false));
-        bytes memory res = vm.ffi(inputs);
+        res = vm.ffi(inputs);
         (
             ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
             uint256 _minOutputReceive
@@ -148,12 +450,10 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
-            keccak256(
-                "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,RedeemChamberData witness)RedeemChamberData(IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _minReceiveAmount,uint256 _redeemAmount)TokenPermissions(address token,uint256 amount)"
-            ),
+            WITNESS_TYPEHASH,
             witness,
             domainSeparator,
-            keccak256("TokenPermissions(address token,uint256 amount)"),
+            TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
 
@@ -184,7 +484,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         inputs[3] = Conversor.iToHex(abi.encode(address(ADDY)));
         inputs[4] = Conversor.iToHex(abi.encode(address(WRAPPED_ETH)));
         inputs[5] = Conversor.iToHex(abi.encode(false));
-        bytes memory res = vm.ffi(inputs);
+        res = vm.ffi(inputs);
         (
             ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
             uint256 _minOutputReceive
@@ -203,12 +503,10 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         bytes memory signature = getSignature(
             permit,
             ownerPrivateKey,
-            keccak256(
-                "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,RedeemChamberData witness)RedeemChamberData(IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _minReceiveAmount,uint256 _redeemAmount)TokenPermissions(address token,uint256 amount)"
-            ),
+            WITNESS_TYPEHASH,
             witness,
             domainSeparator,
-            keccak256("TokenPermissions(address token,uint256 amount)"),
+            TOKEN_PERMISSIONS_TYPEHASH,
             address(gasworks)
         );
 
