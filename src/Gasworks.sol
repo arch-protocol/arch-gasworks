@@ -62,9 +62,9 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
                                   STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    IExchangeIssuanceZeroEx private immutable exchangeIssuance;
+    IExchangeIssuanceZeroEx public immutable exchangeIssuance;
     ISignatureTransfer public immutable signatureTransfer;
-    ITradeIssuerV2 private immutable tradeIssuer;
+    ITradeIssuerV2 public immutable tradeIssuer;
 
     string private constant SWAPDATA_WITNESS_TYPE_STRING =
         "SwapData witness)SwapData(address buyToken,address spender,address payable swapTarget, bytes swapCallData,uint256 swapValue,uint256 buyAmount)TokenPermissions(address token,uint256 amount)";
@@ -87,12 +87,13 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _forwarder) Owned(_msgSender()) {
+    constructor(address _forwarder, address _exchangeIssuance, address _tradeIssuer)
+        Owned(_msgSender())
+    {
         _setTrustedForwarder(_forwarder);
-        exchangeIssuance =
-            IExchangeIssuanceZeroEx(payable(0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320));
+        exchangeIssuance = IExchangeIssuanceZeroEx(payable(_exchangeIssuance));
         signatureTransfer = ISignatureTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
-        tradeIssuer = ITradeIssuerV2(0xbbCA2AcBd87Ce7A5e01fb56914d41F6a7e5C5A56);
+        tradeIssuer = ITradeIssuerV2(_tradeIssuer);
     }
 
     /*//////////////////////////////////////////////////////////////

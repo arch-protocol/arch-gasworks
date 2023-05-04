@@ -47,7 +47,11 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
                               SET UP
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
-        gasworks = new Gasworks(0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d);
+        gasworks = new Gasworks(
+            0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d, 
+            0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320, 
+            0xbbCA2AcBd87Ce7A5e01fb56914d41F6a7e5C5A56
+        );
         gasworks.setTokens(address(USDC));
         gasworks.setTokens(address(ADDY));
         permit2 = deployPermit2();
