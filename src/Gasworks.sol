@@ -469,7 +469,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * Performs a low-lever call to swapTarget to perform a swap between two tokens
+     * Performs a low-level call to swapTarget to perform a swap between two tokens
      *
      * @param swap              Swap data of the trade to perform
      * @param sellAmount        Amount of sellToken to sell
