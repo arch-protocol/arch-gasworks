@@ -41,3 +41,4 @@ jobs:
         run: FOUNDRY_PROFILE=ci make ${{ inputs.make-command }}
         env:
           ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_POLY_API_KEY }}
+          ETHERSCAN_MAINNET_KEY: ${{ secrets.ETHERSCAN_MAINNET_KEY }}

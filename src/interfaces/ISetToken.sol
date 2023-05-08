@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.17.0;
 
-import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title ISetToken
@@ -74,10 +74,17 @@ interface ISetToken is IERC20 {
     function editDefaultPositionUnit(address _component, int256 _realUnit) external;
     function addExternalPositionModule(address _component, address _positionModule) external;
     function removeExternalPositionModule(address _component, address _positionModule) external;
-    function editExternalPositionUnit(address _component, address _positionModule, int256 _realUnit) external;
-    function editExternalPositionData(address _component, address _positionModule, bytes calldata _data) external;
+    function editExternalPositionUnit(address _component, address _positionModule, int256 _realUnit)
+        external;
+    function editExternalPositionData(
+        address _component,
+        address _positionModule,
+        bytes calldata _data
+    ) external;
 
-    function invoke(address _target, uint256 _value, bytes calldata _data) external returns (bytes memory);
+    function invoke(address _target, uint256 _value, bytes calldata _data)
+        external
+        returns (bytes memory);
 
     function editPositionMultiplier(int256 _newMultiplier) external;
 
@@ -98,14 +105,23 @@ interface ISetToken is IERC20 {
     function getModules() external view returns (address[] memory);
 
     function getDefaultPositionRealUnit(address _component) external view returns (int256);
-    function getExternalPositionRealUnit(address _component, address _positionModule) external view returns (int256);
+    function getExternalPositionRealUnit(address _component, address _positionModule)
+        external
+        view
+        returns (int256);
     function getComponents() external view returns (address[] memory);
-    function getExternalPositionModules(address _component) external view returns (address[] memory);
+    function getExternalPositionModules(address _component)
+        external
+        view
+        returns (address[] memory);
     function getExternalPositionData(address _component, address _positionModule)
         external
         view
         returns (bytes memory);
-    function isExternalPositionModule(address _component, address _module) external view returns (bool);
+    function isExternalPositionModule(address _component, address _module)
+        external
+        view
+        returns (bool);
     function isComponent(address _component) external view returns (bool);
 
     function positionMultiplier() external view returns (int256);

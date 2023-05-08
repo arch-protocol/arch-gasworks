@@ -7,3 +7,6 @@ solmate/=lib/solmate/
 @opengsn/=node_modules/@opengsn/
 indexcoop/=lib/index-coop-smart-contracts/contracts/exchangeIssuance/
 permit2/=lib/permit2/
+chambers-peripherals/=lib/chambers-peripherals/
+chambers/=lib/chambers/src/
+@openzeppelin/=lib/openzeppelin-contracts/
