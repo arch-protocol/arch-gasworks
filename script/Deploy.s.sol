@@ -9,10 +9,11 @@ contract MyScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
+        // All addresses are on Polygon Mainnet
         Gasworks gasworks = new Gasworks(
-            0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d, 
-            0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320, 
-            0x2B13D2b9407D5776B0BB63c8cd144978B6B7cE58
+            0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d, // Biconomy Forwarder
+            0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320, // ExchangeIssuanceZeroEx
+            0x2B13D2b9407D5776B0BB63c8cd144978B6B7cE58  // TradeIssuerV2
         );
 
         gasworks.setTokens(0x6cA9C8914a14D63a6700556127D09e7721ff7D3b); // AP60
@@ -27,7 +28,7 @@ contract MyScript is Script {
         gasworks.setTokens(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270); // WMATIC
         gasworks.setTokens(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619); // WETH
 
-        gasworks.transferOwnership(0x35620cf0C31482Bf726aF1D409eA38333E460c3a);
+        gasworks.transferOwnership(0xe560EfD37a77486aa0ecAed4203365BDe5363dbB); // Arch Safe Address
 
         vm.stopBroadcast();
     }
