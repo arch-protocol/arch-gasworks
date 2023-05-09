@@ -169,6 +169,8 @@ interface IGasworks {
 
     error Underbought(address token, uint256 amountToBuy);
 
+    error TransferFailed(address recipient, uint256 amount, bytes returnData);
+
     /*//////////////////////////////////////////////////////////////
                                 FUNCTIONS
     //////////////////////////////////////////////////////////////*/

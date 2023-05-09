@@ -15,6 +15,7 @@ import { Permit2Utils } from "test/utils/Permit2Utils.sol";
 import { EIP712 } from "permit2/src/EIP712.sol";
 import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
 import { SignatureExpired } from "permit2/src/PermitErrors.sol";
+import { WETH } from "solmate/src/tokens/WETH.sol";
 
 contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
@@ -32,6 +33,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     Gasworks internal gasworks;
     ERC20 internal constant USDC = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     ERC20 internal constant WEB3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
+    WETH public constant WMATIC = WETH(payable(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270));
 
     uint256 internal ownerPrivateKey;
     address internal owner;
@@ -51,6 +53,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         );
         gasworks.setTokens(address(USDC));
         gasworks.setTokens(address(WEB3));
+        gasworks.setTokens(address(WMATIC));
         permit2 = deployPermit2();
         domainSeparator = EIP712(permit2).DOMAIN_SEPARATOR();
 
@@ -63,10 +66,11 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         vm.prank(owner);
         USDC.approve(permit2, 1e6);
 
-        string[] memory inputs = new string[](3);
+        string[] memory inputs = new string[](4);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(1e6));
+        inputs[3] = Conversor.iToHex(abi.encode(address(WEB3)));
         bytes memory res = vm.ffi(inputs);
         (
             address spender,
@@ -287,5 +291,46 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         assertEq(USDC.balanceOf(address(gasworks)), 0);
         assertEq(USDC.allowance(owner, address(gasworks)), 0);
         assertGe(WEB3.balanceOf(owner), swapData.buyAmount);
+    }
+
+    /**
+     * [SUCCESS] Should make a success swap to native MATIC with permit2
+     */
+    function testSwapWithPermit2ToNativeMATIC() public {
+        string[] memory inputs = new string[](4);
+        inputs[0] = "node";
+        inputs[1] = "scripts/fetch-quote.js";
+        inputs[2] = Conversor.iToHex(abi.encode(1e6));
+        inputs[3] = Conversor.iToHex(abi.encode(address(WMATIC)));
+        bytes memory res = vm.ffi(inputs);
+        (
+            address spender,
+            address payable swapTarget,
+            bytes memory quote,
+            uint256 value,
+            uint256 buyAmount
+        ) = abi.decode(res, (address, address, bytes, uint256, uint256));
+        swapData = IGasworks.SwapData(address(WMATIC), spender, swapTarget, quote, value, buyAmount);
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            defaultERC20PermitTransfer(address(USDC), 0);
+        bytes32 witness = keccak256(abi.encode(swapData));
+        bytes memory signature = getSignature(
+            permit,
+            ownerPrivateKey,
+            WITNESS_TYPEHASH,
+            witness,
+            domainSeparator,
+            TOKEN_PERMISSIONS_TYPEHASH,
+            address(gasworks)
+        );
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            getTransferDetails(address(gasworks), 1e6);
+
+        gasworks.swapWithPermit2(permit, transferDetails, owner, witness, signature, swapData);
+
+        assertEq(USDC.balanceOf(owner), 0);
+        assertEq(USDC.balanceOf(address(gasworks)), 0);
+        assertEq(USDC.allowance(owner, address(gasworks)), 0);
+        assertGe(owner.balance, swapData.buyAmount);
     }
 }
