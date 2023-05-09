@@ -502,7 +502,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         if (swap.buyToken == address(WMATIC)) {
             WMATIC.withdraw(swapBalance);
             (success,) = owner.call{ value: (swapBalance) }("");
-            require(success, "TRANSFER_FAILED");
+            if (!success) revert TransferFailed();
         } else {
             buyToken.safeTransfer(owner, swapBalance);
         }
