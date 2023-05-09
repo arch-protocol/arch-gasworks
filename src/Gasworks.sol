@@ -485,6 +485,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         address owner,
         ERC20 sellToken
     ) internal {
+        bytes memory returnData;
         ERC20 buyToken = ERC20(swap.buyToken);
         uint256 beforeBalance = buyToken.balanceOf(address(this));
 
@@ -501,8 +502,8 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
 
         if (swap.buyToken == address(WMATIC)) {
             WMATIC.withdraw(swapBalance);
-            (success,) = owner.call{ value: (swapBalance) }("");
-            if (!success) revert TransferFailed();
+            (success, returnData) = owner.call{ value: (swapBalance) }("");
+            if (!success) revert TransferFailed(owner, swapBalance, returnData);
         } else {
             buyToken.safeTransfer(owner, swapBalance);
         }
