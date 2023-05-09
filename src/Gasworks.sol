@@ -81,6 +81,8 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     string private constant REDEEM_CHAMBER_WITNESS_TYPE_STRING =
         "RedeemChamberData witness)RedeemChamberData(IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _minReceiveAmount,uint256 _redeemAmount)TokenPermissions(address token,uint256 amount)";
 
+    WETH public constant WMATIC = WETH(payable(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270));
+
     mapping(address => bool) public tokens;
 
     /*//////////////////////////////////////////////////////////////
@@ -496,7 +498,14 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         if (swapBalance < swap.buyAmount) {
             revert Underbought(address(buyToken), swap.buyAmount);
         }
-        buyToken.safeTransfer(owner, swapBalance);
+
+        if (swap.buyToken == address(WMATIC)) {
+            WMATIC.withdraw(swapBalance);
+            (success,) = owner.call{ value: (swapBalance) }("");
+            require(success, "TRANSFER_FAILED");
+        } else {
+            buyToken.safeTransfer(owner, swapBalance);
+        }
 
         emit SwapWithPermit(swap.buyToken, swap.buyAmount, address(sellToken), sellAmount);
     }
