@@ -191,6 +191,63 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     }
 
     /**
+     * Issues an exact amount of Chamber tokens for given amount of input ERC20 tokens.
+     * Using a safePermit for the ERC20 token transfer
+     * The excess amount of tokens is returned
+     *
+     * @param permit                        Permit data of the ERC20 token used (USDC)
+     * @param mintChamberData               Data of the issuance to perform
+     * @param contractCallInstructions      Calls required to get all chamber components
+     */
+    function mintChamberWithPermit(
+        PermitData calldata permit,
+        MintChamberData calldata mintChamberData,
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+    ) external {
+        if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
+        if (!tokens[address(mintChamberData._chamber)]) {
+            revert InvalidToken(address(mintChamberData._chamber));
+        }
+
+        IERC20Permit permitToken = IERC20Permit(permit._tokenContract);
+        permitToken.safePermit(
+            permit._owner,
+            permit._spender,
+            permit._value,
+            permit._deadline,
+            permit._v,
+            permit._r,
+            permit._s
+        );
+
+        ERC20 token = ERC20(permit._tokenContract);
+        token.safeTransferFrom(permit._owner, address(this), permit._amount);
+        uint256 beforeBalance = token.balanceOf(address(this));
+        token.safeApprove(address(tradeIssuer), mintChamberData._maxPayAmount);
+
+        tradeIssuer.mintChamberFromToken(
+            contractCallInstructions,
+            mintChamberData._chamber,
+            mintChamberData._issuerWizard,
+            mintChamberData._baseToken,
+            mintChamberData._maxPayAmount,
+            mintChamberData._mintAmount
+        );
+
+        uint256 totalPaid = beforeBalance - token.balanceOf(address(this));
+
+        ERC20(address(mintChamberData._chamber)).safeTransfer(owner, mintChamberData._mintAmount);
+        token.safeTransfer(owner, token.balanceOf(address(this)));
+
+        emit MintWithPermit(
+            address(mintChamberData._chamber),
+            mintChamberData._mintAmount,
+            address(token),
+            totalPaid
+        );
+    }
+
+    /**
      * Swaps an exact amount of SetTokens in 0x for a given amount of ERC20 tokens.
      * Using a permit for the ERC20 token transfer (through Permit2)
      *

@@ -183,6 +183,12 @@ interface IGasworks {
 
     function mintWithPermit(PermitData calldata permit, MintSetData calldata mintData) external;
 
+    function mintChamberWithPermit(
+        PermitData calldata permit,
+        MintChamberData calldata mintChamberData,
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+    ) external;
+
     function swapWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
