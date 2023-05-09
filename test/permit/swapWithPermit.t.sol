@@ -8,6 +8,7 @@ import { SigUtils } from "test/utils/SigUtils.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { Conversor } from "test/utils/HexUtils.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import { WETH } from "solmate/src/tokens/WETH.sol";
 
 contract GaslessTest is Test {
     using SafeTransferLib for ERC20;
@@ -19,6 +20,7 @@ contract GaslessTest is Test {
     Gasworks internal gasworks;
     ERC20 internal constant USDC = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     ERC20 internal constant WEB3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
+    WETH public constant WMATIC = WETH(payable(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270));
     SigUtils internal sigUtils;
 
     uint256 internal ownerPrivateKey;
@@ -36,6 +38,7 @@ contract GaslessTest is Test {
         );
         gasworks.setTokens(address(USDC));
         gasworks.setTokens(address(WEB3));
+        gasworks.setTokens(address(WMATIC));
         sigUtils = new SigUtils(USDC.DOMAIN_SEPARATOR());
 
         ownerPrivateKey = 0xA11CE;
@@ -44,10 +47,11 @@ contract GaslessTest is Test {
         vm.prank(0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245);
         USDC.safeTransfer(owner, 1e6);
 
-        string[] memory inputs = new string[](3);
+        string[] memory inputs = new string[](4);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(1e6));
+        inputs[3] = Conversor.iToHex(abi.encode(address(WEB3)));
         bytes memory res = vm.ffi(inputs);
         (
             address spender,
@@ -413,5 +417,57 @@ contract GaslessTest is Test {
         assertEq(USDC.allowance(owner, address(gasworks)), type(uint256).max - 1e6);
         assertEq(USDC.nonces(owner), 1);
         assertGe(WEB3.balanceOf(owner), swapData.buyAmount);
+    }
+
+    /**
+     * [SUCCESS] Should make a success swap to native token with permit with max amount allowed
+     */
+    function testSwapToNativeTokenWithLimitedPermit() public {
+        string[] memory inputs = new string[](4);
+        inputs[0] = "node";
+        inputs[1] = "scripts/fetch-quote.js";
+        inputs[2] = Conversor.iToHex(abi.encode(1e6));
+        inputs[3] = Conversor.iToHex(abi.encode(address(WMATIC)));
+        bytes memory res = vm.ffi(inputs);
+        (
+            address spender,
+            address payable swapTarget,
+            bytes memory quote,
+            uint256 value,
+            uint256 buyAmount
+        ) = abi.decode(res, (address, address, bytes, uint256, uint256));
+        swapData = IGasworks.SwapData(address(WMATIC), spender, swapTarget, quote, value, buyAmount);
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: 1e6,
+            nonce: USDC.nonces(owner),
+            deadline: 2 ** 256 - 1
+        });
+
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+
+        gasworks.swapWithPermit(
+            IGasworks.PermitData(
+                address(USDC),
+                1e6,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
+            ),
+            swapData
+        );
+
+        assertEq(USDC.balanceOf(owner), 0);
+        assertEq(USDC.balanceOf(address(gasworks)), 0);
+        assertEq(USDC.allowance(owner, address(gasworks)), 0);
+        assertEq(USDC.nonces(owner), 1);
+        assertGe(owner.balance, swapData.buyAmount);
     }
 }
