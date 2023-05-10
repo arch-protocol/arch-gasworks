@@ -19,7 +19,7 @@ const ADDYTokenParams = {
 }
 
 const AAGGTokenParams = {
-  tokenAddress: '0x6b175474e89094c44da98b954eedeac495271d0f',
+  tokenAddress: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
   slippagePercentageProportion: 0.05,
   networkId: 137,
   issuanceModuleAddress: '0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449',
