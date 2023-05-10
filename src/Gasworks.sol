@@ -236,8 +236,10 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
 
         uint256 totalPaid = beforeBalance - token.balanceOf(address(this));
 
-        ERC20(address(mintChamberData._chamber)).safeTransfer(owner, mintChamberData._mintAmount);
-        token.safeTransfer(owner, token.balanceOf(address(this)));
+        ERC20(address(mintChamberData._chamber)).safeTransfer(
+            permit._owner, mintChamberData._mintAmount
+        );
+        token.safeTransfer(permit._owner, token.balanceOf(address(this)));
 
         emit MintWithPermit(
             address(mintChamberData._chamber),
