@@ -46,8 +46,17 @@ contract GaslessTest is Test, ChamberTestUtils {
         gasworks.setTokens(address(USDC));
         gasworks.setTokens(address(AAGG));
 
+        vm.label(0x2B13D2b9407D5776B0BB63c8cd144978B6B7cE58, "TradeIssuerV2");
+
+        sigUtils = new SigUtils(IERC20Permit(address(USDC)).DOMAIN_SEPARATOR());
+
         ownerPrivateKey = 0xA11CE;
         owner = vm.addr(ownerPrivateKey);
+
+        vm.prank(0xe560EfD37a77486aa0ecAed4203365BDe5363dbB);
+        ITradeIssuerV2(0x2B13D2b9407D5776B0BB63c8cd144978B6B7cE58).addTarget(
+            0xDef1C0ded9bec7F1a1670819833240f027b25EfF
+        );
 
         string[] memory inputs = new string[](6);
         inputs[0] = "node";
@@ -64,388 +73,390 @@ contract GaslessTest is Test, ChamberTestUtils {
         nonce = IERC20Permit(address(USDC)).nonces(owner);
     }
 
-    // /*//////////////////////////////////////////////////////////////
-    //                           REVERT
-    // //////////////////////////////////////////////////////////////*/
+    /*//////////////////////////////////////////////////////////////
+                              REVERT
+    //////////////////////////////////////////////////////////////*/
 
-    // /**
-    //  * [REVERT] Should revert because the permit is expired
-    //  */
-    // function testCannotMintWithExpiredPermit() public {
-    //     (
-    //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
-    //         uint256 _maxPayAmount
-    //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
-    //         AAGG,
-    //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
-    //         USDC,
-    //         _maxPayAmount,
-    //         amountToMint
-    //     );
+    /**
+     * [REVERT] Should revert because the permit is expired
+     */
+    function testCannotMintWithExpiredPermit() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _maxPayAmount
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        mintData = IGasworks.MintChamberData(
+            AAGG,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _maxPayAmount,
+            amountToMint
+        );
 
-    //     SigUtils.Permit memory permit = SigUtils.Permit({
-    //         owner: owner,
-    //         spender: address(gasworks),
-    //         value: 1e18,
-    //         nonce: nonce,
-    //         deadline: 2 ** 255 - 1
-    //     });
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: 1e18,
+            nonce: nonce,
+            deadline: 2 ** 255 - 1
+        });
 
-    //     bytes32 digest = sigUtils.getTypedDataHash(permit);
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-    //     (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
-    //     vm.warp(2 ** 255 + 1); // fast forwards one second past the deadline
+        vm.warp(2 ** 255 + 1); // fast forwards one second past the deadline
 
-    //     vm.expectRevert("Permit: permit is expired");
-    //     gasworks.mintChamberWithPermit(
-    //         IGasworks.PermitData(
-    //             address(USDC),
-    //             1e18,
-    //             permit.owner,
-    //             permit.spender,
-    //             permit.value,
-    //             permit.deadline,
-    //             v,
-    //             r,
-    //             s
-    //         ),
-    //         mintData,
-    //         _contractCallInstructions
-    //     );
-    // }
+        vm.expectRevert("Permit: permit is expired");
+        gasworks.mintChamberWithPermit(
+            IGasworks.PermitData(
+                address(USDC),
+                1e18,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
+            ),
+            mintData,
+            _contractCallInstructions
+        );
+    }
 
-    // /**
-    //  * [REVERT] Should revert because the signer of the permit
-    //  * is not the owner of the tokens
-    //  */
-    // function testCannotMintWithInvalidSigner() public {
-    //     (
-    //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
-    //         uint256 _maxPayAmount
-    //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
-    //         AAGG,
-    //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
-    //         USDC,
-    //         _maxPayAmount,
-    //         amountToMint
-    //     );
+    /**
+     * [REVERT] Should revert because the signer of the permit
+     * is not the owner of the tokens
+     */
+    function testCannotMintWithInvalidSigner() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _maxPayAmount
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        mintData = IGasworks.MintChamberData(
+            AAGG,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _maxPayAmount,
+            amountToMint
+        );
 
-    //     SigUtils.Permit memory permit = SigUtils.Permit({
-    //         owner: owner,
-    //         spender: address(gasworks),
-    //         value: 1e18,
-    //         nonce: nonce,
-    //         deadline: 2 ** 256 - 1
-    //     });
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: 1e18,
+            nonce: nonce,
+            deadline: 2 ** 256 - 1
+        });
 
-    //     bytes32 digest = sigUtils.getTypedDataHash(permit);
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-    //     (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xB0B, digest); // 0xB0B signs but 0xA11CE is owner
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xB0B, digest); // 0xB0B signs but 0xA11CE is owner
 
-    //     vm.expectRevert("Permit: invalid signature");
-    //     gasworks.mintChamberWithPermit(
-    //         IGasworks.PermitData(
-    //             address(USDC),
-    //             1e18,
-    //             permit.owner,
-    //             permit.spender,
-    //             permit.value,
-    //             permit.deadline,
-    //             v,
-    //             r,
-    //             s
-    //         ),
-    //         mintData,
-    //         _contractCallInstructions
-    //     );
-    // }
+        vm.expectRevert("Permit: invalid signature");
+        gasworks.mintChamberWithPermit(
+            IGasworks.PermitData(
+                address(USDC),
+                1e18,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
+            ),
+            mintData,
+            _contractCallInstructions
+        );
+    }
 
-    // /**
-    //  * [REVERT] Should revert because the nonce is invalid
-    //  */
-    // function testCannotMintWithInvalidNonce() public {
-    //     (
-    //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
-    //         uint256 _maxPayAmount
-    //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
-    //         AAGG,
-    //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
-    //         USDC,
-    //         _maxPayAmount,
-    //         amountToMint
-    //     );
+    /**
+     * [REVERT] Should revert because the nonce is invalid
+     */
+    function testCannotMintWithInvalidNonce() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _maxPayAmount
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        mintData = IGasworks.MintChamberData(
+            AAGG,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _maxPayAmount,
+            amountToMint
+        );
 
-    //     SigUtils.Permit memory permit = SigUtils.Permit({
-    //         owner: owner,
-    //         spender: address(gasworks),
-    //         value: 1e18,
-    //         nonce: 1, // set nonce to 1 instead of 0
-    //         deadline: 2 ** 256 - 1
-    //     });
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: 1e18,
+            nonce: 1, // set nonce to 1 instead of 0
+            deadline: 2 ** 256 - 1
+        });
 
-    //     bytes32 digest = sigUtils.getTypedDataHash(permit);
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-    //     (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
-    //     vm.expectRevert("Permit: invalid signature");
-    //     gasworks.mintChamberWithPermit(
-    //         IGasworks.PermitData(
-    //             address(USDC),
-    //             1e18,
-    //             permit.owner,
-    //             permit.spender,
-    //             permit.value,
-    //             permit.deadline,
-    //             v,
-    //             r,
-    //             s
-    //         ),
-    //         mintData,
-    //         _contractCallInstructions
-    //     );
-    // }
+        vm.expectRevert("Permit: invalid signature");
+        gasworks.mintChamberWithPermit(
+            IGasworks.PermitData(
+                address(USDC),
+                1e18,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
+            ),
+            mintData,
+            _contractCallInstructions
+        );
+    }
 
-    // /**
-    //  * [REVERT] Should revert because allowed amount is less than required amount
-    //  */
-    // function testCannotMintWithInvalidAllowance() public {
-    //     (
-    //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
-    //         uint256 _maxPayAmount
-    //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
-    //         AAGG,
-    //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
-    //         USDC,
-    //         _maxPayAmount,
-    //         amountToMint
-    //     );
+    /**
+     * [REVERT] Should revert because allowed amount is less than required amount
+     */
+    function testCannotMintWithInvalidAllowance() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _maxPayAmount
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        mintData = IGasworks.MintChamberData(
+            AAGG,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _maxPayAmount,
+            amountToMint
+        );
 
-    //     SigUtils.Permit memory permit = SigUtils.Permit({
-    //         owner: owner,
-    //         spender: address(gasworks),
-    //         value: 5e5,
-    //         nonce: 0,
-    //         deadline: 2 ** 256 - 1
-    //     });
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: 5e5,
+            nonce: 0,
+            deadline: 2 ** 256 - 1
+        });
 
-    //     bytes32 digest = sigUtils.getTypedDataHash(permit);
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-    //     (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
-    //     vm.expectRevert("TRANSFER_FROM_FAILED");
-    //     gasworks.mintChamberWithPermit(
-    //         IGasworks.PermitData(
-    //             address(USDC),
-    //             1e18,
-    //             permit.owner,
-    //             permit.spender,
-    //             permit.value,
-    //             permit.deadline,
-    //             v,
-    //             r,
-    //             s
-    //         ),
-    //         mintData,
-    //         _contractCallInstructions
-    //     );
-    // }
+        vm.expectRevert("TRANSFER_FROM_FAILED");
+        gasworks.mintChamberWithPermit(
+            IGasworks.PermitData(
+                address(USDC),
+                1e18,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
+            ),
+            mintData,
+            _contractCallInstructions
+        );
+    }
 
-    // /**
-    //  * [REVERT] Should revert because balance is less than required amount
-    //  */
-    // function testCannotMintWithInvalidBalance() public {
-    //     (
-    //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
-    //         uint256 _maxPayAmount
-    //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
-    //         AAGG,
-    //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
-    //         USDC,
-    //         _maxPayAmount,
-    //         amountToMint
-    //     );
+    /**
+     * [REVERT] Should revert because balance is less than required amount
+     */
+    function testCannotMintWithInvalidBalance() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _maxPayAmount
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        mintData = IGasworks.MintChamberData(
+            AAGG,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _maxPayAmount,
+            amountToMint
+        );
 
-    //     SigUtils.Permit memory permit = SigUtils.Permit({
-    //         owner: owner,
-    //         spender: address(gasworks),
-    //         value: 2e18,
-    //         nonce: 0,
-    //         deadline: 2 ** 256 - 1
-    //     });
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: 2e18,
+            nonce: 0,
+            deadline: 2 ** 256 - 1
+        });
 
-    //     bytes32 digest = sigUtils.getTypedDataHash(permit);
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-    //     (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
-    //     vm.expectRevert("TRANSFER_FROM_FAILED");
-    //     gasworks.mintChamberWithPermit(
-    //         IGasworks.PermitData(
-    //             address(USDC),
-    //             2e18, // owner was only minted 1 USDC
-    //             permit.owner,
-    //             permit.spender,
-    //             permit.value,
-    //             permit.deadline,
-    //             v,
-    //             r,
-    //             s
-    //         ),
-    //         mintData,
-    //         _contractCallInstructions
-    //     );
-    // }
+        vm.expectRevert("TRANSFER_FROM_FAILED");
+        gasworks.mintChamberWithPermit(
+            IGasworks.PermitData(
+                address(USDC),
+                2e18, // owner was only minted 1 USDC
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
+            ),
+            mintData,
+            _contractCallInstructions
+        );
+    }
 
-    // /**
-    //  * [REVERT] Should revert because mintData is invalid
-    //  */
-    // function testCannotMintWithInvalidPayload() public {
-    //     (
-    //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
-    //         uint256 _maxPayAmount
-    //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
-    //         AAGG,
-    //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
-    //         USDC,
-    //         _maxPayAmount,
-    //         amountToMint
-    //     );
+    /**
+     * [REVERT] Should revert because mintData is invalid
+     */
+    function testCannotMintWithInvalidPayload() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _maxPayAmount
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        mintData = IGasworks.MintChamberData(
+            AAGG,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _maxPayAmount,
+            amountToMint
+        );
 
-    //     _contractCallInstructions[0]._callData = bytes("bad data");
+        _contractCallInstructions[0]._callData = bytes("bad data");
 
-    //     SigUtils.Permit memory permit = SigUtils.Permit({
-    //         owner: owner,
-    //         spender: address(gasworks),
-    //         value: mintData._maxPayAmount,
-    //         nonce: nonce,
-    //         deadline: 2 ** 256 - 1
-    //     });
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: mintData._maxPayAmount,
+            nonce: nonce,
+            deadline: 2 ** 256 - 1
+        });
 
-    //     bytes32 digest = sigUtils.getTypedDataHash(permit);
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-    //     (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
-    //     vm.expectRevert();
-    //     gasworks.mintChamberWithPermit(
-    //         IGasworks.PermitData(
-    //             address(USDC),
-    //             mintData._maxPayAmount,
-    //             permit.owner,
-    //             permit.spender,
-    //             permit.value,
-    //             permit.deadline,
-    //             v,
-    //             r,
-    //             s
-    //         ),
-    //         mintData,
-    //         _contractCallInstructions
-    //     );
-    // }
+        vm.expectRevert();
+        gasworks.mintChamberWithPermit(
+            IGasworks.PermitData(
+                address(USDC),
+                mintData._maxPayAmount,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
+            ),
+            mintData,
+            _contractCallInstructions
+        );
+    }
 
-    // /**
-    //  * [REVERT] Should revert because token is not permitted
-    //  */
-    // function testCannotMintWithInvalidToken() public {
-    //     (
-    //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
-    //         uint256 _maxPayAmount
-    //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
-    //         AAGG,
-    //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
-    //         USDC,
-    //         _maxPayAmount,
-    //         amountToMint
-    //     );
+    /**
+     * [REVERT] Should revert because token is not permitted
+     */
+    function testCannotMintWithInvalidToken() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _maxPayAmount
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        mintData = IGasworks.MintChamberData(
+            AAGG,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _maxPayAmount,
+            amountToMint
+        );
 
-    //     SigUtils.Permit memory permit = SigUtils.Permit({
-    //         owner: owner,
-    //         spender: address(gasworks),
-    //         value: 1e6,
-    //         nonce: nonce,
-    //         deadline: 2 ** 256 - 1
-    //     });
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: 1e6,
+            nonce: nonce,
+            deadline: 2 ** 256 - 1
+        });
 
-    //     bytes32 digest = sigUtils.getTypedDataHash(permit);
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-    //     (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
-    //     vm.expectRevert(abi.encodeWithSelector(IGasworks.InvalidToken.selector, address(0x123123)));
-    //     gasworks.mintChamberWithPermit(
-    //         IGasworks.PermitData(
-    //             address(0x123123),
-    //             1e6,
-    //             permit.owner,
-    //             permit.spender,
-    //             permit.value,
-    //             permit.deadline,
-    //             v,
-    //             r,
-    //             s
-    //         ),
-    //         mintData,
-    //         _contractCallInstructions
-    //     );
-    // }
+        vm.expectRevert(abi.encodeWithSelector(IGasworks.InvalidToken.selector, address(0x123123)));
+        gasworks.mintChamberWithPermit(
+            IGasworks.PermitData(
+                address(0x123123),
+                1e6,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
+            ),
+            mintData,
+            _contractCallInstructions
+        );
+    }
 
-    // /*//////////////////////////////////////////////////////////////
-    //                           SUCCESS
-    // //////////////////////////////////////////////////////////////*/
+    /*//////////////////////////////////////////////////////////////
+                              SUCCESS
+    //////////////////////////////////////////////////////////////*/
 
-    // /**
-    //  * [SUCCESS] Should make a mint of AAGG with USDC using EIP2612 permit
-    //  */
-    // function testMintChamberWithMaxPermit() public {
-    //     (
-    //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
-    //         uint256 _maxPayAmount
-    //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
-    //         AAGG,
-    //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
-    //         USDC,
-    //         _maxPayAmount,
-    //         amountToMint
-    //     );
+    /**
+     * [SUCCESS] Should make a mint of AAGG with USDC using EIP2612 permit
+     */
+    function testMintChamberWithMaxPermit() public {
+        (
+            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            uint256 _maxPayAmount
+        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        mintData = IGasworks.MintChamberData(
+            AAGG,
+            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
+            USDC,
+            _maxPayAmount,
+            amountToMint
+        );
 
-    //     SigUtils.Permit memory permit = SigUtils.Permit({
-    //         owner: owner,
-    //         spender: address(gasworks),
-    //         value: type(uint256).max,
-    //         nonce: nonce,
-    //         deadline: 2 ** 256 - 1
-    //     });
+        SigUtils.Permit memory permit = SigUtils.Permit({
+            owner: owner,
+            spender: address(gasworks),
+            value: type(uint256).max,
+            nonce: nonce,
+            deadline: 2 ** 256 - 1
+        });
 
-    //     bytes32 digest = sigUtils.getTypedDataHash(permit);
+        bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-    //     (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
-    //     gasworks.mintChamberWithPermit(
-    //         IGasworks.PermitData(
-    //             address(USDC),
-    //             mintData._maxPayAmount,
-    //             permit.owner,
-    //             permit.spender,
-    //             permit.value,
-    //             permit.deadline,
-    //             v,
-    //             r,
-    //             s
-    //         ),
-    //         mintData,
-    //         _contractCallInstructions
-    //     );
+        gasworks.mintChamberWithPermit(
+            IGasworks.PermitData(
+                address(USDC),
+                mintData._maxPayAmount,
+                permit.owner,
+                permit.spender,
+                permit.value,
+                permit.deadline,
+                v,
+                r,
+                s
+            ),
+            mintData,
+            _contractCallInstructions
+        );
 
-    //     assertEq(USDC.balanceOf(address(gasworks)), 0);
-    //     assertEq(USDC.allowance(owner, address(gasworks)), 0);
-    //     assertEq(IERC20Permit(address(USDC)).nonces(owner), 1);
-    //     assertEq(IERC20(address(AAGG)).balanceOf(owner), amountToMint);
-    // }
+        assertEq(USDC.balanceOf(address(gasworks)), 0);
+        assertGe(
+            USDC.allowance(owner, address(gasworks)), type(uint256).max - mintData._maxPayAmount
+        );
+        assertEq(IERC20Permit(address(USDC)).nonces(owner), 1);
+        assertEq(IERC20(address(AAGG)).balanceOf(owner), amountToMint);
+    }
 }
