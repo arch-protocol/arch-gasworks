@@ -105,23 +105,6 @@ interface IGasworks {
         uint256 _mintAmount;
     }
 
-    struct RedeemSetData {
-        // Address of the SetToken to be redeemed
-        ISetToken _setToken;
-        // Address of the token to buy with the SetToken
-        IERC20 _outputToken;
-        // Amount of SetTokens to issue
-        uint256 _amountSetToken;
-        // Minimum amount of output tokens to receive
-        uint256 _minOutputReceive;
-        // The encoded 0x transactions to execute
-        bytes[] _componentQuotes;
-        // The address of the issuance module for the SetToken
-        address _issuanceModule;
-        // Is the SetToken using debt issuance?
-        bool _isDebtIssuance;
-    }
-
     struct RedeemChamberData {
         // The address of the chamber to redeem
         IChamber _chamber;
@@ -196,25 +179,6 @@ interface IGasworks {
         bytes32 witness,
         bytes calldata signature,
         SwapData calldata swapData
-    ) external;
-
-    function mintWithPermit2(
-        ISignatureTransfer.PermitTransferFrom memory permit2,
-        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
-        address owner,
-        bytes32 witness,
-        bytes calldata signature,
-        MintSetData calldata mintData
-    ) external;
-
-    function redeemWithPermit2(
-        ISignatureTransfer.PermitTransferFrom memory permit2,
-        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
-        address owner,
-        bytes32 witness,
-        bytes calldata signature,
-        RedeemSetData calldata redeemData,
-        bool toNative
     ) external;
 
     function mintChamberWithPermit2(
