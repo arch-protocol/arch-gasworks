@@ -53,11 +53,6 @@ contract GaslessTest is Test, ChamberTestUtils {
         ownerPrivateKey = 0xA11CE;
         owner = vm.addr(ownerPrivateKey);
 
-        vm.prank(0xe560EfD37a77486aa0ecAed4203365BDe5363dbB);
-        ITradeIssuerV2(0x2B13D2b9407D5776B0BB63c8cd144978B6B7cE58).addTarget(
-            0xDef1C0ded9bec7F1a1670819833240f027b25EfF
-        );
-
         string[] memory inputs = new string[](6);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-arch-quote.js";
