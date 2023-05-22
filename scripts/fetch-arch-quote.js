@@ -26,13 +26,13 @@ async function main(quantity, basketAddress, tokenAddress, operation) {
   const jwt = await generateJwt(archTokens[basket])
   const baseUrl = "https://dev-api.archfinance.io/basket-issuance/"
   const opType = opt ? "issuance" : "redemption"
-  const quoteUrl = `${baseUrl}${opType}-components/${basket}?${qs.stringify(
+  const quoteUrl = `${baseUrl}${opType}-components?${qs.stringify(
     archTokens[basket]
   )}`
   try {
     const response = await axios.get(quoteUrl, {
       headers: { Authorization: `Bearer ${jwt}` },
-    })
+    });
 
     const quote = response.data
     const value = opt ? quote.maxAmountInWei : quote.minAmountInWei
