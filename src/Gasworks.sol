@@ -254,26 +254,23 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * Using a permit for the ERC20 token transfer (through Permit2)
      *
      * @param permit2             Permit2 data of the ERC20 token used
-     * @param transferDetails     Details of the transfer to perform
      * @param owner               Owner of the tokens to transfer
-     * @param witness             Payload of data we want to validate (encoded in bytes32)
      * @param signature           Signature of the owner of the tokens
      * @param swapData            Data of the swap to perform
      */
     function swapWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
-        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
-        bytes32 witness,
         bytes calldata signature,
         SwapData calldata swapData
     ) external {
         if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
         if (!tokens[swapData.buyToken]) revert InvalidToken(swapData.buyToken);
 
-        signatureTransfer.permitWitnessTransferFrom(
-            permit2, transferDetails, owner, witness, SWAPDATA_WITNESS_TYPE_STRING, signature
-        );
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails = ISignatureTransfer
+            .SignatureTransferDetails({ to: address(this), requestedAmount: permit2.permitted.amount });
+
+        signatureTransfer.permitTransferFrom(permit2, transferDetails, owner, signature);
 
         _fillQuoteInternal(
             swapData, transferDetails.requestedAmount, owner, ERC20(permit2.permitted.token)
@@ -285,18 +282,14 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * Using a permit for the ERC20 token (through Permit2)
      *
      * @param permit2                       Permit2 data of the ERC20 token used
-     * @param transferDetails               Details of the transfer to perform
      * @param owner                         Owner of the tokens to transfer
-     * @param witness                       Payload of data we want to validate (encoded in bytes32)
      * @param signature                     Signature of the owner of the tokens
      * @param mintChamberData               Data of the chamber issuance to perform
      * @param contractCallInstructions      Calls required to get all chamber components
      */
     function mintChamberWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
-        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
-        bytes32 witness,
         bytes calldata signature,
         MintChamberData calldata mintChamberData,
         ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
@@ -306,9 +299,10 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
             revert InvalidToken(address(mintChamberData._chamber));
         }
 
-        signatureTransfer.permitWitnessTransferFrom(
-            permit2, transferDetails, owner, witness, MINT_CHAMBER_WITNESS_TYPE_STRING, signature
-        );
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails = ISignatureTransfer
+            .SignatureTransferDetails({ to: address(this), requestedAmount: permit2.permitted.amount });
+
+        signatureTransfer.permitTransferFrom(permit2, transferDetails, owner, signature);
 
         ERC20 token = ERC20(permit2.permitted.token);
         uint256 beforeBalance = token.balanceOf(address(this));
@@ -342,18 +336,14 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * Using a permit for the Chamber token (through Permit2)
      *
      * @param permit2                       Permit2 data of the ERC20 token used
-     * @param transferDetails               Details of the transfer to perform
      * @param owner                         Owner of the tokens to transfer
-     * @param witness                       Payload of data we want to validate (encoded in bytes32)
      * @param signature                     Signature of the owner of the tokens
      * @param redeemChamberData             Data of the chamber redeem to perform
      * @param contractCallInstructions      Calls required to get all chamber components
      */
     function redeemChamberWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
-        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
-        bytes32 witness,
         bytes calldata signature,
         RedeemChamberData calldata redeemChamberData,
         ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
@@ -364,9 +354,10 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
             revert InvalidToken(address(redeemChamberData._baseToken));
         }
 
-        signatureTransfer.permitWitnessTransferFrom(
-            permit2, transferDetails, owner, witness, REDEEM_CHAMBER_WITNESS_TYPE_STRING, signature
-        );
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails = ISignatureTransfer
+            .SignatureTransferDetails({ to: address(this), requestedAmount: permit2.permitted.amount });
+
+        signatureTransfer.permitTransferFrom(permit2, transferDetails, owner, signature);
 
         ERC20 token = ERC20(permit2.permitted.token);
 
