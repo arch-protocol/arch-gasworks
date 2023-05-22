@@ -174,18 +174,14 @@ interface IGasworks {
 
     function swapWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
-        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
-        bytes32 witness,
         bytes calldata signature,
         SwapData calldata swapData
     ) external;
 
     function mintChamberWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
-        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
-        bytes32 witness,
         bytes calldata signature,
         MintChamberData calldata mintChamberData,
         ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
@@ -193,9 +189,7 @@ interface IGasworks {
 
     function redeemChamberWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
-        ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         address owner,
-        bytes32 witness,
         bytes calldata signature,
         RedeemChamberData calldata redeemChamberData,
         ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,

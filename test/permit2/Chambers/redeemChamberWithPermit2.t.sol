@@ -25,10 +25,6 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //////////////////////////////////////////////////////////////*/
     using SafeERC20 for IERC20;
 
-    bytes32 internal constant WITNESS_TYPEHASH = keccak256(
-        "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,RedeemChamberData witness)RedeemChamberData(IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _minReceiveAmount,uint256 _redeemAmount)TokenPermissions(address token,uint256 amount)"
-    );
-
     bytes32 internal constant TOKEN_PERMISSIONS_TYPEHASH =
         keccak256("TokenPermissions(address token,uint256 amount)");
 
@@ -85,50 +81,6 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * [REVERT] Should revert because the witness type hash is invalid and doesn't match the struct
-     */
-    function testCannotRedeemChamberWithPermit2InvalidTypehash() public {
-        (
-            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
-            uint256 _minOutputReceive
-        ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-        redeemData = IGasworks.RedeemChamberData(
-            ADDY,
-            IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
-            USDC,
-            _minOutputReceive,
-            amountToRedeem
-        );
-        ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(ADDY), nonce);
-        bytes32 witness = keccak256(abi.encode(redeemData));
-        bytes memory signature = getSignature(
-            permit,
-            ownerPrivateKey,
-            "fake typehash",
-            witness,
-            domainSeparator,
-            TOKEN_PERMISSIONS_TYPEHASH,
-            address(gasworks)
-        );
-
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            getTransferDetails(address(gasworks), amountToRedeem);
-
-        vm.expectRevert(SignatureVerification.InvalidSigner.selector);
-        gasworks.redeemChamberWithPermit2(
-            permit,
-            transferDetails,
-            owner,
-            witness,
-            signature,
-            redeemData,
-            _contractCallInstructions,
-            false
-        );
-    }
-
-    /**
      * [REVERT] Should revert because the signature length is invalid
      */
     function testCannotRedeemChamberWithPermit2InvalidSignatureLength() public {
@@ -144,33 +96,16 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToRedeem
         );
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(ADDY), nonce);
-        bytes32 witness = keccak256(abi.encode(redeemData));
+            defaultERC20PermitTransfer(address(ADDY), nonce, amountToRedeem);
         bytes memory signature = getSignature(
-            permit,
-            ownerPrivateKey,
-            WITNESS_TYPEHASH,
-            witness,
-            domainSeparator,
-            TOKEN_PERMISSIONS_TYPEHASH,
-            address(gasworks)
+            permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
         bytes memory sigExtra = bytes.concat(signature, bytes1(uint8(0)));
         assertEq(sigExtra.length, 66);
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            getTransferDetails(address(gasworks), amountToRedeem);
-
         vm.expectRevert(SignatureVerification.InvalidSignatureLength.selector);
         gasworks.redeemChamberWithPermit2(
-            permit,
-            transferDetails,
-            owner,
-            witness,
-            sigExtra,
-            redeemData,
-            _contractCallInstructions,
-            false
+            permit, owner, sigExtra, redeemData, _contractCallInstructions, false
         );
     }
 
@@ -190,42 +125,18 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToRedeem
         );
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(ADDY), nonce);
-        bytes32 witness = keccak256(abi.encode(redeemData));
+            defaultERC20PermitTransfer(address(ADDY), nonce, amountToRedeem);
         bytes memory signature = getSignature(
-            permit,
-            ownerPrivateKey,
-            WITNESS_TYPEHASH,
-            witness,
-            domainSeparator,
-            TOKEN_PERMISSIONS_TYPEHASH,
-            address(gasworks)
+            permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            getTransferDetails(address(gasworks), amountToRedeem);
-
         gasworks.redeemChamberWithPermit2(
-            permit,
-            transferDetails,
-            owner,
-            witness,
-            signature,
-            redeemData,
-            _contractCallInstructions,
-            false
+            permit, owner, signature, redeemData, _contractCallInstructions, false
         );
 
         vm.expectRevert(InvalidNonce.selector);
         gasworks.redeemChamberWithPermit2(
-            permit,
-            transferDetails,
-            owner,
-            witness,
-            signature,
-            redeemData,
-            _contractCallInstructions,
-            false
+            permit, owner, signature, redeemData, _contractCallInstructions, false
         );
     }
 
@@ -245,34 +156,17 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToRedeem
         );
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(ADDY), nonce);
+            defaultERC20PermitTransfer(address(ADDY), nonce, amountToRedeem);
         permit.deadline = 2 ** 255 - 1;
-        bytes32 witness = keccak256(abi.encode(redeemData));
         bytes memory signature = getSignature(
-            permit,
-            ownerPrivateKey,
-            WITNESS_TYPEHASH,
-            witness,
-            domainSeparator,
-            TOKEN_PERMISSIONS_TYPEHASH,
-            address(gasworks)
+            permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
-
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            getTransferDetails(address(gasworks), amountToRedeem);
 
         vm.warp(2 ** 255 + 1);
 
         vm.expectRevert(abi.encodeWithSelector(SignatureExpired.selector, permit.deadline));
         gasworks.redeemChamberWithPermit2(
-            permit,
-            transferDetails,
-            owner,
-            witness,
-            signature,
-            redeemData,
-            _contractCallInstructions,
-            false
+            permit, owner, signature, redeemData, _contractCallInstructions, false
         );
     }
 
@@ -292,20 +186,10 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToRedeem
         );
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(ADDY), nonce);
-        bytes32 witness = keccak256(abi.encode(redeemData));
+            defaultERC20PermitTransfer(address(ADDY), nonce, amountToRedeem);
         bytes memory signature = getSignature(
-            permit,
-            ownerPrivateKey,
-            WITNESS_TYPEHASH,
-            witness,
-            domainSeparator,
-            TOKEN_PERMISSIONS_TYPEHASH,
-            address(gasworks)
+            permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
-
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            getTransferDetails(address(gasworks), amountToRedeem);
 
         redeemData = IGasworks.RedeemChamberData(
             ADDY,
@@ -317,14 +201,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
 
         vm.expectRevert();
         gasworks.redeemChamberWithPermit2(
-            permit,
-            transferDetails,
-            owner,
-            witness,
-            signature,
-            redeemData,
-            _contractCallInstructions,
-            false
+            permit, owner, signature, redeemData, _contractCallInstructions, false
         );
     }
 
@@ -344,20 +221,10 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToRedeem
         );
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(ADDY), nonce);
-        bytes32 witness = keccak256(abi.encode(redeemData));
+            defaultERC20PermitTransfer(address(ADDY), nonce, amountToRedeem);
         bytes memory signature = getSignature(
-            permit,
-            ownerPrivateKey,
-            WITNESS_TYPEHASH,
-            witness,
-            domainSeparator,
-            TOKEN_PERMISSIONS_TYPEHASH,
-            address(gasworks)
+            permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
-
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            getTransferDetails(address(gasworks), amountToRedeem);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -365,14 +232,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             )
         );
         gasworks.redeemChamberWithPermit2(
-            permit,
-            transferDetails,
-            owner,
-            witness,
-            signature,
-            redeemData,
-            _contractCallInstructions,
-            false
+            permit, owner, signature, redeemData, _contractCallInstructions, false
         );
     }
 
@@ -396,30 +256,13 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToRedeem
         );
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(ADDY), nonce);
-        bytes32 witness = keccak256(abi.encode(redeemData));
+            defaultERC20PermitTransfer(address(ADDY), nonce, amountToRedeem);
         bytes memory signature = getSignature(
-            permit,
-            ownerPrivateKey,
-            WITNESS_TYPEHASH,
-            witness,
-            domainSeparator,
-            TOKEN_PERMISSIONS_TYPEHASH,
-            address(gasworks)
+            permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            getTransferDetails(address(gasworks), amountToRedeem);
-
         gasworks.redeemChamberWithPermit2(
-            permit,
-            transferDetails,
-            owner,
-            witness,
-            signature,
-            redeemData,
-            _contractCallInstructions,
-            false
+            permit, owner, signature, redeemData, _contractCallInstructions, false
         );
         assertGe(USDC.balanceOf(owner), _minOutputReceive);
     }
@@ -449,30 +292,13 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         );
 
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(ADDY), nonce);
-        bytes32 witness = keccak256(abi.encode(redeemData));
+            defaultERC20PermitTransfer(address(ADDY), nonce, amountToRedeem);
         bytes memory signature = getSignature(
-            permit,
-            ownerPrivateKey,
-            WITNESS_TYPEHASH,
-            witness,
-            domainSeparator,
-            TOKEN_PERMISSIONS_TYPEHASH,
-            address(gasworks)
+            permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            getTransferDetails(address(gasworks), amountToRedeem);
-
         gasworks.redeemChamberWithPermit2(
-            permit,
-            transferDetails,
-            owner,
-            witness,
-            signature,
-            redeemData,
-            _contractCallInstructions,
-            true
+            permit, owner, signature, redeemData, _contractCallInstructions, true
         );
         assertGe(owner.balance, _minOutputReceive);
     }
@@ -502,30 +328,13 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         );
 
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(ADDY), nonce);
-        bytes32 witness = keccak256(abi.encode(redeemData));
+            defaultERC20PermitTransfer(address(ADDY), nonce, amountToRedeem);
         bytes memory signature = getSignature(
-            permit,
-            ownerPrivateKey,
-            WITNESS_TYPEHASH,
-            witness,
-            domainSeparator,
-            TOKEN_PERMISSIONS_TYPEHASH,
-            address(gasworks)
+            permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
 
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            getTransferDetails(address(gasworks), amountToRedeem);
-
         gasworks.redeemChamberWithPermit2(
-            permit,
-            transferDetails,
-            owner,
-            witness,
-            signature,
-            redeemData,
-            _contractCallInstructions,
-            false
+            permit, owner, signature, redeemData, _contractCallInstructions, false
         );
         assertGe(WRAPPED_ETH.balanceOf(owner), _minOutputReceive);
     }
