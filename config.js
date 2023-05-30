@@ -11,11 +11,11 @@ const AP60TokenParams = {
 
 const ADDYTokenParams = {
   tokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-  slippagePercentageProportion: 0.05,
+  slippagePercentageProportion: 0.01,
   networkId: 1,
   issuerWizardAddress: '0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449',
-  traderPeripheralAddress: '0x2b13d2b9407d5776b0bb63c8cd144978b6b7ce58',
-  isDebtIssuance: true,
+  traderPeripheralAddress: '0xbbCA2AcBd87Ce7A5e01fb56914d41F6a7e5C5A56',
+  isDebtIssuance: false,
   basketAmountInWei: '',
   basketAddress: '0xE15A66b7B8e385CAa6F69FD0d55984B96D7263CF',
 }

@@ -24,7 +24,7 @@ async function main(quantity, basketAddress, tokenAddress, operation) {
   archTokens[basket].basketAmountInWei = qty.toString()
   archTokens[basket].tokenAddress = token
   const jwt = await generateJwt(archTokens[basket])
-  const baseUrl = "https://dev-api.archfinance.io/basket-issuance/"
+  const baseUrl = "https://api.archfinance.io/basket-issuance/"
   const opType = opt ? "issuance" : "redemption"
   const quoteUrl = `${baseUrl}${opType}-components?${qs.stringify(
     archTokens[basket]
