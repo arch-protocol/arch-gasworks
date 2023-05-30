@@ -249,6 +249,58 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         );
     }
 
+    function redeemChamberWithPermit(
+        PermitData calldata permit,
+        RedeemChamberData calldata redeemChamberData,
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
+        bool toNative
+    ) external {
+        if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
+        if (!tokens[address(redeemChamberData._chamber)]) {
+            revert InvalidToken(address(redeemChamberData._chamber));
+        }
+
+        IERC20Permit permitChamber = IERC20Permit(address(redeemChamberData._chamber));
+        permitChamber.safePermit(
+            permit._owner,
+            permit._spender,
+            permit._value,
+            permit._deadline,
+            permit._v,
+            permit._r,
+            permit._s
+        );
+
+        ERC20 chamber = ERC20(permit._tokenContract);
+        chamber.safeTransferFrom(permit._owner, address(this), permit._amount);
+        chamber.safeApprove(address(tradeIssuer), redeemChamberData._redeemAmount);
+
+        tradeIssuer.redeemChamberToToken(
+            contractCallInstructions,
+            redeemChamberData._chamber,
+            redeemChamberData._issuerWizard,
+            redeemChamberData._baseToken,
+            redeemChamberData._minReceiveAmount,
+            redeemChamberData._redeemAmount
+        );
+
+        ERC20 baseToken = ERC20(address(redeemChamberData._baseToken));
+        uint256 baseTokenBalance = baseToken.balanceOf(address(this));
+        if (toNative) {
+            WETH(payable(address(baseToken))).withdraw(baseTokenBalance);
+            payable(permit._owner).sendValue(baseTokenBalance);
+        } else {
+            baseToken.safeTransfer(permit._owner, baseToken.balanceOf(address(this)));
+        }
+
+        emit RedeemWithPermit(
+            address(redeemChamberData._chamber),
+            redeemChamberData._redeemAmount,
+            address(baseToken),
+            baseTokenBalance
+        );
+    }
+
     /**
      * Swaps an exact amount of SetTokens in 0x for a given amount of ERC20 tokens.
      * Using a permit for the ERC20 token transfer (through Permit2)
