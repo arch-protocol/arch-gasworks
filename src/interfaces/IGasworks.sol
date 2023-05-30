@@ -140,6 +140,10 @@ interface IGasworks {
         address tokenMinted, uint256 amountMinted, address tokenPaid, uint256 amountPaid
     );
 
+    event RedeemWithPermit(
+        address tokenRedeemed, uint256 amountRedeemed, address tokenBought, uint256 amountBought
+    );
+
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -170,6 +174,13 @@ interface IGasworks {
         PermitData calldata permit,
         MintChamberData calldata mintChamberData,
         ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+    ) external;
+
+    function redeemChamberWithPermit(
+        PermitData calldata permit,
+        RedeemChamberData calldata redeemChamberData,
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
+        bool toNative
     ) external;
 
     function swapWithPermit2(
