@@ -7,6 +7,8 @@ This repository contains the smart contracts for the Gasless Swaps using Permit 
 
 In order to deploy this code to a local testnet, you should run npm install and forge install, so the appropriate libraries are available. Then you can run the deploy script against a local testnet.
 
+Run `git submodule init` and `git submodule update` on the first run.
+
 
 ## Contract Address 
 
