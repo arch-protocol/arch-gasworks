@@ -38,6 +38,4 @@ const archTokens = {
   "0xAfb6E8331355faE99C8E8953bB4c6Dc5d11E9F3c": AAGGTokenParams,
 }
 
-module.exports = {
-  archTokens
-}
+export {archTokens};
