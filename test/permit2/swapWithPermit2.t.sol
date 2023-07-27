@@ -55,9 +55,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
         ownerPrivateKey = 0xA11CE;
         owner = vm.addr(ownerPrivateKey);
-
-        vm.prank(0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245);
-        USDC.safeTransfer(owner, 1e6);
+        
+        deal(address(USDC), owner, 1e6);
 
         vm.prank(owner);
         USDC.approve(permit2, 1e6);
@@ -186,8 +185,11 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      * [SUCCESS] Should make a success swap with permit2
      */
     function testSwapWithPermit2() public {
+        uint256 currentNonce = USDC.nonces(owner);
+        // string memory nonce = USDC.name;
+
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(USDC), 0, 1e6);
+            defaultERC20PermitTransfer(address(USDC), currentNonce, 1e6);
         bytes memory signature = getSignature(
             permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
