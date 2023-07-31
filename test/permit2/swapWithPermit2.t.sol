@@ -37,6 +37,12 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     bytes32 internal domainSeparator;
     address internal permit2;
 
+    bytes internal constant PERMIT_WITNESS_TRANSFER_FROM_TYPE = "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
+    bytes internal constant SWAP_DATA_TYPE = "SwapData(address buyToken,address spender,address swapTarget,bytes swapCallData,uint256 swapValue,uint256 buyAmount)";
+    bytes internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
+    bytes internal constant PERMIT2_SWAP_DATA_TYPE = abi.encodePacked("SwapData witness)", SWAP_DATA_TYPE, TOKEN_PERMISSIONS_TYPE);
+
+
     /*//////////////////////////////////////////////////////////////
                               SET UP
     //////////////////////////////////////////////////////////////*/
@@ -185,14 +191,64 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      * [SUCCESS] Should make a success swap with permit2
      */
     function testSwapWithPermit2() public {
+        
+        // bytes32 constant NAME_HASH = keccak256("Permit2");
+        // bytes32 constant TYPE_HASH = keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
+        // bytes32 constant TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
+
         uint256 currentNonce = USDC.nonces(owner);
         // string memory nonce = USDC.name;
 
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(USDC), currentNonce, 1e6);
-        bytes memory signature = getSignature(
-            permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
-        );
+        ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({token: address(USDC), amount: 1e6}),
+            nonce: currentNonce,
+            deadline: block.timestamp + 100
+        });
+
+        // bytes memory concatenatedHashedQuotes;
+        // for (uint256 i = 0; i < swap.swapCallData.length;) {
+        //   concatenatedHashedQuotes = bytes.concat(concatenatedHashedQuotes, keccak256(swap.swapCallData[i]));
+        //   unchecked {
+        //     ++i;
+        //   }
+        // }
+
+        bytes32 witness = keccak256(abi.encode(
+          keccak256(abi.encodePacked(SWAP_DATA_TYPE)),
+          swapData.buyToken,
+          swapData.spender,
+          swapData.swapTarget,
+          keccak256(swapData.swapCallData),
+          swapData.swapValue,
+          swapData.buyAmount
+        ));
+        // bytes32 domainSeparator = keccak256(abi.encode(TYPE_HASH, NAME_HASH, block.chainid, address(USDC)));
+        bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
+        bytes32 msgHash = keccak256(abi.encodePacked(
+            "\x19\x01",
+            domainSeparator,
+            keccak256(
+                abi.encode(
+                    keccak256(abi.encodePacked(PERMIT_WITNESS_TRANSFER_FROM_TYPE, PERMIT2_SWAP_DATA_TYPE)),
+                    tokenPermissions,
+                    address(gasworks),
+                    permit.nonce,
+                    permit.deadline,
+                    witness
+                )
+            )
+        ));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        
+
+        
+        // bytes memory signature = getSignature(
+        //     permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
+        // );
 
         gasworks.swapWithPermit2(permit, owner, signature, swapData);
 
@@ -205,7 +261,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /**
      * [SUCCESS] Should make a success swap to native MATIC with permit2
      */
-    function testSwapWithPermit2ToNativeMATIC() public {
+    function testSwapWToNativeMATICithPermit2() public {
         string[] memory inputs = new string[](4);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-quote.js";
