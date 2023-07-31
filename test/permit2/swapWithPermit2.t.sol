@@ -197,7 +197,6 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         // bytes32 constant TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
 
         uint256 currentNonce = USDC.nonces(owner);
-        // string memory nonce = USDC.name;
 
         ISignatureTransfer.PermitTransferFrom memory permit =
         ISignatureTransfer.PermitTransferFrom({
