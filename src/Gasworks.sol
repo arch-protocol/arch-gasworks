@@ -66,11 +66,6 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     ISignatureTransfer public immutable signatureTransfer;
     ITradeIssuerV2 public immutable tradeIssuer;
 
-    bytes private constant SWAP_DATA_TYPE = "SwapData(address buyToken,address spender,address swapTarget,bytes swapCallData,uint256 swapValue,uint256 buyAmount)";
-    bytes private constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
-    string internal constant PERMIT2_SWAP_DATA_TYPE = string(abi.encodePacked("SwapData witness)", SWAP_DATA_TYPE, TOKEN_PERMISSIONS_TYPE));
-    ///
-    
     string private constant SWAPDATA_WITNESS_TYPE_STRING =
         "SwapData witness)SwapData(address buyToken,address spender,address payable swapTarget, bytes swapCallData,uint256 swapValue,uint256 buyAmount)TokenPermissions(address token,uint256 amount)";
 
@@ -275,23 +270,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         ISignatureTransfer.SignatureTransferDetails memory transferDetails = ISignatureTransfer
             .SignatureTransferDetails({ to: address(this), requestedAmount: permit2.permitted.amount });
 
-        bytes32 witness = keccak256(abi.encode(
-          keccak256(abi.encodePacked(SWAP_DATA_TYPE)),
-          swapData.buyToken,
-          swapData.spender,
-          swapData.swapTarget,
-          keccak256(swapData.swapCallData),
-          swapData.swapValue,
-          swapData.buyAmount
-        ));
-
-        signatureTransfer.permitWitnessTransferFrom(
-          permit2,
-          transferDetails,
-          owner,
-          witness,
-          PERMIT2_SWAP_DATA_TYPE,
-          signature);
+        signatureTransfer.permitTransferFrom(permit2, transferDetails, owner, signature);
 
         _fillQuoteInternal(
             swapData, transferDetails.requestedAmount, owner, ERC20(permit2.permitted.token)
