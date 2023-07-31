@@ -4,7 +4,6 @@ pragma solidity ^0.8.17.0;
 import { Test } from "forge-std/Test.sol";
 import { Gasworks } from "src/Gasworks.sol";
 import { IGasworks } from "src/interfaces/IGasworks.sol";
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Conversor } from "test/utils/HexUtils.sol";
@@ -38,7 +37,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     bytes32 internal domainSeparator;
     address internal permit2;
     bytes internal res;
-    uint256 internal amountToMint = 100e18;
+    uint256 internal amountToMint = 10e18;
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
@@ -66,7 +65,8 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         inputs[5] = Conversor.iToHex(abi.encode(true));
         res = vm.ffi(inputs);
 
-        deal(address(USDC), owner, 1500e6);
+        vm.prank(0x0A59649758aa4d66E25f08Dd01271e891fe52199);
+        USDC.safeTransfer(owner, 150e6);
 
         vm.prank(owner);
         USDC.approve(permit2, type(uint256).max);
@@ -92,9 +92,8 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToMint
         );
 
-        uint256 currentNonce = ERC20(address(USDC)).nonces(owner);
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(USDC), currentNonce, _maxPayAmount);
+            defaultERC20PermitTransfer(address(USDC), 0, _maxPayAmount);
         bytes memory signature = getSignature(
             permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
@@ -123,9 +122,8 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToMint
         );
 
-        uint256 currentNonce = ERC20(address(USDC)).nonces(owner);
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(USDC), currentNonce, _maxPayAmount);
+            defaultERC20PermitTransfer(address(USDC), 0, _maxPayAmount);
         bytes memory signature = getSignature(
             permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
@@ -156,9 +154,8 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToMint
         );
 
-        uint256 currentNonce = ERC20(address(USDC)).nonces(owner);
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(USDC), currentNonce, _maxPayAmount);
+            defaultERC20PermitTransfer(address(USDC), 0, _maxPayAmount);
         permit.deadline = 2 ** 255 - 1;
         bytes memory signature = getSignature(
             permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
@@ -190,9 +187,8 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
 
         _contractCallInstructions[0]._callData = bytes("bad data");
 
-        uint256 currentNonce = ERC20(address(USDC)).nonces(owner);
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(USDC), currentNonce, _maxPayAmount);
+            defaultERC20PermitTransfer(address(USDC), 0, _maxPayAmount);
         bytes memory signature = getSignature(
             permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
@@ -219,9 +215,8 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToMint
         );
 
-        uint256 currentNonce = ERC20(address(USDC)).nonces(owner);
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063, currentNonce, 1e1);
+            defaultERC20PermitTransfer(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063, 0, 1e1);
         bytes memory signature = getSignature(
             permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
@@ -256,9 +251,8 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
             amountToMint
         );
 
-        uint256 currentNonce = ERC20(address(USDC)).nonces(owner);
         ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(USDC), currentNonce, _maxPayAmount);
+            defaultERC20PermitTransfer(address(USDC), 0, _maxPayAmount);
         bytes memory signature = getSignature(
             permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );

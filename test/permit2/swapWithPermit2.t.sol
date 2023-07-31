@@ -186,6 +186,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testSwapWithPermit2() public {
         uint256 currentNonce = USDC.nonces(owner);
+        // string memory nonce = USDC.name;
 
         ISignatureTransfer.PermitTransferFrom memory permit =
             defaultERC20PermitTransfer(address(USDC), currentNonce, 1e6);
