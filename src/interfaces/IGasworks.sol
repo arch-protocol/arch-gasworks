@@ -37,6 +37,7 @@ import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"
 import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
 import { IChamber } from "chambers/interfaces/IChamber.sol";
 import { IIssuerWizard } from "chambers/interfaces/IIssuerWizard.sol";
+import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
 
 interface IGasworks {
     /*//////////////////////////////////////////////////////////////
@@ -92,17 +93,29 @@ interface IGasworks {
         bool _isDebtIssuance;
     }
 
+    struct ContractCallInstruction {
+        address contractTarget;
+        address allowanceTarget;
+        address sellToken;
+        uint256 sellAmount;
+        address buyToken;
+        uint256 minBuyAmount;
+        bytes callData;
+    }
+
     struct MintChamberData {
         // The address of the chamber to mint
-        IChamber _chamber;
-        // The address of the issuer wizard that will mint the Chamber
-        IIssuerWizard _issuerWizard;
-        // The address of the token used to mint
-        IERC20 _baseToken;
-        // Maximum amount of baseToken to use to mint
-        uint256 _maxPayAmount;
+        address chamber;
         // The amount of Chamber to mint
-        uint256 _mintAmount;
+        uint256 chamberAmount;
+        // The address of the token used to mint
+        address inputToken;
+        // Maximum amount of baseToken to use to mint
+        uint256 inputTokenMaxAmount;
+        // The address of the issuer wizard that will mint the Chamber
+        address issuerWizard;
+        // Intructions to pass the TradeIssuer
+        ContractCallInstruction[] tradeIssuerCallInstructions;
     }
 
     struct RedeemChamberData {
@@ -166,11 +179,11 @@ interface IGasworks {
 
     function mintWithPermit(PermitData calldata permit, MintSetData calldata mintData) external;
 
-    function mintChamberWithPermit(
-        PermitData calldata permit,
-        MintChamberData calldata mintChamberData,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
-    ) external;
+    // function mintChamberWithPermit(
+    //     PermitData calldata permit,
+    //     MintChamberData calldata mintChamberData,
+    //     ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+    // ) external;
 
     function swapWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
@@ -183,8 +196,7 @@ interface IGasworks {
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        MintChamberData calldata mintChamberData,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+        MintChamberData calldata mintChamberData
     ) external;
 
     function redeemChamberWithPermit2(
