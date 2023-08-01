@@ -66,9 +66,14 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     ISignatureTransfer public immutable signatureTransfer;
     ITradeIssuerV2 public immutable tradeIssuer;
 
-    bytes private constant SWAP_DATA_TYPE = "SwapData(address buyToken,address spender,address swapTarget,bytes swapCallData,uint256 swapValue,uint256 buyAmount)";
     bytes private constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
+
+    bytes private constant SWAP_DATA_TYPE = "SwapData(address buyToken,address spender,address swapTarget,bytes swapCallData,uint256 swapValue,uint256 buyAmount)";
     string internal constant PERMIT2_SWAP_DATA_TYPE = string(abi.encodePacked("SwapData witness)", SWAP_DATA_TYPE, TOKEN_PERMISSIONS_TYPE));
+
+    bytes private constant CONTRACT_CALL_INSTRUCTION_TYPE = "ContractCallInstruction(address contractTarget, address allowanceTarget, address sellToken, address sellAmount, address buyToken, uint256 minBuyAmount, bytes callData)";
+    bytes private constant MINT_CHAMBER_DATA_TYPE = "MintChamberData(address chamber,uint256 chamberAmount,address inputToken,uint256 inputTokenMaxAmount,address issuerWizard,ContractCallInstruction[] tradeIssuerCallInstructions)";
+    string internal constant PERMIT2_MINT_CHAMBER_DATA_TYPE = string(abi.encodePacked("MintChamberData witness)", MINT_CHAMBER_DATA_TYPE, CONTRACT_CALL_INSTRUCTION_TYPE, TOKEN_PERMISSIONS_TYPE));
     ///
     
     string private constant SWAPDATA_WITNESS_TYPE_STRING =
@@ -195,64 +200,64 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         token.safeTransfer(owner, token.balanceOf(address(this)));
     }
 
-    /**
-     * Issues an exact amount of Chamber tokens for given amount of input ERC20 tokens.
-     * Using a safePermit for the ERC20 token transfer
-     * The excess amount of tokens is returned
-     *
-     * @param permit                        Permit data of the ERC20 token used (USDC)
-     * @param mintChamberData               Data of the issuance to perform
-     * @param contractCallInstructions      Calls required to get all chamber components
-     */
-    function mintChamberWithPermit(
-        PermitData calldata permit,
-        MintChamberData calldata mintChamberData,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
-    ) external {
-        if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
-        if (!tokens[address(mintChamberData._chamber)]) {
-            revert InvalidToken(address(mintChamberData._chamber));
-        }
+    // /**
+    //  * Issues an exact amount of Chamber tokens for given amount of input ERC20 tokens.
+    //  * Using a safePermit for the ERC20 token transfer
+    //  * The excess amount of tokens is returned
+    //  *
+    //  * @param permit                        Permit data of the ERC20 token used (USDC)
+    //  * @param mintChamberData               Data of the issuance to perform
+    //  * @param contractCallInstructions      Calls required to get all chamber components
+    //  */
+    // function mintChamberWithPermit(
+    //     PermitData calldata permit,
+    //     MintChamberData calldata mintChamberData,
+    //     ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+    // ) external {
+    //     if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
+    //     if (!tokens[address(mintChamberData._chamber)]) {
+    //         revert InvalidToken(address(mintChamberData._chamber));
+    //     }
 
-        IERC20Permit permitToken = IERC20Permit(permit._tokenContract);
-        permitToken.safePermit(
-            permit._owner,
-            permit._spender,
-            permit._value,
-            permit._deadline,
-            permit._v,
-            permit._r,
-            permit._s
-        );
+    //     IERC20Permit permitToken = IERC20Permit(permit._tokenContract);
+    //     permitToken.safePermit(
+    //         permit._owner,
+    //         permit._spender,
+    //         permit._value,
+    //         permit._deadline,
+    //         permit._v,
+    //         permit._r,
+    //         permit._s
+    //     );
 
-        ERC20 token = ERC20(permit._tokenContract);
-        token.safeTransferFrom(permit._owner, address(this), permit._amount);
-        uint256 beforeBalance = token.balanceOf(address(this));
-        token.safeApprove(address(tradeIssuer), mintChamberData._maxPayAmount);
+    //     ERC20 token = ERC20(permit._tokenContract);
+    //     token.safeTransferFrom(permit._owner, address(this), permit._amount);
+    //     uint256 beforeBalance = token.balanceOf(address(this));
+    //     token.safeApprove(address(tradeIssuer), mintChamberData._maxPayAmount);
 
-        tradeIssuer.mintChamberFromToken(
-            contractCallInstructions,
-            mintChamberData._chamber,
-            mintChamberData._issuerWizard,
-            mintChamberData._baseToken,
-            mintChamberData._maxPayAmount,
-            mintChamberData._mintAmount
-        );
+    //     tradeIssuer.mintChamberFromToken(
+    //         contractCallInstructions,
+    //         mintChamberData._chamber,
+    //         mintChamberData._issuerWizard,
+    //         mintChamberData._baseToken,
+    //         mintChamberData._maxPayAmount,
+    //         mintChamberData._mintAmount
+    //     );
 
-        uint256 totalPaid = beforeBalance - token.balanceOf(address(this));
+    //     uint256 totalPaid = beforeBalance - token.balanceOf(address(this));
 
-        ERC20(address(mintChamberData._chamber)).safeTransfer(
-            permit._owner, mintChamberData._mintAmount
-        );
-        token.safeTransfer(permit._owner, token.balanceOf(address(this)));
+    //     ERC20(address(mintChamberData._chamber)).safeTransfer(
+    //         permit._owner, mintChamberData._mintAmount
+    //     );
+    //     token.safeTransfer(permit._owner, token.balanceOf(address(this)));
 
-        emit MintWithPermit(
-            address(mintChamberData._chamber),
-            mintChamberData._mintAmount,
-            address(token),
-            totalPaid
-        );
-    }
+    //     emit MintWithPermit(
+    //         address(mintChamberData._chamber),
+    //         mintChamberData._mintAmount,
+    //         address(token),
+    //         totalPaid
+    //     );
+    // }
 
     /**
      * Swaps an exact amount of SetTokens in 0x for a given amount of ERC20 tokens.
@@ -306,48 +311,94 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param owner                         Owner of the tokens to transfer
      * @param signature                     Signature of the owner of the tokens
      * @param mintChamberData               Data of the chamber issuance to perform
-     * @param contractCallInstructions      Calls required to get all chamber components
      */
     function mintChamberWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        MintChamberData calldata mintChamberData,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+        MintChamberData calldata mintChamberData
     ) external {
         if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
-        if (!tokens[address(mintChamberData._chamber)]) {
-            revert InvalidToken(address(mintChamberData._chamber));
+        if (!tokens[address(mintChamberData.chamber)]) {
+            revert InvalidToken(address(mintChamberData.chamber));
         }
 
         ISignatureTransfer.SignatureTransferDetails memory transferDetails = ISignatureTransfer
             .SignatureTransferDetails({ to: address(this), requestedAmount: permit2.permitted.amount });
+        
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions = new ITradeIssuerV2.ContractCallInstruction[](mintChamberData.tradeIssuerCallInstructions.length);
+        bytes memory concatenatedHashedTradeIssuerCallInstructions;
+        for (uint256 i = 0; i < mintChamberData.tradeIssuerCallInstructions.length;) {
+          contractCallInstructions[i] = ITradeIssuerV2.ContractCallInstruction(
+            payable(mintChamberData.tradeIssuerCallInstructions[i].contractTarget),
+            mintChamberData.tradeIssuerCallInstructions[i].allowanceTarget,
+            IERC20(mintChamberData.tradeIssuerCallInstructions[i].sellToken),
+            mintChamberData.tradeIssuerCallInstructions[i].sellAmount,
+            IERC20(mintChamberData.tradeIssuerCallInstructions[i].buyToken),
+            mintChamberData.tradeIssuerCallInstructions[i].minBuyAmount,
+            mintChamberData.tradeIssuerCallInstructions[i].callData
+          );
+          
+          bytes32 hashedTradeIssuerCallInstruction = keccak256(abi.encode(
+            keccak256(abi.encodePacked(CONTRACT_CALL_INSTRUCTION_TYPE)),
+            mintChamberData.tradeIssuerCallInstructions[i].contractTarget,
+            mintChamberData.tradeIssuerCallInstructions[i].allowanceTarget,
+            mintChamberData.tradeIssuerCallInstructions[i].sellToken,
+            mintChamberData.tradeIssuerCallInstructions[i].sellAmount,
+            mintChamberData.tradeIssuerCallInstructions[i].buyToken,
+            mintChamberData.tradeIssuerCallInstructions[i].minBuyAmount,
+            keccak256(mintChamberData.tradeIssuerCallInstructions[i].callData)
+          ));
 
-        signatureTransfer.permitTransferFrom(permit2, transferDetails, owner, signature);
+          concatenatedHashedTradeIssuerCallInstructions = bytes.concat(concatenatedHashedTradeIssuerCallInstructions, hashedTradeIssuerCallInstruction);
+          unchecked {
+            ++i;
+          }
+        }
+
+        bytes32 witness = keccak256(abi.encode(
+          keccak256(abi.encodePacked(MINT_CHAMBER_DATA_TYPE)),
+          mintChamberData.chamber,
+          mintChamberData.chamberAmount,
+          mintChamberData.inputToken,
+          mintChamberData.inputTokenMaxAmount,
+          mintChamberData.issuerWizard,
+          keccak256(concatenatedHashedTradeIssuerCallInstructions)
+        ));
+
+
+        signatureTransfer.permitWitnessTransferFrom(
+          permit2,
+          transferDetails,
+          owner,
+          witness,
+          PERMIT2_MINT_CHAMBER_DATA_TYPE,
+          signature
+        );
 
         ERC20 token = ERC20(permit2.permitted.token);
         uint256 beforeBalance = token.balanceOf(address(this));
 
-        token.safeApprove(address(tradeIssuer), mintChamberData._maxPayAmount);
+        token.safeApprove(address(tradeIssuer), mintChamberData.inputTokenMaxAmount);
 
         tradeIssuer.mintChamberFromToken(
             contractCallInstructions,
-            mintChamberData._chamber,
-            mintChamberData._issuerWizard,
-            mintChamberData._baseToken,
-            mintChamberData._maxPayAmount,
-            mintChamberData._mintAmount
+            IChamber(mintChamberData.chamber),
+            IIssuerWizard(mintChamberData.issuerWizard),
+            IERC20(mintChamberData.inputToken),
+            mintChamberData.inputTokenMaxAmount,
+            mintChamberData.chamberAmount
         );
 
         uint256 totalPaid = beforeBalance - token.balanceOf(address(this));
 
-        ERC20(address(mintChamberData._chamber)).safeTransfer(owner, mintChamberData._mintAmount);
+        ERC20(mintChamberData.chamber).safeTransfer(owner, mintChamberData.chamberAmount);
         token.safeTransfer(owner, token.balanceOf(address(this)));
 
         emit MintWithPermit2(
-            address(mintChamberData._chamber),
-            mintChamberData._mintAmount,
-            address(token),
+            mintChamberData.chamber,
+            mintChamberData.chamberAmount,
+            permit2.permitted.token,
             totalPaid
         );
     }
