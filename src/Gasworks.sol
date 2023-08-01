@@ -72,25 +72,14 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     string internal constant PERMIT2_SWAP_DATA_TYPE = string(abi.encodePacked("SwapData witness)", SWAP_DATA_TYPE, TOKEN_PERMISSIONS_TYPE));
 
     bytes private constant CONTRACT_CALL_INSTRUCTION_TYPE = "ContractCallInstruction(address contractTarget, address allowanceTarget, address sellToken, address sellAmount, address buyToken, uint256 minBuyAmount, bytes callData)";
+    
     bytes private constant MINT_CHAMBER_DATA_TYPE = "MintChamberData(address chamber,uint256 chamberAmount,address inputToken,uint256 inputTokenMaxAmount,address issuerWizard,ContractCallInstruction[] tradeIssuerCallInstructions)";
     string internal constant PERMIT2_MINT_CHAMBER_DATA_TYPE = string(abi.encodePacked("MintChamberData witness)", MINT_CHAMBER_DATA_TYPE, CONTRACT_CALL_INSTRUCTION_TYPE, TOKEN_PERMISSIONS_TYPE));
+    
+    bytes private constant REDEEM_CHAMBER_DATA_TYPE = "RedeemChamberData(address chamber,uint256 chamberAmount,address outputToken,uint256 outputTokenMinAmount,address issuerWizard,ContractCallInstruction[] tradeIssuerCallInstructions)";
+    string internal constant PERMIT2_REDEEM_CHAMBER_DATA_TYPE = string(abi.encodePacked("RedeemChamberData witness)", REDEEM_CHAMBER_DATA_TYPE, CONTRACT_CALL_INSTRUCTION_TYPE, TOKEN_PERMISSIONS_TYPE));
     ///
     
-    string private constant SWAPDATA_WITNESS_TYPE_STRING =
-        "SwapData witness)SwapData(address buyToken,address spender,address payable swapTarget, bytes swapCallData,uint256 swapValue,uint256 buyAmount)TokenPermissions(address token,uint256 amount)";
-
-    string private constant MINT_SET_WITNESS_TYPE_STRING =
-        "MintData witness)MintData(ISetToken _setToken,uint256 _amountSetToken,uint256 _maxAmountInputToken, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)";
-
-    string private constant REDEEM_SET_WITNESS_TYPE_STRING =
-        "RedeemData witness)RedeemData(ISetToken _setToken,IERC20 _outputToken,uint256 _amountSetToken,uint256 _minOutputReceive, bytes[] _componentQuotes,address _issuanceModule,bool _isDebtIssuance)TokenPermissions(address token,uint256 amount)";
-
-    string private constant MINT_CHAMBER_WITNESS_TYPE_STRING =
-        "MintChamberData witness)MintChamberData(IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _maxPayAmount,uint256 _mintAmount)TokenPermissions(address token,uint256 amount)";
-
-    string private constant REDEEM_CHAMBER_WITNESS_TYPE_STRING =
-        "RedeemChamberData witness)RedeemChamberData(IChamber _chamber,IIssuerWizard _issuerWizard,IERC20 _baseToken,uint256 _minReceiveAmount,uint256 _redeemAmount)TokenPermissions(address token,uint256 amount)";
-
     WETH public constant WMATIC = WETH(payable(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270));
 
     mapping(address => bool) public tokens;
@@ -411,52 +400,98 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param owner                         Owner of the tokens to transfer
      * @param signature                     Signature of the owner of the tokens
      * @param redeemChamberData             Data of the chamber redeem to perform
-     * @param contractCallInstructions      Calls required to get all chamber components
+     * @param toNative                      True if output is native token
      */
     function redeemChamberWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
         RedeemChamberData calldata redeemChamberData,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
         bool toNative
     ) external {
         if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
-        if (!tokens[address(redeemChamberData._baseToken)]) {
-            revert InvalidToken(address(redeemChamberData._baseToken));
+        if (!tokens[address(redeemChamberData.outputToken)]) {
+            revert InvalidToken(address(redeemChamberData.outputToken));
         }
 
         ISignatureTransfer.SignatureTransferDetails memory transferDetails = ISignatureTransfer
             .SignatureTransferDetails({ to: address(this), requestedAmount: permit2.permitted.amount });
 
-        signatureTransfer.permitTransferFrom(permit2, transferDetails, owner, signature);
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions = new ITradeIssuerV2.ContractCallInstruction[](redeemChamberData.tradeIssuerCallInstructions.length);
+        bytes memory concatenatedHashedTradeIssuerCallInstructions;
+        for (uint256 i = 0; i < redeemChamberData.tradeIssuerCallInstructions.length;) {
+          contractCallInstructions[i] = ITradeIssuerV2.ContractCallInstruction(
+            payable(redeemChamberData.tradeIssuerCallInstructions[i].contractTarget),
+            redeemChamberData.tradeIssuerCallInstructions[i].allowanceTarget,
+            IERC20(redeemChamberData.tradeIssuerCallInstructions[i].sellToken),
+            redeemChamberData.tradeIssuerCallInstructions[i].sellAmount,
+            IERC20(redeemChamberData.tradeIssuerCallInstructions[i].buyToken),
+            redeemChamberData.tradeIssuerCallInstructions[i].minBuyAmount,
+            redeemChamberData.tradeIssuerCallInstructions[i].callData
+          );
+          
+          bytes32 hashedTradeIssuerCallInstruction = keccak256(abi.encode(
+            keccak256(abi.encodePacked(CONTRACT_CALL_INSTRUCTION_TYPE)),
+            redeemChamberData.tradeIssuerCallInstructions[i].contractTarget,
+            redeemChamberData.tradeIssuerCallInstructions[i].allowanceTarget,
+            redeemChamberData.tradeIssuerCallInstructions[i].sellToken,
+            redeemChamberData.tradeIssuerCallInstructions[i].sellAmount,
+            redeemChamberData.tradeIssuerCallInstructions[i].buyToken,
+            redeemChamberData.tradeIssuerCallInstructions[i].minBuyAmount,
+            keccak256(redeemChamberData.tradeIssuerCallInstructions[i].callData)
+          ));
+
+          concatenatedHashedTradeIssuerCallInstructions = bytes.concat(concatenatedHashedTradeIssuerCallInstructions, hashedTradeIssuerCallInstruction);
+          unchecked {
+            ++i;
+          }
+        }
+
+        bytes32 witness = keccak256(abi.encode(
+          keccak256(abi.encodePacked(REDEEM_CHAMBER_DATA_TYPE)),
+          redeemChamberData.chamber,
+          redeemChamberData.chamberAmount,
+          redeemChamberData.outputToken,
+          redeemChamberData.outputTokenMinAmount,
+          redeemChamberData.issuerWizard,
+          keccak256(concatenatedHashedTradeIssuerCallInstructions)
+        ));
+
+        signatureTransfer.permitWitnessTransferFrom(
+          permit2,
+          transferDetails,
+          owner,
+          witness,
+          PERMIT2_REDEEM_CHAMBER_DATA_TYPE,
+          signature
+        );
 
         ERC20 token = ERC20(permit2.permitted.token);
 
-        token.safeApprove(address(tradeIssuer), redeemChamberData._redeemAmount);
+        token.safeApprove(address(tradeIssuer), redeemChamberData.chamberAmount);
 
         tradeIssuer.redeemChamberToToken(
             contractCallInstructions,
-            redeemChamberData._chamber,
-            redeemChamberData._issuerWizard,
-            redeemChamberData._baseToken,
-            redeemChamberData._minReceiveAmount,
-            redeemChamberData._redeemAmount
+            IChamber(redeemChamberData.chamber),
+            IIssuerWizard(redeemChamberData.issuerWizard),
+            IERC20(redeemChamberData.outputToken),
+            redeemChamberData.outputTokenMinAmount,
+            redeemChamberData.chamberAmount
         );
-        ERC20 baseToken = ERC20(address(redeemChamberData._baseToken));
-        uint256 baseTokenBalance = baseToken.balanceOf(address(this));
+        ERC20 outputToken = ERC20(address(redeemChamberData.outputToken));
+        uint256 outputTokenBalance = outputToken.balanceOf(address(this));
         if (toNative) {
-            WETH(payable(address(baseToken))).withdraw(baseTokenBalance);
-            payable(owner).sendValue(baseTokenBalance);
+            WETH(payable(address(outputToken))).withdraw(outputTokenBalance);
+            payable(owner).sendValue(outputTokenBalance);
         } else {
-            baseToken.safeTransfer(owner, baseToken.balanceOf(address(this)));
+            outputToken.safeTransfer(owner, outputToken.balanceOf(address(this)));
         }
 
         emit RedeemWithPermit2(
-            address(redeemChamberData._chamber),
-            redeemChamberData._redeemAmount,
-            address(baseToken),
-            baseTokenBalance
+            address(redeemChamberData.chamber),
+            redeemChamberData.chamberAmount,
+            address(outputToken),
+            outputTokenBalance
         );
     }
 
