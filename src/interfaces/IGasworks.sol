@@ -41,7 +41,7 @@ import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuer
 
 interface IGasworks {
     /*//////////////////////////////////////////////////////////////
-                               STRUCTS
+                              STRUCTS
     //////////////////////////////////////////////////////////////*/
 
     struct PermitData {
@@ -120,19 +120,21 @@ interface IGasworks {
 
     struct RedeemChamberData {
         // The address of the chamber to redeem
-        IChamber _chamber;
-        // The address of the issuer wizard that will mint the Chamber
-        IIssuerWizard _issuerWizard;
-        // The address of the token used to mint
-        IERC20 _baseToken;
-        // Min amount of baseToken to receive after redemption
-        uint256 _minReceiveAmount;
+        address chamber;
         // The amount of Chamber to redeem
-        uint256 _redeemAmount;
+        uint256 chamberAmount;
+        // The address of the token used to mint
+        address outputToken;
+        // Min amount of baseToken to receive after redemption
+        uint256 outputTokenMinAmount;
+        // The address of the issuer wizard that will mint the Chamber
+        address issuerWizard;
+        // Intructions to pass the TradeIssuer
+        ContractCallInstruction[] tradeIssuerCallInstructions;
     }
 
     /*//////////////////////////////////////////////////////////////
-                                 EVENTS
+                                EVENTS
     //////////////////////////////////////////////////////////////*/
 
     event Withdrawn(address token, uint256 amount);
@@ -204,7 +206,6 @@ interface IGasworks {
         address owner,
         bytes calldata signature,
         RedeemChamberData calldata redeemChamberData,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
         bool toNative
     ) external;
 
