@@ -37,11 +37,12 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     bytes32 internal domainSeparator;
     address internal permit2;
 
-    bytes internal constant PERMIT_WITNESS_TRANSFER_FROM_TYPE = "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
-    bytes internal constant SWAP_DATA_TYPE = "SwapData(address buyToken,address spender,address swapTarget,bytes swapCallData,uint256 swapValue,uint256 buyAmount)";
+    //Permit2 witness types
     bytes internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
+    bytes internal constant PERMIT_WITNESS_TRANSFER_FROM_TYPE = "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
+    // Swap
+    bytes internal constant SWAP_DATA_TYPE = "SwapData(address buyToken,address spender,address swapTarget,bytes swapCallData,uint256 swapValue,uint256 buyAmount)";
     bytes internal constant PERMIT2_SWAP_DATA_TYPE = abi.encodePacked("SwapData witness)", SWAP_DATA_TYPE, TOKEN_PERMISSIONS_TYPE);
-
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
