@@ -14,7 +14,7 @@ async function generateJwt(payload) {
   return jwt;
 }
 
-const issuance = '0x0000000000000000000000000000000000000000000000000000000000000000';
+const issuance = '0x0000000000000000000000000000000000000000000000000000000000000001';
 
 async function main(quantity, basketAddress, tokenAddress, operation) {
   const qty = encoder.decode(["uint256"], quantity)[0]
