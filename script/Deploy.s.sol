@@ -4,8 +4,9 @@ pragma solidity ^0.8.13.0;
 import { Script } from "forge-std/Script.sol";
 import { Gasworks } from "src/Gasworks.sol";
 
-contract MyScript is Script {
+contract DeployGasworks is Script {
     function run() external {
+        vm.createSelectFork("polygon");
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
@@ -28,7 +29,8 @@ contract MyScript is Script {
         gasworks.setTokens(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270); // WMATIC
         gasworks.setTokens(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619); // WETH
 
-        gasworks.transferOwnership(0xe560EfD37a77486aa0ecAed4203365BDe5363dbB); // Arch Safe Address
+        gasworks.transferOwnership(0x2f91966dF1722691DA79a69Be6435378A1c3b3Bf); // Arch-dev-Max wallet
+        // gasworks.transferOwnership(0xe560EfD37a77486aa0ecAed4203365BDe5363dbB); // Arch Safe Address
 
         vm.stopBroadcast();
     }
