@@ -28,7 +28,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
 
     bytes32 internal constant TOKEN_PERMISSIONS_TYPEHASH =
         keccak256("TokenPermissions(address token,uint256 amount)");
-    
+
     address internal constant usdcAddressOnEthereum = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address internal constant addyAddressOnEthereum = 0xE15A66b7B8e385CAa6F69FD0d55984B96D7263CF;
     address internal constant issuerWizardAddress = 0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449;
@@ -38,7 +38,6 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     IERC20 internal constant USDC = IERC20(usdcAddressOnEthereum);
     IChamber internal constant ADDY = IChamber(addyAddressOnEthereum);
     WETH public constant WRAPPED_ETH = WETH(payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2));
-    
 
     uint256 internal ownerPrivateKey;
     address internal owner;
@@ -48,13 +47,23 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     uint256 internal amountToRedeem = 10e18;
 
     //Permit2 witness types
-    bytes internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
-    bytes internal constant PERMIT_WITNESS_TRANSFER_FROM_TYPE = "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
+    bytes internal constant TOKEN_PERMISSIONS_TYPE =
+        "TokenPermissions(address token,uint256 amount)";
+    bytes internal constant PERMIT_WITNESS_TRANSFER_FROM_TYPE =
+        "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
     // RedeemChamber
-    bytes private constant CONTRACT_CALL_INSTRUCTION_TYPE = "ContractCallInstruction(address contractTarget, address allowanceTarget, address sellToken, address sellAmount, address buyToken, uint256 minBuyAmount, bytes callData)";
-    bytes private constant REDEEM_CHAMBER_DATA_TYPE = "RedeemChamberData(address chamber,uint256 chamberAmount,address outputToken,uint256 outputTokenMinAmount,address issuerWizard,ContractCallInstruction[] tradeIssuerCallInstructions)";
-    string internal constant PERMIT2_REDEEM_CHAMBER_DATA_TYPE = string(abi.encodePacked("RedeemChamberData witness)", REDEEM_CHAMBER_DATA_TYPE, CONTRACT_CALL_INSTRUCTION_TYPE, TOKEN_PERMISSIONS_TYPE));
-   
+    bytes private constant SWAP_CALL_INSTRUCTION_TYPE =
+        "SwapCallInstruction(address sellToken,uint256 sellAmount,address buyToken,uint256 minBuyAmount,address swapTarget,address swapAllowanceTarget,bytes swapCallData)";
+    bytes private constant REDEEM_DATA_TYPE =
+        "RedeemData(address archToken,uint256 archTokenAmount,address outputToken,uint256 outputTokenMinAmount,address issuer,SwapCallInstruction[] swapCallInstructions)";
+    string internal constant PERMIT2_REDEEM_DATA_TYPE = string(
+        abi.encodePacked(
+            "RedeemData witness)",
+            REDEEM_DATA_TYPE,
+            SWAP_CALL_INSTRUCTION_TYPE,
+            TOKEN_PERMISSIONS_TYPE
+        )
+    );
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
@@ -110,7 +119,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
     //         uint256 _minOutputReceive
     //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     redeemData = IGasworks.RedeemChamberData(
+    //     redeemData = IGasworks.RedeemData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         USDC,
@@ -140,7 +149,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
     //         uint256 _minOutputReceive
     //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     redeemData = IGasworks.RedeemChamberData(
+    //     redeemData = IGasworks.RedeemData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         USDC,
@@ -172,7 +181,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
     //         uint256 _minOutputReceive
     //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     redeemData = IGasworks.RedeemChamberData(
+    //     redeemData = IGasworks.RedeemData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         USDC,
@@ -203,7 +212,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
     //         uint256 _minOutputReceive
     //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     redeemData = IGasworks.RedeemChamberData(
+    //     redeemData = IGasworks.RedeemData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         USDC,
@@ -217,7 +226,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
     //     );
 
-    //     redeemData = IGasworks.RedeemChamberData(
+    //     redeemData = IGasworks.RedeemData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         USDC,
@@ -239,7 +248,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
     //         uint256 _minOutputReceive
     //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     redeemData = IGasworks.RedeemChamberData(
+    //     redeemData = IGasworks.RedeemData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         IERC20(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063),
@@ -271,106 +280,115 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
      * [SUCCESS] Should make a redeem of ADDY to USDC with permit2
      */
     function testRedeemChamberWithPermit2() public {
-      IGasworks.RedeemChamberData memory redeemChamberData;
+        IGasworks.RedeemData memory redeemData;
 
         (
             ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
             uint256 _minOutputReceive
         ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
 
-        IGasworks.ContractCallInstruction[] memory tradeIssuerCallInstructions = new IGasworks.ContractCallInstruction[](_contractCallInstructions.length);
+        IGasworks.SwapCallInstruction[] memory swapCallInstructions =
+            new IGasworks.SwapCallInstruction[](_contractCallInstructions.length);
 
         for (uint256 i = 0; i < _contractCallInstructions.length;) {
-          IGasworks.ContractCallInstruction memory instruction = IGasworks.ContractCallInstruction(
-            _contractCallInstructions[i]._target,
-            _contractCallInstructions[i]._allowanceTarget,
-            address(_contractCallInstructions[i]._sellToken),
-            _contractCallInstructions[i]._sellAmount,
-            address(_contractCallInstructions[i]._buyToken),
-            _contractCallInstructions[i]._minBuyAmount,
-            _contractCallInstructions[i]._callData
-          );
+            IGasworks.SwapCallInstruction memory instruction = IGasworks.SwapCallInstruction(
+                address(_contractCallInstructions[i]._sellToken),
+                _contractCallInstructions[i]._sellAmount,
+                address(_contractCallInstructions[i]._buyToken),
+                _contractCallInstructions[i]._minBuyAmount,
+                _contractCallInstructions[i]._target,
+                _contractCallInstructions[i]._allowanceTarget,
+                _contractCallInstructions[i]._callData
+            );
 
-          tradeIssuerCallInstructions[i] = instruction;
-          unchecked {
-            ++i;
-          }
+            swapCallInstructions[i] = instruction;
+            unchecked {
+                ++i;
+            }
         }
 
-        redeemChamberData = IGasworks.RedeemChamberData(
+        redeemData = IGasworks.RedeemData(
             addyAddressOnEthereum,
             amountToRedeem,
             usdcAddressOnEthereum,
             _minOutputReceive,
             issuerWizardAddress,
-            tradeIssuerCallInstructions
+            swapCallInstructions
         );
 
         uint256 currentNonce = ERC20(address(USDC)).nonces(owner);
 
-        ISignatureTransfer.PermitTransferFrom memory permit =
-        ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({token: addyAddressOnEthereum, amount: amountToRedeem}),
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: addyAddressOnEthereum,
+                amount: amountToRedeem
+            }),
             nonce: currentNonce,
             deadline: block.timestamp + 100
         });
 
-        bytes memory concatenatedHashedTradeIssuerCallInstructions;
-        for (uint256 i = 0; i < redeemChamberData.tradeIssuerCallInstructions.length;) {
-          bytes32 hashedTradeIssuerCallInstruction = keccak256(abi.encode(
-            keccak256(abi.encodePacked(CONTRACT_CALL_INSTRUCTION_TYPE)),
-            redeemChamberData.tradeIssuerCallInstructions[i].contractTarget,
-            redeemChamberData.tradeIssuerCallInstructions[i].allowanceTarget,
-            redeemChamberData.tradeIssuerCallInstructions[i].sellToken,
-            redeemChamberData.tradeIssuerCallInstructions[i].sellAmount,
-            redeemChamberData.tradeIssuerCallInstructions[i].buyToken,
-            redeemChamberData.tradeIssuerCallInstructions[i].minBuyAmount,
-            keccak256(redeemChamberData.tradeIssuerCallInstructions[i].callData)
-          ));
+        bytes memory concatenatedHashedSwapCallInstructions;
+        for (uint256 i = 0; i < redeemData.swapCallInstructions.length;) {
+            bytes32 hashedSwapCallInstruction = keccak256(
+                abi.encode(
+                    keccak256(abi.encodePacked(SWAP_CALL_INSTRUCTION_TYPE)),
+                    redeemData.swapCallInstructions[i].sellToken,
+                    redeemData.swapCallInstructions[i].sellAmount,
+                    redeemData.swapCallInstructions[i].buyToken,
+                    redeemData.swapCallInstructions[i].minBuyAmount,
+                    redeemData.swapCallInstructions[i].swapTarget,
+                    redeemData.swapCallInstructions[i].swapAllowanceTarget,
+                    keccak256(redeemData.swapCallInstructions[i].swapCallData)
+                )
+            );
 
-          concatenatedHashedTradeIssuerCallInstructions = bytes.concat(concatenatedHashedTradeIssuerCallInstructions, hashedTradeIssuerCallInstruction);
-          unchecked {
-            ++i;
-          }
+            concatenatedHashedSwapCallInstructions =
+                bytes.concat(concatenatedHashedSwapCallInstructions, hashedSwapCallInstruction);
+            unchecked {
+                ++i;
+            }
         }
 
-        bytes32 witness = keccak256(abi.encode(
-          keccak256(abi.encodePacked(REDEEM_CHAMBER_DATA_TYPE)),
-          redeemChamberData.chamber,
-          redeemChamberData.chamberAmount,
-          redeemChamberData.outputToken,
-          redeemChamberData.outputTokenMinAmount,
-          redeemChamberData.issuerWizard,
-          keccak256(concatenatedHashedTradeIssuerCallInstructions)
-        ));
+        bytes32 witness = keccak256(
+            abi.encode(
+                keccak256(abi.encodePacked(REDEEM_DATA_TYPE)),
+                redeemData.archToken,
+                redeemData.archTokenAmount,
+                redeemData.outputToken,
+                redeemData.outputTokenMinAmount,
+                redeemData.issuer,
+                keccak256(concatenatedHashedSwapCallInstructions)
+            )
+        );
 
         // bytes32 domainSeparator = keccak256(abi.encode(TYPE_HASH, NAME_HASH, block.chainid, usdcAddressOnEthereum));
-        bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
-        bytes32 msgHash = keccak256(abi.encodePacked(
-            "\x19\x01",
-            domainSeparator,
-            keccak256(
-                abi.encode(
-                    keccak256(abi.encodePacked(PERMIT_WITNESS_TRANSFER_FROM_TYPE, PERMIT2_REDEEM_CHAMBER_DATA_TYPE)),
-                    tokenPermissions,
-                    address(gasworks),
-                    permit.nonce,
-                    permit.deadline,
-                    witness
+        bytes32 tokenPermissions =
+            keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                domainSeparator,
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            abi.encodePacked(
+                                PERMIT_WITNESS_TRANSFER_FROM_TYPE, PERMIT2_REDEEM_DATA_TYPE
+                            )
+                        ),
+                        tokenPermissions,
+                        address(gasworks),
+                        permit.nonce,
+                        permit.deadline,
+                        witness
+                    )
                 )
             )
-        ));
+        );
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, msgHash);
         bytes memory signature = bytes.concat(r, s, bytes1(v));
 
-        gasworks.redeemChamberWithPermit2(
-            permit,
-            owner,
-            signature,
-            redeemChamberData,
-            false
-        );
+        gasworks.redeemWithPermit2(permit, owner, signature, redeemData, false);
         assertGe(USDC.balanceOf(owner), _minOutputReceive);
     }
 
@@ -390,7 +408,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
     //         uint256 _minOutputReceive
     //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     redeemData = IGasworks.RedeemChamberData(
+    //     redeemData = IGasworks.RedeemData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         IERC20(address(WRAPPED_ETH)),
@@ -427,7 +445,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
     //         uint256 _minOutputReceive
     //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     redeemData = IGasworks.RedeemChamberData(
+    //     redeemData = IGasworks.RedeemData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         IERC20(address(WRAPPED_ETH)),
