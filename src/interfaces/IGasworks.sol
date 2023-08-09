@@ -44,93 +44,59 @@ interface IGasworks {
                               STRUCTS
     //////////////////////////////////////////////////////////////*/
 
-    struct PermitData {
-        // The address of the token to which we want to sign a permit for
-        address _tokenContract;
-        // The amount of tokens we want to send to the contract
-        uint256 _amount;
-        // The owner of the tokens
-        address _owner;
-        // The contract that will spend our tokens
-        address _spender;
-        // The amount of the token we want to permit the contract to use
-        uint256 _value;
-        // The date until which the permit is accepted
-        uint256 _deadline;
-        // The signature of the owner
-        uint8 _v;
-        bytes32 _r;
-        bytes32 _s;
-    }
-
     struct SwapData {
         // The `buyTokenAddress` field from the API response.
         address buyToken;
-        // The `allowanceTarget` field from the API response.
-        address spender;
-        // The `to` field from the API response.
-        address payable swapTarget;
-        // The `data` field from the API response.
-        bytes swapCallData;
-        // The `value` field from the API response.
-        uint256 swapValue;
         // The `buyAmount` field from the API response.
         uint256 buyAmount;
+        // The `value` field from the API response.
+        uint256 nativeTokenAmount;
+        // The `to` field from the API response.
+        address payable swapTarget;
+        // The `allowanceTarget` field from the API response.
+        address swapAllowanceTarget;
+        // The `data` field from the API response.
+        bytes swapCallData;
     }
 
-    struct MintSetData {
-        // Address of the SetToken to be issued
-        ISetToken _setToken;
-        // Amount of SetTokens to issue
-        uint256 _amountSetToken;
-        // Maximum amount of input tokens to be used to issue SetTokens.
-        uint256 _maxAmountInputToken;
-        // The encoded 0x transactions to execute
-        bytes[] _componentQuotes;
-        // The address of the issuance module for the SetToken
-        address _issuanceModule;
-        // Is the SetToken using debt issuance?
-        bool _isDebtIssuance;
-    }
-
-    struct ContractCallInstruction {
-        address contractTarget;
-        address allowanceTarget;
+    struct SwapCallInstruction {
         address sellToken;
         uint256 sellAmount;
         address buyToken;
         uint256 minBuyAmount;
-        bytes callData;
+        address swapTarget;
+        address swapAllowanceTarget;
+        bytes swapCallData;
     }
 
-    struct MintChamberData {
+    struct MintData {
         // The address of the chamber to mint
-        address chamber;
+        address archToken;
         // The amount of Chamber to mint
-        uint256 chamberAmount;
+        uint256 archTokenAmount;
         // The address of the token used to mint
         address inputToken;
         // Maximum amount of baseToken to use to mint
         uint256 inputTokenMaxAmount;
         // The address of the issuer wizard that will mint the Chamber
-        address issuerWizard;
+        address issuer;
         // Intructions to pass the TradeIssuer
-        ContractCallInstruction[] tradeIssuerCallInstructions;
+        SwapCallInstruction[] swapCallInstructions;
     }
 
-    struct RedeemChamberData {
+    struct RedeemData {
         // The address of the chamber to redeem
-        address chamber;
+        address archToken;
         // The amount of Chamber to redeem
-        uint256 chamberAmount;
+        uint256 archTokenAmount;
         // The address of the token used to mint
         address outputToken;
         // Min amount of baseToken to receive after redemption
         uint256 outputTokenMinAmount;
         // The address of the issuer wizard that will mint the Chamber
-        address issuerWizard;
+        address issuer;
         // Intructions to pass the TradeIssuer
-        ContractCallInstruction[] tradeIssuerCallInstructions;
+        SwapCallInstruction[] swapCallInstructions;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -151,10 +117,6 @@ interface IGasworks {
         address tokenRedeemed, uint256 amountRedeemed, address tokenBought, uint256 amountBought
     );
 
-    event MintWithPermit(
-        address tokenMinted, uint256 amountMinted, address tokenPaid, uint256 amountPaid
-    );
-
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -173,19 +135,7 @@ interface IGasworks {
                                 FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    function setTrustedForwarder(address forwarder) external;
-
     function setTokens(address token) external;
-
-    function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external;
-
-    function mintWithPermit(PermitData calldata permit, MintSetData calldata mintData) external;
-
-    // function mintChamberWithPermit(
-    //     PermitData calldata permit,
-    //     MintChamberData calldata mintChamberData,
-    //     ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
-    // ) external;
 
     function swapWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
@@ -194,18 +144,18 @@ interface IGasworks {
         SwapData calldata swapData
     ) external;
 
-    function mintChamberWithPermit2(
+    function mintWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        MintChamberData calldata mintChamberData
+        MintData calldata mintData
     ) external;
 
-    function redeemChamberWithPermit2(
+    function redeemWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        RedeemChamberData calldata redeemChamberData,
+        RedeemData calldata redeemData,
         bool toNative
     ) external;
 
