@@ -40,22 +40,29 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
 
     uint256 internal ownerPrivateKey;
     address internal owner;
-    
+
     bytes32 internal domainSeparator;
     address internal permit2;
     // bytes internal res;
     uint256 internal amountToMint = 10e18;
     bytes res;
-    
 
     //Permit2 witness types
-    bytes internal constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
-    bytes internal constant PERMIT_WITNESS_TRANSFER_FROM_TYPE = "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
+    bytes internal constant TOKEN_PERMISSIONS_TYPE =
+        "TokenPermissions(address token,uint256 amount)";
+    bytes internal constant PERMIT_WITNESS_TRANSFER_FROM_TYPE =
+        "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
     // MintChamber
-    bytes private constant CONTRACT_CALL_INSTRUCTION_TYPE = "ContractCallInstruction(address contractTarget, address allowanceTarget, address sellToken, address sellAmount, address buyToken, uint256 minBuyAmount, bytes callData)";
-    bytes private constant MINT_CHAMBER_DATA_TYPE = "MintChamberData(address chamber,uint256 chamberAmount,address inputToken,uint256 inputTokenMaxAmount,address issuerWizard,ContractCallInstruction[] tradeIssuerCallInstructions)";
-    string internal constant PERMIT2_MINT_CHAMBER_DATA_TYPE = string(abi.encodePacked("MintChamberData witness)", MINT_CHAMBER_DATA_TYPE, CONTRACT_CALL_INSTRUCTION_TYPE, TOKEN_PERMISSIONS_TYPE));
-    
+    bytes private constant SWAP_CALL_INSTRUCTION_TYPE =
+        "SwapCallInstruction(address sellToken,uint256 sellAmount,address buyToken,uint256 minBuyAmount,address swapTarget,address swapAllowanceTarget,bytes swapCallData)";
+
+    bytes private constant MINT_DATA_TYPE =
+        "MintData(address archToken,uint256 archTokenAmount,address inputToken,uint256 inputTokenMaxAmount,address issuer,SwapCallInstruction[] swapCallInstructions)";
+    string internal constant PERMIT2_MINT_DATA_TYPE = string(
+        abi.encodePacked(
+            "MintData witness)", MINT_DATA_TYPE, SWAP_CALL_INSTRUCTION_TYPE, TOKEN_PERMISSIONS_TYPE
+        )
+    );
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
@@ -99,7 +106,6 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
         vm.label(tradeIssuerV2OnEthereum, "TraderIssuerV2");
     }
 
-
     // /*//////////////////////////////////////////////////////////////
     //                           REVERT
     // //////////////////////////////////////////////////////////////*/
@@ -112,7 +118,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
     //         uint256 _maxPayAmount
     //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
+    //     mintData = IGasworks.MintData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         USDC,
@@ -143,7 +149,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
     //         uint256 _maxPayAmount
     //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
+    //     mintData = IGasworks.MintData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         USDC,
@@ -176,7 +182,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
     //         uint256 _maxPayAmount
     //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
+    //     mintData = IGasworks.MintData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         USDC,
@@ -208,7 +214,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
     //         uint256 _maxPayAmount
     //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
+    //     mintData = IGasworks.MintData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         USDC,
@@ -239,7 +245,7 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
     //         ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
     //         uint256 _maxPayAmount
     //     ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
-    //     mintData = IGasworks.MintChamberData(
+    //     mintData = IGasworks.MintData(
     //         ADDY,
     //         IIssuerWizard(0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449),
     //         USDC,
@@ -272,106 +278,115 @@ contract GaslessTest is Test, Permit2Utils, ChamberTestUtils, DeployPermit2 {
      * [SUCCESS] Should make a mint of ADDY with USDC using permit2
      */
     function testMintChamberWithPermit2() public {
-        IGasworks.MintChamberData memory mintChamberData;
+        IGasworks.MintData memory mintData;
 
         (
             ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
             uint256 _maxPayAmount
         ) = abi.decode(res, (ITradeIssuerV2.ContractCallInstruction[], uint256));
 
-        IGasworks.ContractCallInstruction[] memory tradeIssuerCallInstructions = new IGasworks.ContractCallInstruction[](_contractCallInstructions.length);
+        IGasworks.SwapCallInstruction[] memory swapCallInstructions =
+            new IGasworks.SwapCallInstruction[](_contractCallInstructions.length);
 
         for (uint256 i = 0; i < _contractCallInstructions.length;) {
-          IGasworks.ContractCallInstruction memory instruction = IGasworks.ContractCallInstruction(
-            _contractCallInstructions[i]._target,
-            _contractCallInstructions[i]._allowanceTarget,
-            address(_contractCallInstructions[i]._sellToken),
-            _contractCallInstructions[i]._sellAmount,
-            address(_contractCallInstructions[i]._buyToken),
-            _contractCallInstructions[i]._minBuyAmount,
-            _contractCallInstructions[i]._callData
-          );
+            IGasworks.SwapCallInstruction memory instruction = IGasworks.SwapCallInstruction(
+                address(_contractCallInstructions[i]._sellToken),
+                _contractCallInstructions[i]._sellAmount,
+                address(_contractCallInstructions[i]._buyToken),
+                _contractCallInstructions[i]._minBuyAmount,
+                _contractCallInstructions[i]._target,
+                _contractCallInstructions[i]._allowanceTarget,
+                _contractCallInstructions[i]._callData
+            );
 
-          tradeIssuerCallInstructions[i] = instruction;
-          unchecked {
-            ++i;
-          }
+            swapCallInstructions[i] = instruction;
+            unchecked {
+                ++i;
+            }
         }
 
-        mintChamberData = IGasworks.MintChamberData(
-          addyAdderssOnEthereum,
-          amountToMint,
-          usdcAddressOnEthereum,
-          _maxPayAmount,
-          address(issuerWizardAddress),
-          tradeIssuerCallInstructions
+        mintData = IGasworks.MintData(
+            addyAdderssOnEthereum,
+            amountToMint,
+            usdcAddressOnEthereum,
+            _maxPayAmount,
+            address(issuerWizardAddress),
+            swapCallInstructions
         );
-
 
         uint256 currentNonce = USDC.nonces(owner);
 
-        ISignatureTransfer.PermitTransferFrom memory permit =
-        ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({token: usdcAddressOnEthereum, amount: _maxPayAmount}),
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: usdcAddressOnEthereum,
+                amount: _maxPayAmount
+            }),
             nonce: currentNonce,
             deadline: block.timestamp + 100
         });
 
-        bytes memory concatenatedHashedTradeIssuerCallInstructions;
-        for (uint256 i = 0; i < mintChamberData.tradeIssuerCallInstructions.length;) {
-          bytes32 hashedTradeIssuerCallInstruction = keccak256(abi.encode(
-            keccak256(abi.encodePacked(CONTRACT_CALL_INSTRUCTION_TYPE)),
-            mintChamberData.tradeIssuerCallInstructions[i].contractTarget,
-            mintChamberData.tradeIssuerCallInstructions[i].allowanceTarget,
-            mintChamberData.tradeIssuerCallInstructions[i].sellToken,
-            mintChamberData.tradeIssuerCallInstructions[i].sellAmount,
-            mintChamberData.tradeIssuerCallInstructions[i].buyToken,
-            mintChamberData.tradeIssuerCallInstructions[i].minBuyAmount,
-            keccak256(mintChamberData.tradeIssuerCallInstructions[i].callData)
-          ));
+        bytes memory concatenatedHashedSwapCallInstructions;
+        for (uint256 i = 0; i < mintData.swapCallInstructions.length;) {
+            bytes32 hashedSwapCallInstruction = keccak256(
+                abi.encode(
+                    keccak256(abi.encodePacked(SWAP_CALL_INSTRUCTION_TYPE)),
+                    mintData.swapCallInstructions[i].sellToken,
+                    mintData.swapCallInstructions[i].sellAmount,
+                    mintData.swapCallInstructions[i].buyToken,
+                    mintData.swapCallInstructions[i].minBuyAmount,
+                    mintData.swapCallInstructions[i].swapTarget,
+                    mintData.swapCallInstructions[i].swapAllowanceTarget,
+                    keccak256(mintData.swapCallInstructions[i].swapCallData)
+                )
+            );
 
-          concatenatedHashedTradeIssuerCallInstructions = bytes.concat(concatenatedHashedTradeIssuerCallInstructions, hashedTradeIssuerCallInstruction);
-          unchecked {
-            ++i;
-          }
+            concatenatedHashedSwapCallInstructions =
+                bytes.concat(concatenatedHashedSwapCallInstructions, hashedSwapCallInstruction);
+            unchecked {
+                ++i;
+            }
         }
 
-        bytes32 witness = keccak256(abi.encode(
-          keccak256(abi.encodePacked(MINT_CHAMBER_DATA_TYPE)),
-          mintChamberData.chamber,
-          mintChamberData.chamberAmount,
-          mintChamberData.inputToken,
-          mintChamberData.inputTokenMaxAmount,
-          mintChamberData.issuerWizard,
-          keccak256(concatenatedHashedTradeIssuerCallInstructions)
-        ));
+        bytes32 witness = keccak256(
+            abi.encode(
+                keccak256(abi.encodePacked(MINT_DATA_TYPE)),
+                mintData.archToken,
+                mintData.archTokenAmount,
+                mintData.inputToken,
+                mintData.inputTokenMaxAmount,
+                mintData.issuer,
+                keccak256(concatenatedHashedSwapCallInstructions)
+            )
+        );
 
         // bytes32 domainSeparator = keccak256(abi.encode(TYPE_HASH, NAME_HASH, block.chainid, usdcAddressOnEthereum));
-        bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
-        bytes32 msgHash = keccak256(abi.encodePacked(
-            "\x19\x01",
-            domainSeparator,
-            keccak256(
-                abi.encode(
-                    keccak256(abi.encodePacked(PERMIT_WITNESS_TRANSFER_FROM_TYPE, PERMIT2_MINT_CHAMBER_DATA_TYPE)),
-                    tokenPermissions,
-                    address(gasworks),
-                    permit.nonce,
-                    permit.deadline,
-                    witness
+        bytes32 tokenPermissions =
+            keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                domainSeparator,
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            abi.encodePacked(
+                                PERMIT_WITNESS_TRANSFER_FROM_TYPE, PERMIT2_MINT_DATA_TYPE
+                            )
+                        ),
+                        tokenPermissions,
+                        address(gasworks),
+                        permit.nonce,
+                        permit.deadline,
+                        witness
+                    )
                 )
             )
-        ));
+        );
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, msgHash);
         bytes memory signature = bytes.concat(r, s, bytes1(v));
 
-        gasworks.mintChamberWithPermit2(
-            permit,
-            owner,
-            signature,
-            mintChamberData
-        );
+        gasworks.mintWithPermit2(permit, owner, signature, mintData);
 
         assertEq(IERC20(addyAdderssOnEthereum).balanceOf(owner), amountToMint);
     }
