@@ -28,7 +28,7 @@
  *      @@@((
  */
 
-pragma solidity ^0.8.17.0;
+pragma solidity ^0.8.21.0;
 
 import { ERC2771Recipient } from "gsn/ERC2771Recipient.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
@@ -69,13 +69,15 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     bytes private constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
 
     bytes private constant SWAP_DATA_TYPE =
-        "SwapData(address buyToken,uint256 buyAmount,uint256 nativeTokenAmount,address swapTarget,address swapAllowanceTarget,bytes swapCallData)";
+        "SwapData(address buyToken,uint256 buyAmount,uint256 nativeTokenAmount,address swapTarget,address swapAllowanceTarget,string swapCallData)";
+    bytes32 private constant SWAP_DATA_TYPE_HASH= keccak256(SWAP_DATA_TYPE);
+    
     string internal constant PERMIT2_SWAP_DATA_TYPE =
         string(abi.encodePacked("SwapData witness)", SWAP_DATA_TYPE, TOKEN_PERMISSIONS_TYPE));
 
     bytes private constant SWAP_CALL_INSTRUCTION_TYPE =
-        "SwapCallInstruction(address sellToken,uint256 sellAmount,address buyToken,uint256 minBuyAmount,address swapTarget,address swapAllowanceTarget,bytes swapCallData)";
-
+        "SwapCallInstruction(address sellToken,uint256 sellAmount,address buyToken,uint256 minBuyAmount,address swapTarget,address swapAllowanceTarget,string swapCallData)";
+    bytes32 private constant SWAP_CALL_INSTRUCTION_TYPE_HASH= keccak256(SWAP_CALL_INSTRUCTION_TYPE);
     bytes private constant MINT_DATA_TYPE =
         "MintData(address archToken,uint256 archTokenAmount,address inputToken,uint256 inputTokenMaxAmount,address issuer,SwapCallInstruction[] swapCallInstructions)";
     string internal constant PERMIT2_MINT_DATA_TYPE = string(
@@ -83,9 +85,12 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
             "MintData witness)", MINT_DATA_TYPE, SWAP_CALL_INSTRUCTION_TYPE, TOKEN_PERMISSIONS_TYPE
         )
     );
+    bytes32 internal constant PERMIT_WITNESS_TRANSFERFROM_HASH = keccak256("PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,MintData witness)MintData(address archToken,uint256 archTokenAmount,address inputToken,uint256 inputTokenMaxAmount,address issuer,SwapCallInstruction[] swapCallInstructions)SwapCallInstruction(address sellToken,uint256 sellAmount,address buyToken,uint256 minBuyAmount,address swapTarget,address swapAllowanceTarget,string swapCallData)TokenPermissions(address token,uint256 amount)");
+    bytes32 internal constant MINT_DATA_TYPE_HASH = keccak256(abi.encodePacked(MINT_DATA_TYPE, SWAP_CALL_INSTRUCTION_TYPE));
 
     bytes private constant REDEEM_DATA_TYPE =
         "RedeemData(address archToken,uint256 archTokenAmount,address outputToken,uint256 outputTokenMinAmount,address issuer,SwapCallInstruction[] swapCallInstructions)";
+    bytes32 private constant REDEEM_DATA_TYPE_HASH = keccak256(abi.encodePacked(REDEEM_DATA_TYPE, SWAP_CALL_INSTRUCTION_TYPE));
     string internal constant PERMIT2_REDEEM_DATA_TYPE = string(
         abi.encodePacked(
             "RedeemData witness)",
@@ -185,12 +190,12 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         (
             ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
             bytes32 concatenatedHashedSwapCallInstructions
-        ) = _hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
+        ) = hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
             mintData.swapCallInstructions
         );
 
         bytes32 witness =
-            _calculateMintDataTypeWitness(mintData, concatenatedHashedSwapCallInstructions);
+            calculateMintDataTypeWitness(mintData, concatenatedHashedSwapCallInstructions);
 
         signatureTransfer.permitWitnessTransferFrom(
             permit2, transferDetails, owner, witness, PERMIT2_MINT_DATA_TYPE, signature
@@ -248,12 +253,12 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         (
             ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
             bytes32 concatenatedHashedSwapCallInstructions
-        ) = _hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
+        ) = hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
             redeemData.swapCallInstructions
         );
 
         bytes32 witness =
-            _calculateRedeemDataTypeWitness(redeemData, concatenatedHashedSwapCallInstructions);
+            calculateRedeemDataTypeWitness(redeemData, concatenatedHashedSwapCallInstructions);
 
         signatureTransfer.permitWitnessTransferFrom(
             permit2, transferDetails, owner, witness, PERMIT2_REDEEM_DATA_TYPE, signature
@@ -355,7 +360,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     {
         witness = keccak256(
             abi.encode(
-                keccak256(abi.encodePacked(SWAP_DATA_TYPE)),
+                SWAP_DATA_TYPE_HASH,
                 swapData.buyToken,
                 swapData.buyAmount,
                 swapData.nativeTokenAmount,
@@ -372,17 +377,17 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      *
      * @param swapCallInstructions  Mint or Redeem swap call instructions array
      */
-    function _hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
+    function hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
         SwapCallInstruction[] memory swapCallInstructions
     )
-        internal
+        public
         pure
         returns (
             ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
             bytes32 concatenatedHashedSwapCallInstructions
         )
     {
-        bytes memory concatenatedByteHashedSwapCallInstructions;
+        bytes32[] memory instructionHashes = new bytes32[](swapCallInstructions.length);
         contractCallInstructions =
             new ITradeIssuerV2.ContractCallInstruction[](swapCallInstructions.length);
 
@@ -394,31 +399,27 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
                 swapCallInstructions[i].sellAmount,
                 IERC20(swapCallInstructions[i].buyToken),
                 swapCallInstructions[i].minBuyAmount,
-                swapCallInstructions[i].swapCallData
+                abi.encodePacked(swapCallInstructions[i].swapCallData)
             );
 
-            bytes32 hashedSwapCallInstruction = keccak256(
-                abi.encode(
-                    keccak256(abi.encodePacked(SWAP_CALL_INSTRUCTION_TYPE)),
-                    swapCallInstructions[i].sellToken,
-                    swapCallInstructions[i].sellAmount,
-                    swapCallInstructions[i].buyToken,
-                    swapCallInstructions[i].minBuyAmount,
-                    swapCallInstructions[i].swapTarget,
-                    swapCallInstructions[i].swapAllowanceTarget,
-                    keccak256(swapCallInstructions[i].swapCallData)
-                )
-            );
+            instructionHashes[i] = keccak256(abi.encode(
+                SWAP_CALL_INSTRUCTION_TYPE_HASH,
+                swapCallInstructions[i].sellToken,
+                swapCallInstructions[i].sellAmount,
+                swapCallInstructions[i].buyToken,
+                swapCallInstructions[i].minBuyAmount,
+                swapCallInstructions[i].swapTarget,
+                swapCallInstructions[i].swapAllowanceTarget,
+                keccak256(abi.encodePacked(swapCallInstructions[i].swapCallData))
+            ));
 
-            concatenatedByteHashedSwapCallInstructions =
-                bytes.concat(concatenatedByteHashedSwapCallInstructions, hashedSwapCallInstruction);
             unchecked {
                 ++i;
             }
         }
 
         concatenatedHashedSwapCallInstructions =
-            keccak256(concatenatedByteHashedSwapCallInstructions);
+            keccak256(abi.encodePacked(instructionHashes));
 
         return (contractCallInstructions, concatenatedHashedSwapCallInstructions);
     }
@@ -430,13 +431,13 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param mintData                                IGasworks.MintData
      * @param concatenatedHashedSwapCallInstructions  Already EIP-712 hashed instructions
      */
-    function _calculateMintDataTypeWitness(
+    function calculateMintDataTypeWitness(
         IGasworks.MintData memory mintData,
         bytes32 concatenatedHashedSwapCallInstructions
-    ) internal pure returns (bytes32 witness) {
+    ) public pure returns (bytes32 witness) {
         witness = keccak256(
             abi.encode(
-                keccak256(abi.encodePacked(MINT_DATA_TYPE)),
+                MINT_DATA_TYPE_HASH,
                 mintData.archToken,
                 mintData.archTokenAmount,
                 mintData.inputToken,
@@ -455,13 +456,13 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param redeemData                              IGasworks.RedeemData
      * @param concatenatedHashedSwapCallInstructions  Already EIP-712 hashed instructions
      */
-    function _calculateRedeemDataTypeWitness(
+    function calculateRedeemDataTypeWitness(
         IGasworks.RedeemData memory redeemData,
         bytes32 concatenatedHashedSwapCallInstructions
     ) internal pure returns (bytes32 witness) {
         witness = keccak256(
             abi.encode(
-                keccak256(abi.encodePacked(REDEEM_DATA_TYPE)),
+                REDEEM_DATA_TYPE_HASH,
                 redeemData.archToken,
                 redeemData.archTokenAmount,
                 redeemData.outputToken,

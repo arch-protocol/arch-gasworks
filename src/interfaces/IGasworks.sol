@@ -28,7 +28,7 @@
  *      @@@((
  */
 
-pragma solidity ^0.8.17.0;
+pragma solidity ^0.8.21.0;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { ISetToken } from "./ISetToken.sol";
@@ -66,7 +66,7 @@ interface IGasworks {
         uint256 minBuyAmount;
         address swapTarget;
         address swapAllowanceTarget;
-        bytes swapCallData;
+        string swapCallData;
     }
 
     struct MintData {

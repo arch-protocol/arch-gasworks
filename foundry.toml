@@ -1,7 +1,8 @@
 [profile.default]
 src = 'src'
 out = 'out'
-solc_version = "0.8.17" 
+solc_version = "0.8.21"
+via_ir = true
 libs = ['lib']
 
 
