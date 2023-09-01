@@ -66,7 +66,7 @@ interface IGasworks {
         uint256 minBuyAmount;
         address swapTarget;
         address swapAllowanceTarget;
-        string swapCallData;
+        bytes swapCallData;
     }
 
     struct MintData {
