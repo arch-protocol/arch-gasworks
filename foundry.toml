@@ -4,7 +4,23 @@ out = 'out'
 solc_version = "0.8.21"
 via_ir = true
 libs = ['lib']
-
+auto_detect_remappings = false
+remappings = [
+  "ds-test/=lib/solmate/lib/ds-test/src/",
+  "forge-std/=lib/forge-std/src/",
+  "gsn/=lib/gsn/packages/contracts/src/",
+  "paymasters/=lib/gsn/packages/paymasters/contracts/",
+  "openzeppelin-contracts/=lib/openzeppelin-contracts/",
+  "solmate/=lib/solmate/",
+  "@opengsn/=node_modules/@opengsn/",
+  "indexcoop/=lib/index-coop-smart-contracts/contracts/exchangeIssuance/",
+  "permit2/=lib/permit2/",
+  "chambers-peripherals/=lib/chambers-peripherals/",
+  "chambers/=lib/chambers/src/",
+  "foundry-random/=lib/foundry-random/src/",
+  "@prb/test/=lib/foundry-random/lib/prb-test/src/",
+  "@openzeppelin/=lib/openzeppelin-contracts/"
+]
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_MAINNET_KEY}" }
