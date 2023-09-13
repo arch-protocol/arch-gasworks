@@ -1,12 +1,8 @@
 /// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.21.0;
 
-library BytesLib {  
-  function slice(
-        bytes memory _bytes,
-        uint256 _start,
-        uint256 _length
-    )
+library BytesLib {
+    function slice(bytes memory _bytes, uint256 _start, uint256 _length)
         internal
         pure
         returns (bytes memory)
@@ -47,13 +43,13 @@ library BytesLib {
                     mstore(mc, mload(cc))
                 }
 
-                // Store the length of the slice. This will overwrite any partial data that 
+                // Store the length of the slice. This will overwrite any partial data that
                 // was copied when having slices that are not a multiple of 32.
                 mstore(tempBytes, _length)
 
                 // update free-memory pointer
                 // allocating the array padded to 32 bytes like the compiler does now
-                // To set the used memory as a multiple of 32, add 31 to the actual memory usage (mc) 
+                // To set the used memory as a multiple of 32, add 31 to the actual memory usage (mc)
                 // and remove the modulo 32 (the `and` with `not(31)`)
                 mstore(0x40, and(add(mc, 31), not(31)))
             }
