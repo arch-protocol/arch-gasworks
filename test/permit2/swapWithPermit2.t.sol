@@ -23,9 +23,6 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     //////////////////////////////////////////////////////////////*/
     using SafeTransferLib for ERC20;
 
-    bytes32 public constant TOKEN_PERMISSIONS_TYPEHASH =
-        keccak256("TokenPermissions(address token,uint256 amount)");
-
     Gasworks internal gasworks;
     ERC20 internal constant USDC = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     ERC20 internal constant WEB3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
@@ -37,11 +34,6 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     bytes32 internal domainSeparator;
     address internal permit2;
 
-    //Permit2 witness types
-    bytes internal constant TOKEN_PERMISSIONS_TYPE =
-        "TokenPermissions(address token,uint256 amount)";
-    bytes internal constant PERMIT_WITNESS_TRANSFER_FROM_TYPE =
-        "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
     // Swap
     bytes private constant SWAP_DATA_TYPE =
         "SwapData(address buyToken,uint256 buyAmount,uint256 nativeTokenAmount,address swapTarget,address swapAllowanceTarget,bytes swapCallData)";
@@ -286,7 +278,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         swapData = IGasworks.SwapData(address(WMATIC), buyAmount, value, swapTarget, spender, quote);
         ISignatureTransfer.PermitTransferFrom memory permit =
             defaultERC20PermitTransfer(address(USDC), 0, 1e6);
-        bytes memory signature = getSignature(
+        bytes memory signature = getSignatureWithoutWitness(
             permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
         );
 
