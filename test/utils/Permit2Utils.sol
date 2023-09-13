@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21.0;
 
-import { Test } from "forge-std/Test.sol";
+import { ArchUtils } from "./ArchUtils.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import { IGasworks } from "src/interfaces/IGasworks.sol";
 import { FoundryRandom } from "foundry-random/FoundryRandom.sol";
 
-contract Permit2Utils is Test, FoundryRandom {
+contract Permit2Utils is ArchUtils {
     // Uniswap's Permit2 EIP712 Domain
     bytes public constant PERMIT2_EIP712_DOMAIN_TYPE =
         "EIP712Domain(string name,uint256 chainId,address verifyingContract)";
@@ -62,6 +62,7 @@ contract Permit2Utils is Test, FoundryRandom {
 
     function getTokenPermissionsHahed(ISignatureTransfer.PermitTransferFrom memory permit)
         public
+        pure
         returns (bytes32 tokenPermissionsHashed)
     {
         tokenPermissionsHashed = keccak256(
@@ -70,10 +71,9 @@ contract Permit2Utils is Test, FoundryRandom {
         return tokenPermissionsHashed;
     }
 
-    function getSwapCallIntructionHashed(IGasworks.SwapCallInstruction[] memory swapCallInstructions)
-        public
-        returns (bytes32 swapCallInstructionsHash)
-    {
+    function getSwapCallIntructionHashed(
+        IGasworks.SwapCallInstruction[] memory swapCallInstructions
+    ) public pure returns (bytes32 swapCallInstructionsHash) {
         bytes32[] memory instructionsHashes = new bytes32[](swapCallInstructions.length);
         for (uint256 i = 0; i < swapCallInstructions.length; i++) {
             instructionsHashes[i] = keccak256(
@@ -94,6 +94,7 @@ contract Permit2Utils is Test, FoundryRandom {
 
     function getMintWitnessHashed(IGasworks.MintData memory mintData)
         public
+        pure
         returns (bytes32 witnessHash)
     {
         bytes32 swapCallInstructionsHash =
@@ -114,6 +115,7 @@ contract Permit2Utils is Test, FoundryRandom {
 
     function getRedeemWitnessHashed(IGasworks.RedeemData memory redeemData)
         public
+        pure
         returns (bytes32 witnessHash)
     {
         bytes32 swapCallInstructionsHash =
@@ -133,11 +135,18 @@ contract Permit2Utils is Test, FoundryRandom {
     }
 
     function getMintWithPermit2MessageToSign(
+        uint256 chainId,
         ISignatureTransfer.PermitTransferFrom memory permit,
         address spender,
-        IGasworks.MintData memory mintData,
-        bytes32 domainSeparatorHashed
-    ) public returns (bytes32 messageHashed) {
+        IGasworks.MintData memory mintData
+    ) public pure returns (bytes32 messageHashed) {
+        bytes32 domainSeparatorHashed;
+        if (chainId == 137) {
+          domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
+        }
+        if (chainId == 1) {
+          domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
+        }
         bytes32 tokenPermissions = getTokenPermissionsHahed(permit);
         bytes32 witnessHash = getMintWitnessHashed(mintData);
         bytes32 permitWitnessTransferFromHash = keccak256(
@@ -161,7 +170,7 @@ contract Permit2Utils is Test, FoundryRandom {
         address spender,
         IGasworks.RedeemData memory redeemData,
         bytes32 domainSeparatorHashed
-    ) public returns (bytes32 messageHashed) {
+    ) public pure returns (bytes32 messageHashed) {
         bytes32 tokenPermissions = getTokenPermissionsHahed(permit);
         bytes32 witnessHash = getRedeemWitnessHashed(redeemData);
         bytes32 permitWitnessTransferFromHash = keccak256(
@@ -180,18 +189,23 @@ contract Permit2Utils is Test, FoundryRandom {
         return messageHashed;
     }
 
-    function signMessage(uint256 privateKey, bytes32 message) public returns (bytes memory signature) {
+    function signMessage(uint256 privateKey, bytes32 message)
+        public
+        pure
+        returns (bytes memory signature)
+    {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
         signature = bytes.concat(r, s, bytes1(v));
         return signature;
     }
 
     function getRandomNonce() public returns (uint256 randomNonce) {
-        randomNonce = randomNumber(type(uint256).max);
+        FoundryRandom random = new FoundryRandom();
+        randomNonce = random.randomNumber(type(uint256).max);
         return randomNonce;
     }
 
-    function getFiveMinutesDeadlineFromNow() public returns (uint256 deadline) {
+    function getFiveMinutesDeadlineFromNow() public view returns (uint256 deadline) {
         deadline = block.timestamp + 300;
         return deadline;
     }
