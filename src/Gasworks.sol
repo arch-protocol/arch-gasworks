@@ -70,14 +70,14 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
 
     bytes private constant SWAP_DATA_TYPE =
         "SwapData(address buyToken,uint256 buyAmount,uint256 nativeTokenAmount,address swapTarget,address swapAllowanceTarget)";
-    bytes32 private constant SWAP_DATA_TYPE_HASH= keccak256(SWAP_DATA_TYPE);
-    
+    bytes32 private constant SWAP_DATA_TYPE_HASH = keccak256(SWAP_DATA_TYPE);
+
     string internal constant PERMIT2_SWAP_DATA_TYPE =
         string(abi.encodePacked("SwapData witness)", SWAP_DATA_TYPE, TOKEN_PERMISSIONS_TYPE));
 
     bytes private constant SWAP_CALL_INSTRUCTION_TYPE =
         "SwapCallInstruction(address sellToken,uint256 sellAmount,address buyToken,uint256 minBuyAmount,address swapTarget,address swapAllowanceTarget)";
-    bytes32 private constant SWAP_CALL_INSTRUCTION_TYPE_HASH= keccak256(SWAP_CALL_INSTRUCTION_TYPE);
+    bytes32 private constant SWAP_CALL_INSTRUCTION_TYPE_HASH = keccak256(SWAP_CALL_INSTRUCTION_TYPE);
     bytes private constant MINT_DATA_TYPE =
         "MintData(address archToken,uint256 archTokenAmount,address inputToken,uint256 inputTokenMaxAmount,address issuer,SwapCallInstruction[] swapCallInstructions)";
     string internal constant PERMIT2_MINT_DATA_TYPE = string(
@@ -85,12 +85,16 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
             "MintData witness)", MINT_DATA_TYPE, SWAP_CALL_INSTRUCTION_TYPE, TOKEN_PERMISSIONS_TYPE
         )
     );
-    bytes32 internal constant PERMIT_WITNESS_TRANSFERFROM_HASH = keccak256("PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,MintData witness)MintData(address archToken,uint256 archTokenAmount,address inputToken,uint256 inputTokenMaxAmount,address issuer,SwapCallInstruction[] swapCallInstructions)SwapCallInstruction(address sellToken,uint256 sellAmount,address buyToken,uint256 minBuyAmount,address swapTarget,address swapAllowanceTarget)TokenPermissions(address token,uint256 amount)");
-    bytes32 internal constant MINT_DATA_TYPE_HASH = keccak256(abi.encodePacked(MINT_DATA_TYPE, SWAP_CALL_INSTRUCTION_TYPE));
+    bytes32 internal constant PERMIT_WITNESS_TRANSFERFROM_HASH = keccak256(
+        "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,MintData witness)MintData(address archToken,uint256 archTokenAmount,address inputToken,uint256 inputTokenMaxAmount,address issuer,SwapCallInstruction[] swapCallInstructions)SwapCallInstruction(address sellToken,uint256 sellAmount,address buyToken,uint256 minBuyAmount,address swapTarget,address swapAllowanceTarget)TokenPermissions(address token,uint256 amount)"
+    );
+    bytes32 internal constant MINT_DATA_TYPE_HASH =
+        keccak256(abi.encodePacked(MINT_DATA_TYPE, SWAP_CALL_INSTRUCTION_TYPE));
 
     bytes private constant REDEEM_DATA_TYPE =
         "RedeemData(address archToken,uint256 archTokenAmount,address outputToken,uint256 outputTokenMinAmount,address issuer,SwapCallInstruction[] swapCallInstructions)";
-    bytes32 private constant REDEEM_DATA_TYPE_HASH = keccak256(abi.encodePacked(REDEEM_DATA_TYPE, SWAP_CALL_INSTRUCTION_TYPE));
+    bytes32 private constant REDEEM_DATA_TYPE_HASH =
+        keccak256(abi.encodePacked(REDEEM_DATA_TYPE, SWAP_CALL_INSTRUCTION_TYPE));
     string internal constant PERMIT2_REDEEM_DATA_TYPE = string(
         abi.encodePacked(
             "RedeemData witness)",
@@ -401,23 +405,24 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
                 swapCallInstructions[i].swapCallData
             );
 
-            instructionHashes[i] = keccak256(abi.encode(
-                SWAP_CALL_INSTRUCTION_TYPE_HASH,
-                swapCallInstructions[i].sellToken,
-                swapCallInstructions[i].sellAmount,
-                swapCallInstructions[i].buyToken,
-                swapCallInstructions[i].minBuyAmount,
-                swapCallInstructions[i].swapTarget,
-                swapCallInstructions[i].swapAllowanceTarget
-            ));
+            instructionHashes[i] = keccak256(
+                abi.encode(
+                    SWAP_CALL_INSTRUCTION_TYPE_HASH,
+                    swapCallInstructions[i].sellToken,
+                    swapCallInstructions[i].sellAmount,
+                    swapCallInstructions[i].buyToken,
+                    swapCallInstructions[i].minBuyAmount,
+                    swapCallInstructions[i].swapTarget,
+                    swapCallInstructions[i].swapAllowanceTarget
+                )
+            );
 
             unchecked {
                 ++i;
             }
         }
 
-        concatenatedHashedSwapCallInstructions =
-            keccak256(abi.encodePacked(instructionHashes));
+        concatenatedHashedSwapCallInstructions = keccak256(abi.encodePacked(instructionHashes));
 
         return (contractCallInstructions, concatenatedHashedSwapCallInstructions);
     }
