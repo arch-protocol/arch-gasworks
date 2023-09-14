@@ -138,6 +138,143 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
 
     /**
      * Swaps an exact amount of SetTokens in 0x for a given amount of ERC20 tokens.
+     * Using a safePermit for the ERC20 token transfer
+     *
+     * @param permit              Permit data of the ERC20 token used (USDC)
+     * @param swapData            Data of the swap to perform
+     */
+    function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external {
+        if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
+        if (!tokens[swapData.buyToken]) revert InvalidToken(swapData.buyToken);
+
+        IERC20Permit permitToken = IERC20Permit(permit._tokenContract);
+        permitToken.safePermit(
+            permit._owner,
+            permit._spender,
+            permit._value,
+            permit._deadline,
+            permit._v,
+            permit._r,
+            permit._s
+        );
+
+        ERC20 token = ERC20(permit._tokenContract);
+        token.safeTransferFrom(permit._owner, address(this), permit._amount);
+
+        _fillQuoteInternal(swapData, permit._amount, permit._owner, ERC20(permit._tokenContract));
+    }
+
+    /**
+     * Issues an exact amount of SetTokens for given amount of input ERC20 tokens.
+     * Using a safePermit for the ERC20 token transfer
+     * The excess amount of tokens is returned in an equivalent amount of ether.
+     *
+     * @param permit              Permit data of the ERC20 token used (USDC)
+     * @param mintData            Data of the issuance to perform
+     */
+    function mintWithPermit(PermitData calldata permit, MintSetData calldata mintData) external {
+        if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
+        if (!tokens[address(mintData._setToken)]) revert InvalidToken(address(mintData._setToken));
+
+        IERC20Permit permitToken = IERC20Permit(permit._tokenContract);
+        permitToken.safePermit(
+            permit._owner,
+            permit._spender,
+            permit._value,
+            permit._deadline,
+            permit._v,
+            permit._r,
+            permit._s
+        );
+
+        ERC20 token = ERC20(permit._tokenContract);
+        token.safeTransferFrom(permit._owner, address(this), permit._amount);
+
+        token.safeApprove(address(exchangeIssuance), mintData._maxAmountInputToken);
+
+        exchangeIssuance.issueExactSetFromToken(
+            mintData._setToken,
+            IERC20(permit._tokenContract),
+            mintData._amountSetToken,
+            mintData._maxAmountInputToken,
+            mintData._componentQuotes,
+            mintData._issuanceModule,
+            mintData._isDebtIssuance
+        );
+
+        ERC20(address(mintData._setToken)).safeTransfer(permit._owner, mintData._amountSetToken);
+
+        emit MintWithPermit(
+            address(mintData._setToken),
+            mintData._amountSetToken,
+            address(token),
+            permit._amount - token.balanceOf(address(this))
+        );
+
+        token.safeTransfer(owner, token.balanceOf(address(this)));
+    }
+
+    /**
+     * Issues an exact amount of Chamber tokens for given amount of input ERC20 tokens.
+     * Using a safePermit for the ERC20 token transfer
+     * The excess amount of tokens is returned
+     *
+     * @param permit                        Permit data of the ERC20 token used (USDC)
+     * @param mintChamberData               Data of the issuance to perform
+     * @param contractCallInstructions      Calls required to get all chamber components
+     */
+    function mintChamberWithPermit(
+        PermitData calldata permit,
+        MintChamberData calldata mintChamberData,
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+    ) external {
+        if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
+        if (!tokens[address(mintChamberData._chamber)]) {
+            revert InvalidToken(address(mintChamberData._chamber));
+        }
+
+        IERC20Permit permitToken = IERC20Permit(permit._tokenContract);
+        permitToken.safePermit(
+            permit._owner,
+            permit._spender,
+            permit._value,
+            permit._deadline,
+            permit._v,
+            permit._r,
+            permit._s
+        );
+
+        ERC20 token = ERC20(permit._tokenContract);
+        token.safeTransferFrom(permit._owner, address(this), permit._amount);
+        uint256 beforeBalance = token.balanceOf(address(this));
+        token.safeApprove(address(tradeIssuer), mintChamberData._maxPayAmount);
+
+        tradeIssuer.mintChamberFromToken(
+            contractCallInstructions,
+            mintChamberData._chamber,
+            mintChamberData._issuerWizard,
+            mintChamberData._baseToken,
+            mintChamberData._maxPayAmount,
+            mintChamberData._mintAmount
+        );
+
+        uint256 totalPaid = beforeBalance - token.balanceOf(address(this));
+
+        ERC20(address(mintChamberData._chamber)).safeTransfer(
+            permit._owner, mintChamberData._mintAmount
+        );
+        token.safeTransfer(permit._owner, token.balanceOf(address(this)));
+
+        emit MintWithPermit(
+            address(mintChamberData._chamber),
+            mintChamberData._mintAmount,
+            address(token),
+            totalPaid
+        );
+    }
+
+    /**
+     * Swaps an exact amount of SetTokens in 0x for a given amount of ERC20 tokens.
      * Using a permit for the ERC20 token transfer (through Permit2)
      *
      * @param permit2             Permit2 data of the ERC20 token used
@@ -194,12 +331,12 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         (
             ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
             bytes32 concatenatedHashedSwapCallInstructions
-        ) = hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
+        ) = _hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
             mintData.swapCallInstructions
         );
 
         bytes32 witness =
-            calculateMintDataTypeWitness(mintData, concatenatedHashedSwapCallInstructions);
+            _calculateMintDataTypeWitness(mintData, concatenatedHashedSwapCallInstructions);
 
         signatureTransfer.permitWitnessTransferFrom(
             permit2, transferDetails, owner, witness, PERMIT2_MINT_DATA_TYPE, signature
@@ -257,12 +394,12 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         (
             ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
             bytes32 concatenatedHashedSwapCallInstructions
-        ) = hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
+        ) = _hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
             redeemData.swapCallInstructions
         );
 
         bytes32 witness =
-            calculateRedeemDataTypeWitness(redeemData, concatenatedHashedSwapCallInstructions);
+            _calculateRedeemDataTypeWitness(redeemData, concatenatedHashedSwapCallInstructions);
 
         signatureTransfer.permitWitnessTransferFrom(
             permit2, transferDetails, owner, witness, PERMIT2_REDEEM_DATA_TYPE, signature
@@ -380,10 +517,10 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      *
      * @param swapCallInstructions  Mint or Redeem swap call instructions array
      */
-    function hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
+    function _hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
         SwapCallInstruction[] memory swapCallInstructions
     )
-        public
+        internal
         pure
         returns (
             ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
@@ -434,10 +571,10 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param mintData                                IGasworks.MintData
      * @param concatenatedHashedSwapCallInstructions  Already EIP-712 hashed instructions
      */
-    function calculateMintDataTypeWitness(
+    function _calculateMintDataTypeWitness(
         IGasworks.MintData memory mintData,
         bytes32 concatenatedHashedSwapCallInstructions
-    ) public pure returns (bytes32 witness) {
+    ) internal pure returns (bytes32 witness) {
         witness = keccak256(
             abi.encode(
                 MINT_DATA_TYPE_HASH,
@@ -459,10 +596,10 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param redeemData                              IGasworks.RedeemData
      * @param concatenatedHashedSwapCallInstructions  Already EIP-712 hashed instructions
      */
-    function calculateRedeemDataTypeWitness(
+    function _calculateRedeemDataTypeWitness(
         IGasworks.RedeemData memory redeemData,
         bytes32 concatenatedHashedSwapCallInstructions
-    ) public pure returns (bytes32 witness) {
+    ) internal pure returns (bytes32 witness) {
         witness = keccak256(
             abi.encode(
                 REDEEM_DATA_TYPE_HASH,

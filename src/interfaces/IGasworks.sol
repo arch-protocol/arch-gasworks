@@ -44,6 +44,55 @@ interface IGasworks {
                               STRUCTS
     //////////////////////////////////////////////////////////////*/
 
+    // Permit1
+    struct PermitData {
+        // The address of the token to which we want to sign a permit for
+        address _tokenContract;
+        // The amount of tokens we want to send to the contract
+        uint256 _amount;
+        // The owner of the tokens
+        address _owner;
+        // The contract that will spend our tokens
+        address _spender;
+        // The amount of the token we want to permit the contract to use
+        uint256 _value;
+        // The date until which the permit is accepted
+        uint256 _deadline;
+        // The signature of the owner
+        uint8 _v;
+        bytes32 _r;
+        bytes32 _s;
+    }
+
+    struct MintSetData {
+        // Address of the SetToken to be issued
+        ISetToken _setToken;
+        // Amount of SetTokens to issue
+        uint256 _amountSetToken;
+        // Maximum amount of input tokens to be used to issue SetTokens.
+        uint256 _maxAmountInputToken;
+        // The encoded 0x transactions to execute
+        bytes[] _componentQuotes;
+        // The address of the issuance module for the SetToken
+        address _issuanceModule;
+        // Is the SetToken using debt issuance?
+        bool _isDebtIssuance;
+    }
+
+    struct MintChamberData {
+        // The address of the chamber to mint
+        IChamber _chamber;
+        // The address of the issuer wizard that will mint the Chamber
+        IIssuerWizard _issuerWizard;
+        // The address of the token used to mint
+        IERC20 _baseToken;
+        // Maximum amount of baseToken to use to mint
+        uint256 _maxPayAmount;
+        // The amount of Chamber to mint
+        uint256 _mintAmount;
+    }
+
+    // Permit2
     struct SwapData {
         // The `buyTokenAddress` field from the API response.
         address buyToken;
@@ -117,6 +166,10 @@ interface IGasworks {
         address tokenRedeemed, uint256 amountRedeemed, address tokenBought, uint256 amountBought
     );
 
+    event MintWithPermit(
+        address tokenMinted, uint256 amountMinted, address tokenPaid, uint256 amountPaid
+    );
+
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -135,7 +188,19 @@ interface IGasworks {
                                 FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
+    function setTrustedForwarder(address forwarder) external;
+
     function setTokens(address token) external;
+
+    function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external;
+
+    function mintWithPermit(PermitData calldata permit, MintSetData calldata mintData) external;
+
+    function mintChamberWithPermit(
+        PermitData calldata permit,
+        MintChamberData calldata mintChamberData,
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+    ) external;
 
     function swapWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
