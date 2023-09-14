@@ -11,7 +11,7 @@ const exchangeIssuance = '0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320';
 const commonParams = {
   tokenAddress: '',
   basketAmountInWei: '',
-  slippagePercentageProportion: 0.075,
+  slippagePercentageProportion: 0.001,
   isDebtIssuance: true,
 }
 const setPolygonParams = {
