@@ -1,0 +1,14 @@
+name: Permit1 swap tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test-permit1-swap:
+    uses: ./.github/workflows/tests-template.yml
+    with:
+      make-command: test-permit1-swap
+    secrets: inherit
