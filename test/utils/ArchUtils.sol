@@ -126,6 +126,30 @@ contract ArchUtils is Test {
         vm.label(ALICE, "Alice");
     }
 
+    function fetchSwapQuote(uint256 sellAmount, address sellToken, address buyToken)
+        public
+        returns (IGasworks.SwapData memory swapData)
+    {
+        string[] memory inputs = new string[](5);
+        inputs[0] = "node";
+        inputs[1] = "scripts/fetch-quote.js";
+        inputs[2] = Conversor.iToHex(abi.encode(sellAmount));
+        inputs[3] = Conversor.iToHex(abi.encode(sellToken));
+        inputs[4] = Conversor.iToHex(abi.encode(buyToken));
+        bytes memory response = vm.ffi(inputs);
+        (
+            address swapAllowanceTarget,
+            address payable swapTarget,
+            bytes memory swapCallData,
+            uint256 nativeTokenAmount,
+            uint256 buyAmount
+        ) = abi.decode(response, (address, address, bytes, uint256, uint256));
+        swapData = IGasworks.SwapData(
+            buyToken, buyAmount, nativeTokenAmount, swapTarget, swapAllowanceTarget, swapCallData
+        );
+        return swapData;
+    }
+
     function fetchMintQuote(address archToken, uint256 archTokenAmount, address inputToken)
         public
         returns (ITradeIssuerV2.ContractCallInstruction[] memory, uint256)
