@@ -1,4 +1,4 @@
-name: Gasworks Permit2 Tests
+name: Permit2 mint tests
 
 on:
   push:
