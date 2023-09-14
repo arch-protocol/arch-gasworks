@@ -10,15 +10,16 @@ function createQueryString(params) {
     .join("&")
 }
 
-async function main(quantity, buyToken) {
+async function main(sellAmount, sellToken, buyToken) {
 
-  let qty = encoder.decode(["uint256"], quantity)[0]
-  const tokenAddress = encoder.decode(["address"], buyToken)[0]
+  const sellAmountDecoded = encoder.decode(["uint256"], sellAmount)[0]
+  const buyTokenDecoded = encoder.decode(["address"], buyToken)[0]
+  const sellTokenDecoded = encoder.decode(["address"], sellToken)[0]
 
   let qs = createQueryString({
-    sellToken: "USDC",
-    buyToken: tokenAddress,
-    sellAmount: qty,
+    sellToken: sellTokenDecoded,
+    buyToken: buyTokenDecoded,
+    sellAmount: sellAmountDecoded,
   })
 
   let quoteUrl = `${API_QUOTE_URL}?${qs}`
@@ -32,12 +33,12 @@ async function main(quantity, buyToken) {
 
 const args = process.argv.slice(2);
 
-if (args.length != 2) {
+if (args.length != 3) {
   console.log(`please supply the correct parameters:
-    quantity buyToken
+    sellAmount sellToken buyToken
   `)
   process.exit(1);
 }
 
-main(args[0], args[1])
+main(args[0], args[1], args[2])
 
