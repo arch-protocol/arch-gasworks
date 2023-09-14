@@ -20,7 +20,9 @@ contract GaslessTest is Test, Permit2Utils {
     /*//////////////////////////////////////////////////////////////
                               SET UP
     //////////////////////////////////////////////////////////////*/
-    function setUp() public {}
+    function setUp() public {
+        addLabbels();
+    }
 
     /*//////////////////////////////////////////////////////////////
                               SUCCESS
@@ -31,16 +33,16 @@ contract GaslessTest is Test, Permit2Utils {
         address issuerWizard;
         address uniswapPermit2;
         if (chainId == POLYGON_CHAIN_ID) {
-          vm.createSelectFork("polygon");
-          gasworks = deployGasworks(chainId);
-          issuerWizard = POLYGON_ISSUER_WIZARD;
-          uniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
+            vm.createSelectFork("polygon");
+            gasworks = deployGasworks(chainId);
+            issuerWizard = POLYGON_ISSUER_WIZARD;
+            uniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
         }
         if (chainId == ETH_CHAIN_ID) {
-          vm.createSelectFork("ethereum");
-          gasworks = deployGasworks(chainId);
-          issuerWizard = ETH_ISSUER_WIZARD;
-          uniswapPermit2 = ETH_UNISWAP_PERMIT2;
+            vm.createSelectFork("ethereum");
+            gasworks = deployGasworks(chainId);
+            issuerWizard = ETH_ISSUER_WIZARD;
+            uniswapPermit2 = ETH_UNISWAP_PERMIT2;
         }
 
         vm.prank(ALICE);
@@ -60,12 +62,7 @@ contract GaslessTest is Test, Permit2Utils {
             getSwapCallsFromContractCalls(_contractCallInstructions);
 
         IGasworks.MintData memory myMintData = IGasworks.MintData(
-            archToken,
-            aaggAmountToMint,
-            fromToken,
-            maxPayAmount,
-            issuerWizard,
-            swapCallInstructions
+            archToken, aaggAmountToMint, fromToken, maxPayAmount, issuerWizard, swapCallInstructions
         );
 
         uint256 currentNonce = getRandomNonce();
@@ -77,12 +74,8 @@ contract GaslessTest is Test, Permit2Utils {
             deadline: currentDeadline
         });
 
-        bytes32 msgToSign = getMintWithPermit2MessageToSign(
-            chainId,
-            permit,
-            address(gasworks),
-            myMintData
-        );
+        bytes32 msgToSign =
+            getMintWithPermit2MessageToSign(chainId, permit, address(gasworks), myMintData);
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
         gasworks.mintWithPermit2(permit, ALICE, signature, myMintData);
