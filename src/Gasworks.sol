@@ -143,7 +143,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param permit              Permit data of the ERC20 token used (USDC)
      * @param swapData            Data of the swap to perform
      */
-    function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external {
+    function swapWithPermit1(PermitData calldata permit, SwapData calldata swapData) external {
         if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
         if (!tokens[swapData.buyToken]) revert InvalidToken(swapData.buyToken);
 
@@ -172,7 +172,9 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param permit              Permit data of the ERC20 token used (USDC)
      * @param mintData            Data of the issuance to perform
      */
-    function mintWithPermit(PermitData calldata permit, MintSetData calldata mintData) external {
+    function mintSetProtocolWithPermit1(PermitData calldata permit, MintSetData calldata mintData)
+        external
+    {
         if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
         if (!tokens[address(mintData._setToken)]) revert InvalidToken(address(mintData._setToken));
 
@@ -204,7 +206,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
 
         ERC20(address(mintData._setToken)).safeTransfer(permit._owner, mintData._amountSetToken);
 
-        emit MintWithPermit(
+        emit MintSetProtocolWithPermit1(
             address(mintData._setToken),
             mintData._amountSetToken,
             address(token),
@@ -223,7 +225,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param mintChamberData               Data of the issuance to perform
      * @param contractCallInstructions      Calls required to get all chamber components
      */
-    function mintChamberWithPermit(
+    function mintWithPermit1(
         PermitData calldata permit,
         MintChamberData calldata mintChamberData,
         ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
@@ -265,7 +267,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         );
         token.safeTransfer(permit._owner, token.balanceOf(address(this)));
 
-        emit MintWithPermit(
+        emit MintSetProtocolWithPermit1(
             address(mintChamberData._chamber),
             mintChamberData._mintAmount,
             address(token),

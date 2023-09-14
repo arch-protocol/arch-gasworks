@@ -166,7 +166,7 @@ interface IGasworks {
         address tokenRedeemed, uint256 amountRedeemed, address tokenBought, uint256 amountBought
     );
 
-    event MintWithPermit(
+    event MintSetProtocolWithPermit1(
         address tokenMinted, uint256 amountMinted, address tokenPaid, uint256 amountPaid
     );
 
@@ -192,11 +192,12 @@ interface IGasworks {
 
     function setTokens(address token) external;
 
-    function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external;
+    function swapWithPermit1(PermitData calldata permit, SwapData calldata swapData) external;
 
-    function mintWithPermit(PermitData calldata permit, MintSetData calldata mintData) external;
+    function mintSetProtocolWithPermit1(PermitData calldata permit, MintSetData calldata mintData)
+        external;
 
-    function mintChamberWithPermit(
+    function mintWithPermit1(
         PermitData calldata permit,
         MintChamberData calldata mintChamberData,
         ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
