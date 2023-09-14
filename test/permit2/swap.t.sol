@@ -6,6 +6,7 @@ import { Gasworks } from "src/Gasworks.sol";
 import { IGasworks } from "src/interfaces/IGasworks.sol";
 import { SigUtils } from "test/utils/SigUtils.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { Conversor } from "test/utils/HexUtils.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
@@ -23,61 +24,12 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     //////////////////////////////////////////////////////////////*/
     using SafeTransferLib for ERC20;
 
-    Gasworks internal gasworks;
-    ERC20 internal constant USDC = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
-    ERC20 internal constant WEB3 = ERC20(0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A);
-    WETH public constant WMATIC = WETH(payable(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270));
-
-    uint256 internal ownerPrivateKey;
-    address internal owner;
-    IGasworks.SwapData internal swapData;
-    bytes32 internal domainSeparator;
-    address internal permit2;
-
-    // Swap
-    bytes private constant SWAP_DATA_TYPE =
-        "SwapData(address buyToken,uint256 buyAmount,uint256 nativeTokenAmount,address swapTarget,address swapAllowanceTarget,bytes swapCallData)";
-    bytes internal constant PERMIT2_SWAP_DATA_TYPE =
-        abi.encodePacked("SwapData witness)", SWAP_DATA_TYPE, TOKEN_PERMISSIONS_TYPE);
-
     /*//////////////////////////////////////////////////////////////
                               SET UP
     //////////////////////////////////////////////////////////////*/
 
     function setUp() public {
-        gasworks = new Gasworks(
-            0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d, 
-            0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320,
-            0x2B13D2b9407D5776B0BB63c8cd144978B6B7cE58
-        );
-        gasworks.setTokens(address(USDC));
-        gasworks.setTokens(address(WEB3));
-        gasworks.setTokens(address(WMATIC));
-        permit2 = deployPermit2();
-        domainSeparator = EIP712(permit2).DOMAIN_SEPARATOR();
-
-        ownerPrivateKey = 0xA11CE;
-        owner = vm.addr(ownerPrivateKey);
-
-        deal(address(USDC), owner, 1e6);
-
-        vm.prank(owner);
-        USDC.approve(permit2, 1e6);
-
-        string[] memory inputs = new string[](4);
-        inputs[0] = "node";
-        inputs[1] = "scripts/fetch-quote.js";
-        inputs[2] = Conversor.iToHex(abi.encode(1e6));
-        inputs[3] = Conversor.iToHex(abi.encode(address(WEB3)));
-        bytes memory res = vm.ffi(inputs);
-        (
-            address spender,
-            address payable swapTarget,
-            bytes memory quote,
-            uint256 value,
-            uint256 buyAmount
-        ) = abi.decode(res, (address, address, bytes, uint256, uint256));
-        swapData = IGasworks.SwapData(address(WEB3), buyAmount, value, swapTarget, spender, quote);
+        addLabbels();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -163,130 +115,126 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     //     gasworks.swapWithPermit2(permit, owner, signature, swapData);
     // }
 
-    // /**
-    //  * [REVERT] Should revert because amount bought is less than required amount
-    //  */
+    /**
+     * [REVERT] Should revert due to underbought, because the sellAmount is too Big
+     */
     // function testCannotSwapWithPermit2UnderboughtAsset() public {
-    //     swapData.buyAmount = 1000 ether; // set buy amount to 1000 ether
-    //     ISignatureTransfer.PermitTransferFrom memory permit =
-    //         defaultERC20PermitTransfer(address(USDC), 0, 1e6);
-    //     bytes memory signature = getSignature(
-    //         permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
-    //     );
+    //     swapWithPermit2(POLYGON_CHAIN_ID, 10e18, POLYGON_USDT, POLYGON_WEB3);
 
     //     vm.expectRevert(
-    //         abi.encodeWithSelector(IGasworks.Underbought.selector, address(WEB3), 1000 ether)
+    //         abi.encodeWithSelector(IGasworks.Underbought.selector, POLYGON_WEB3, 10e18)
     //     );
-    //     gasworks.swapWithPermit2(permit, owner, signature, swapData);
     // }
 
     /*//////////////////////////////////////////////////////////////
                               SUCCESS
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * [SUCCESS] Should make a success swap with permit2
-     */
-    function testSwapWithPermit2() public {
-        // bytes32 constant NAME_HASH = keccak256("Permit2");
-        // bytes32 constant TYPE_HASH = keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
-        // bytes32 constant TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
+    function swapWithPermit2(
+        uint256 chainId,
+        uint256 sellAmount,
+        address sellToken,
+        address buyToken
+    ) public {
+        Gasworks gasworks;
+        address uniswapPermit2;
+        if (chainId == POLYGON_CHAIN_ID) {
+            vm.createSelectFork("polygon");
+            gasworks = deployGasworks(chainId);
+            uniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
+        }
+        if (chainId == ETH_CHAIN_ID) {
+            vm.createSelectFork("ethereum");
+            gasworks = deployGasworks(chainId);
+            uniswapPermit2 = ETH_UNISWAP_PERMIT2;
+        }
 
-        uint256 currentNonce = USDC.nonces(owner);
+        vm.prank(ALICE);
+        IERC20(sellToken).approve(uniswapPermit2, type(uint256).max);
+        (IGasworks.SwapData memory swapData) = fetchSwapQuote(sellAmount, sellToken, buyToken);
+
+        deal(sellToken, ALICE, sellAmount);
+        uint256 previousSellTokenBalance = IERC20(sellToken).balanceOf(ALICE);
+        uint256 previousBuyTokenBalance = IERC20(buyToken).balanceOf(ALICE);
+
+        uint256 currentNonce = getRandomNonce();
+        uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
 
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: address(USDC), amount: 1e6 }),
+            permitted: ISignatureTransfer.TokenPermissions({ token: sellToken, amount: sellAmount }),
             nonce: currentNonce,
-            deadline: block.timestamp + 100
+            deadline: currentDeadline
         });
 
-        // bytes memory concatenatedHashedQuotes;
-        // for (uint256 i = 0; i < swap.swapCallData.length;) {
-        //   concatenatedHashedQuotes = bytes.concat(concatenatedHashedQuotes, keccak256(swap.swapCallData[i]));
-        //   unchecked {
-        //     ++i;
-        //   }
-        // }
+        bytes32 msgToSign =
+            getSwapWithPermit2MessageToSign(chainId, permit, address(gasworks), swapData);
+        bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
-        bytes32 witness = keccak256(
-            abi.encode(
-                keccak256(abi.encodePacked(SWAP_DATA_TYPE)),
-                swapData.buyToken,
-                swapData.buyAmount,
-                swapData.nativeTokenAmount,
-                swapData.swapTarget,
-                swapData.swapAllowanceTarget,
-                keccak256(swapData.swapCallData)
-            )
-        );
-        // bytes32 domainSeparator = keccak256(abi.encode(TYPE_HASH, NAME_HASH, block.chainid, address(USDC)));
-        bytes32 tokenPermissions =
-            keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
-        bytes32 msgHash = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                domainSeparator,
-                keccak256(
-                    abi.encode(
-                        keccak256(
-                            abi.encodePacked(
-                                PERMIT_WITNESS_TRANSFER_FROM_TYPE, PERMIT2_SWAP_DATA_TYPE
-                            )
-                        ),
-                        tokenPermissions,
-                        address(gasworks),
-                        permit.nonce,
-                        permit.deadline,
-                        witness
-                    )
-                )
-            )
-        );
+        gasworks.swapWithPermit2(permit, ALICE, signature, swapData);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, msgHash);
-        bytes memory signature = bytes.concat(r, s, bytes1(v));
-
-        // bytes memory signature = getSignature(
-        //     permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
-        // );
-
-        gasworks.swapWithPermit2(permit, owner, signature, swapData);
-
-        assertEq(USDC.balanceOf(owner), 0);
-        assertEq(USDC.balanceOf(address(gasworks)), 0);
-        assertEq(USDC.allowance(owner, address(gasworks)), 0);
-        assertGe(WEB3.balanceOf(owner), swapData.buyAmount);
+        assertEq(previousSellTokenBalance - IERC20(sellToken).balanceOf(ALICE), sellAmount);
+        assertGe(IERC20(buyToken).balanceOf(ALICE) - previousBuyTokenBalance, swapData.buyAmount);
+        assertEq(IERC20(sellToken).allowance(ALICE, address(gasworks)), 0);
     }
 
     /**
-     * [SUCCESS] Should make a success swap to native MATIC with permit2
+     * [SUCCESS] Should make a swap from USDC to WEB3 using permit2
      */
-    function testSwapWToNativeMATICithPermit2() public {
-        string[] memory inputs = new string[](4);
-        inputs[0] = "node";
-        inputs[1] = "scripts/fetch-quote.js";
-        inputs[2] = Conversor.iToHex(abi.encode(1e6));
-        inputs[3] = Conversor.iToHex(abi.encode(address(WMATIC)));
-        bytes memory res = vm.ffi(inputs);
-        (
-            address spender,
-            address payable swapTarget,
-            bytes memory quote,
-            uint256 value,
-            uint256 buyAmount
-        ) = abi.decode(res, (address, address, bytes, uint256, uint256));
-        swapData = IGasworks.SwapData(address(WMATIC), buyAmount, value, swapTarget, spender, quote);
-        ISignatureTransfer.PermitTransferFrom memory permit =
-            defaultERC20PermitTransfer(address(USDC), 0, 1e6);
-        bytes memory signature = getSignatureWithoutWitness(
-            permit, ownerPrivateKey, domainSeparator, TOKEN_PERMISSIONS_TYPEHASH, address(gasworks)
-        );
+    function testSwapWithPermit2FromUsdcToWeb3() public {
+        swapWithPermit2(POLYGON_CHAIN_ID, 1e6, POLYGON_USDC, POLYGON_WEB3);
+    }
 
-        gasworks.swapWithPermit2(permit, owner, signature, swapData);
+    /**
+     * [SUCCESS] Should make a swap from AEDY to ADDY using permit2
+     */
+    function testSwapWithPermit2FromAedyToAddy() public {
+        swapWithPermit2(POLYGON_CHAIN_ID, 20e18, POLYGON_AEDY, POLYGON_ADDY);
+    }
+    /**
+     * [SUCCESS] Should make a swap from DAI to CHAIN using permit2
+     */
+    function testSwapWithPermit2FromDaiToChain() public {
+        swapWithPermit2(POLYGON_CHAIN_ID, 200e18, POLYGON_DAI, POLYGON_CHAIN);
+    }
 
-        assertEq(USDC.balanceOf(owner), 0);
-        assertEq(USDC.balanceOf(address(gasworks)), 0);
-        assertEq(USDC.allowance(owner, address(gasworks)), 0);
-        assertGe(owner.balance, swapData.buyAmount);
+    /**
+     * [SUCCESS] Should make a swap from USDC to native MATIC with permit2
+     */
+    function testSwapWithPermit2FromUsdcToNativeMatic() public {
+        uint256 sellAmount = 10e6;
+        address sellToken = POLYGON_USDC;
+        address buyToken = POLYGON_WMATIC;
+
+        vm.createSelectFork("polygon");
+        Gasworks gasworks = deployGasworks(POLYGON_CHAIN_ID);
+        address uniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
+
+        vm.prank(ALICE);
+        IERC20(sellToken).approve(uniswapPermit2, type(uint256).max);
+        (IGasworks.SwapData memory swapData) = fetchSwapQuote(sellAmount, sellToken, buyToken);
+
+        deal(sellToken, ALICE, sellAmount);
+        uint256 previousSellTokenBalance = IERC20(sellToken).balanceOf(ALICE);
+        uint256 previousBuyTokenBalance = IERC20(buyToken).balanceOf(ALICE);
+
+        uint256 currentNonce = getRandomNonce();
+        uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
+
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({ token: sellToken, amount: sellAmount }),
+            nonce: currentNonce,
+            deadline: currentDeadline
+        });
+
+        bytes32 msgToSign =
+            getSwapWithPermit2MessageToSign(POLYGON_CHAIN_ID, permit, address(gasworks), swapData);
+        bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
+
+        gasworks.swapWithPermit2(permit, ALICE, signature, swapData);
+
+        assertEq(previousSellTokenBalance - IERC20(sellToken).balanceOf(ALICE), sellAmount);
+        assertEq(IERC20(sellToken).allowance(ALICE, address(gasworks)), 0);
+        assertGe(previousBuyTokenBalance - IERC20(buyToken).balanceOf(ALICE), 0);
+        assertGe(ALICE.balance, swapData.buyAmount); // Receive MATIC, not WMATIC
     }
 }
