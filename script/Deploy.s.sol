@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.21.0;
+pragma solidity ^0.8.17.0;
 
 import { Script } from "forge-std/Script.sol";
 import { Gasworks } from "src/Gasworks.sol";

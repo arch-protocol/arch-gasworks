@@ -1,5 +1,5 @@
 /// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.21.0;
+pragma solidity ^0.8.17.0;
 
 library BytesLib {
     function slice(bytes memory _bytes, uint256 _start, uint256 _length)

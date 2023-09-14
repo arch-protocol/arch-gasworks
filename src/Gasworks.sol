@@ -28,7 +28,7 @@
  *      @@@((
  */
 
-pragma solidity ^0.8.21.0;
+pragma solidity ^0.8.17.0;
 
 import { ERC2771Recipient } from "gsn/ERC2771Recipient.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";

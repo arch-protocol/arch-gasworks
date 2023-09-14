@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.21.0;
+pragma solidity ^0.8.17.0;
 
 import { ArchUtils } from "./ArchUtils.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
