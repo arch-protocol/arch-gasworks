@@ -47,6 +47,14 @@ contract Permit2Utils is ArchUtils {
     );
     bytes32 public constant PERMIT2_TRANSFERFROM_REDEEM_DATA_TYPE_HASH =
         keccak256(abi.encodePacked(PERMIT_WITNESS_TRANSFER_FROM_TYPE, PERMIT2_REDEEM_DATA_TYPE));
+    // SwapData
+    bytes private constant SWAP_DATA_TYPE =
+        "SwapData(address buyToken,uint256 buyAmount,uint256 nativeTokenAmount,address swapTarget,address swapAllowanceTarget)";
+    bytes32 private constant SWAP_DATA_TYPE_HASH = keccak256(SWAP_DATA_TYPE);
+    bytes public constant PERMIT2_SWAP_DATA_TYPE =
+        abi.encodePacked("SwapData witness)", SWAP_DATA_TYPE, TOKEN_PERMISSIONS_TYPE);
+    bytes32 public constant PERMIT2_TRANSFERFROM_SWAP_DATA_TYPE_HASH =
+        keccak256(abi.encodePacked(PERMIT_WITNESS_TRANSFER_FROM_TYPE, PERMIT2_SWAP_DATA_TYPE));
 
     function getDomainSeparatorHashed(uint256 chainId, address permit2Address)
         internal
@@ -134,6 +142,24 @@ contract Permit2Utils is ArchUtils {
         return witnessHash;
     }
 
+    function getSwapWitnessHashed(IGasworks.SwapData memory swapData)
+        public
+        pure
+        returns (bytes32 witnessHash)
+    {
+        witnessHash = keccak256(
+            abi.encode(
+                SWAP_DATA_TYPE_HASH,
+                swapData.buyToken,
+                swapData.buyAmount,
+                swapData.nativeTokenAmount,
+                swapData.swapTarget,
+                swapData.swapAllowanceTarget
+            )
+        );
+        return witnessHash;
+    }
+
     function getMintWithPermit2MessageToSign(
         uint256 chainId,
         ISignatureTransfer.PermitTransferFrom memory permit,
@@ -183,6 +209,37 @@ contract Permit2Utils is ArchUtils {
         bytes32 permitWitnessTransferFromHash = keccak256(
             abi.encode(
                 PERMIT2_TRANSFERFROM_REDEEM_DATA_TYPE_HASH,
+                tokenPermissions,
+                spender,
+                permit.nonce,
+                permit.deadline,
+                witnessHash
+            )
+        );
+        messageHashed = keccak256(
+            abi.encodePacked("\x19\x01", domainSeparatorHashed, permitWitnessTransferFromHash)
+        );
+        return messageHashed;
+    }
+
+    function getSwapWithPermit2MessageToSign(
+        uint256 chainId,
+        ISignatureTransfer.PermitTransferFrom memory permit,
+        address spender,
+        IGasworks.SwapData memory swapData
+    ) public pure returns (bytes32 messageHashed) {
+        bytes32 domainSeparatorHashed;
+        if (chainId == 137) {
+            domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
+        }
+        if (chainId == 1) {
+            domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
+        }
+        bytes32 tokenPermissions = getTokenPermissionsHahed(permit);
+        bytes32 witnessHash = getSwapWitnessHashed(swapData);
+        bytes32 permitWitnessTransferFromHash = keccak256(
+            abi.encode(
+                PERMIT2_TRANSFERFROM_SWAP_DATA_TYPE_HASH,
                 tokenPermissions,
                 spender,
                 permit.nonce,
