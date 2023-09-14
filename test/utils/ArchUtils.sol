@@ -52,6 +52,45 @@ contract ArchUtils is Test {
     uint256 public constant ALICE_PRIVATE_KEY = 0xa11ce000000b0b;
     address public ALICE = vm.addr(ALICE_PRIVATE_KEY);
 
+    function addLabbels() public {
+      vm.label(ETH_WEB3, "WEB3");
+      vm.label(ETH_CHAIN, "CHAIN");
+      vm.label(ETH_AEDY, "AEDY");
+      vm.label(ETH_ADDY, "ADDY");
+      vm.label(ETH_USDC, "USDC");
+      vm.label(ETH_USDT, "USDT");
+      vm.label(ETH_DAI, "DAI");
+      vm.label(ETH_WBTC, "WBTC");
+      vm.label(ETH_WETH, "WETH");
+      vm.label(ETH_TRADE_ISSUER_V2, "TradeIssuerV2");
+      vm.label(ETH_ISSUER_WIZARD, "IssuerWizard");
+      vm.label(ETH_EXCHANGE_ISSUANCE, "ExchangeIssuance");
+      vm.label(ETH_BICONOMY_FORWARDER, "BiconomyForwarder");
+      vm.label(ETH_UNISWAP_PERMIT2, "UniswapPermit2");
+      vm.label(POLYGON_WEB3, "WEB3");
+      vm.label(POLYGON_CHAIN, "CHAIN");
+      vm.label(POLYGON_AEDY, "AEDY");
+      vm.label(POLYGON_ADDY, "ADDY");
+      vm.label(POLYGON_AAGG, "AAGG");
+      vm.label(POLYGON_AMOD, "AMOD");
+      vm.label(POLYGON_ABAL, "ABAL");
+      vm.label(POLYGON_AP60, "AP60");
+      vm.label(POLYGON_USDC, "USDC");
+      vm.label(POLYGON_USDT, "USDT");
+      vm.label(POLYGON_DAI, "DAI");
+      vm.label(POLYGON_WBTC, "WBTC");
+      vm.label(POLYGON_WMATIC, "WMATIC");
+      vm.label(POLYGON_TRADE_ISSUER_V2, "TradeIssuerV2");
+      vm.label(POLYGON_ISSUER_WIZARD, "IssuerWizard");
+      vm.label(POLYGON_EXCHANGE_ISSUANCE, "ExchangeIssuance");
+      vm.label(POLYGON_BICONOMY_FORWARDER, "BiconomyForwarder");
+      vm.label(POLYGON_UNISWAP_PERMIT2, "UniswapPermit2");
+      vm.label(POLYGON_ZERO_EX, "ZeroEx");
+      vm.label(POLYGON_GASWORKS_PERMIT2, "GasworksV2");
+      vm.label(POLYGON_GASWORKS_PERMIT1, "GasworksV1");
+      vm.label(ALICE, "Alice");
+    }
+
     function fetchMintQuote(address archToken, uint256 archTokenAmount, address inputToken)
         public
         returns (ITradeIssuerV2.ContractCallInstruction[] memory, uint256)
