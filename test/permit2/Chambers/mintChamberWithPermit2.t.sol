@@ -28,18 +28,24 @@ contract GaslessTest is Test, Permit2Utils {
 
     function mintChamber(uint256 chainId, address archToken, address fromToken) public {
         Gasworks gasworks;
+        address issuerWizard;
+        address uniswapPermit2;
         if (chainId == POLYGON_CHAIN_ID) {
           vm.createSelectFork("polygon");
           gasworks = deployGasworks(chainId);
+          issuerWizard = POLYGON_ISSUER_WIZARD;
+          uniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
         }
         if (chainId == ETH_CHAIN_ID) {
           vm.createSelectFork("ethereum");
           gasworks = deployGasworks(chainId);
+          issuerWizard = ETH_ISSUER_WIZARD;
+          uniswapPermit2 = ETH_UNISWAP_PERMIT2;
         }
 
         vm.prank(ALICE);
-        IERC20(fromToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max);
-        uint256 previousPortfolioBalance = IERC20(archToken).balanceOf(ALICE);
+        IERC20(fromToken).approve(uniswapPermit2, type(uint256).max);
+        uint256 previousArchTokenBalance = IERC20(archToken).balanceOf(ALICE);
         uint256 aaggAmountToMint = 10e18;
 
         (
@@ -58,7 +64,7 @@ contract GaslessTest is Test, Permit2Utils {
             aaggAmountToMint,
             fromToken,
             maxPayAmount,
-            address(POLYGON_ISSUER_WIZARD),
+            issuerWizard,
             swapCallInstructions
         );
 
@@ -81,19 +87,19 @@ contract GaslessTest is Test, Permit2Utils {
 
         gasworks.mintWithPermit2(permit, ALICE, signature, myMintData);
 
-        assertEq(IERC20(archToken).balanceOf(ALICE) - previousPortfolioBalance, aaggAmountToMint);
+        assertEq(IERC20(archToken).balanceOf(ALICE) - previousArchTokenBalance, aaggAmountToMint);
         assertLe(previousFromTokenBalance - IERC20(fromToken).balanceOf(ALICE), maxPayAmount);
     }
 
     /**
-     * [SUCCESS] Should make a mint of AAGG with AEDY using permit2
+     * [SUCCESS] Should make a mint of AAGG with WEB3 using permit2
      */
     function testMintWithPermit2FromWeb3ToAaggOnPolygon() public {
         mintChamber(POLYGON_CHAIN_ID, POLYGON_AAGG, POLYGON_WEB3);
     }
 
     /**
-     * [SUCCESS] Should make a mint of AMOD with AEDY using permit2
+     * [SUCCESS] Should make a mint of AMOD with ADDY using permit2
      */
     function testMintWithPermit2FromAddyToAmodOnPolygon() public {
         mintChamber(POLYGON_CHAIN_ID, POLYGON_AMOD, POLYGON_ADDY);
