@@ -48,7 +48,7 @@ contract GaslessTest is Test, Permit2Utils {
 
         vm.prank(ALICE);
         IERC20(archToken).approve(uniswapPermit2, type(uint256).max);
-        uint256 amountToRedeem = 50e18;
+        uint256 amountToRedeem = 5e18;
         uint256 previousToTokenBalance = IERC20(toToken).balanceOf(ALICE);
 
         (
