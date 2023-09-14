@@ -142,10 +142,10 @@ contract Permit2Utils is ArchUtils {
     ) public pure returns (bytes32 messageHashed) {
         bytes32 domainSeparatorHashed;
         if (chainId == 137) {
-          domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
+            domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
         }
         if (chainId == 1) {
-          domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
+            domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
         }
         bytes32 tokenPermissions = getTokenPermissionsHahed(permit);
         bytes32 witnessHash = getMintWitnessHashed(mintData);
@@ -173,10 +173,10 @@ contract Permit2Utils is ArchUtils {
     ) public pure returns (bytes32 messageHashed) {
         bytes32 domainSeparatorHashed;
         if (chainId == 137) {
-          domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
+            domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
         }
         if (chainId == 1) {
-          domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
+            domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
         }
         bytes32 tokenPermissions = getTokenPermissionsHahed(permit);
         bytes32 witnessHash = getRedeemWitnessHashed(redeemData);
