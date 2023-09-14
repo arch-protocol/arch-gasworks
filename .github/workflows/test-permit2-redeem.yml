@@ -1,4 +1,4 @@
-name: Gasworks Permit Tests
+name: Gasworks Permit2 Tests
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
   pull_request:
 
 jobs:
-  gasworks-tests:
+  test-permit2-redeem:
     uses: ./.github/workflows/tests-template.yml
     with:
-      make-command: test-permit
+      make-command: test-permit2-redeem
     secrets: inherit
