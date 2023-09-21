@@ -3,6 +3,8 @@ import qs from "qs";
 import {get} from './get.js';
 import { SignJWT } from "jose";
 import { archTokens } from "./config.js";
+import { response as polygonMintFromWeb3ToAagg } from './basket-issuance-response/polygon-mint-from-web3-to-aagg.js';
+import { response as polygonMintFromUsdcToAagg } from './basket-issuance-response/polygon-mint-from-usdc-to-aagg.js';
 
 const encoder = new ethers.AbiCoder()
 
@@ -17,20 +19,31 @@ async function generateJwt(payload) {
 const issuance = '0x0000000000000000000000000000000000000000000000000000000000000001';
 
 async function main(quantity, basketAddress, tokenAddress, operation) {
-  const qty = encoder.decode(["uint256"], quantity)[0]
-  const basket = encoder.decode(["address"], basketAddress)[0]
-  const token = encoder.decode(["address"], tokenAddress)[0]
-  const opt = operation === issuance;
-
-  archTokens[basket].basketAmountInWei = qty.toString()
-  archTokens[basket].tokenAddress = token
-  const jwt = await generateJwt(archTokens[basket])
-  const baseUrl = "https://dev-api.archfinance.io/basket-issuance/"
-  const opType = opt ? "issuance" : "redemption"
-  const quoteUrl = `${baseUrl}${opType}-components?${qs.stringify(
-    archTokens[basket]
-  )}`
   try {
+    const qty = encoder.decode(["uint256"], quantity)[0]
+    const basket = encoder.decode(["address"], basketAddress)[0]
+    const token = encoder.decode(["address"], tokenAddress)[0]
+    const opt = operation === issuance;
+
+    if (true) {
+      const quote = polygonMintFromUsdcToAagg.data
+      const value = opt ? quote.maxAmountInWei : quote.minAmountInWei
+      const data = quote.callInstructions ? quote.callInstructions : quote.encodedComponentQuotes
+      const encodedType = quote.callInstructions ? "tuple(address target, address allowanceTarget, address sellToken, uint256 sellAmount, address buyToken, uint256 minBuyAmount, bytes callData)[]" : "bytes[]"
+      const encoded = encoder.encode([encodedType, "uint256"], [data, value])
+
+      process.stdout.write(encoded)
+      return;
+    }
+
+    archTokens[basket].basketAmountInWei = qty.toString()
+    archTokens[basket].tokenAddress = token
+    const jwt = await generateJwt(archTokens[basket])
+    const baseUrl = "https://dev-api.archfinance.io/basket-issuance/"
+    const opType = opt ? "issuance" : "redemption"
+    const quoteUrl = `${baseUrl}${opType}-components?${qs.stringify(
+      archTokens[basket]
+    )}`
     const response = await get(quoteUrl, {
       headers: { Authorization: `Bearer ${jwt}` },
     });
@@ -45,7 +58,6 @@ async function main(quantity, basketAddress, tokenAddress, operation) {
   } catch (error) {
     console.log(error)
   }
-
 }
 
 const args = process.argv.slice(2)

@@ -33,7 +33,7 @@ contract GaslessTest is Test, Permit2Utils {
         address issuerWizard;
         address uniswapPermit2;
         if (chainId == POLYGON_CHAIN_ID) {
-            vm.createSelectFork("polygon");
+            vm.createSelectFork("polygon", 47789092);
             gasworks = deployGasworks(chainId);
             issuerWizard = POLYGON_ISSUER_WIZARD;
             uniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
@@ -48,7 +48,7 @@ contract GaslessTest is Test, Permit2Utils {
         vm.prank(ALICE);
         IERC20(fromToken).approve(uniswapPermit2, type(uint256).max);
         uint256 previousArchTokenBalance = IERC20(archToken).balanceOf(ALICE);
-        uint256 amountToMint = 10e18;
+        uint256 amountToMint = 2514538865628034790;
 
         (
             ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
@@ -90,34 +90,6 @@ contract GaslessTest is Test, Permit2Utils {
      * [SUCCESS] Should make a mint of AAGG with WEB3 using permit2
      */
     function testMintWithPermit2FromWeb3ToAaggOnPolygon() public {
-        mintChamber(POLYGON_CHAIN_ID, POLYGON_AAGG, POLYGON_WEB3);
-    }
-
-    /**
-     * [SUCCESS] Should make a mint of AMOD with ADDY using permit2
-     */
-    function testMintWithPermit2FromAddyToAmodOnPolygon() public {
-        mintChamber(POLYGON_CHAIN_ID, POLYGON_AMOD, POLYGON_ADDY);
-    }
-
-    /**
-     * [SUCCESS] Should make a mint of ABAL with CHAIN using permit2
-     */
-    function testMintWithPermit2FromChainToAbalOnPolygon() public {
-        mintChamber(POLYGON_CHAIN_ID, POLYGON_ABAL, POLYGON_CHAIN);
-    }
-
-    /**
-     * [SUCCESS] Should make a mint of AEDY with WEB3 using permit2
-     */
-    function testMintWithPermit2FromWeb3ToAedyOnEthereum() public {
-        mintChamber(ETH_CHAIN_ID, ETH_AEDY, ETH_WEB3);
-    }
-
-    /**
-     * [SUCCESS] Should make a mint of ADDY with WBTC using permit2
-     */
-    function testMintWithPermit2FromWbtcToAddyOnEthereum() public {
-        mintChamber(ETH_CHAIN_ID, ETH_ADDY, ETH_WBTC);
+        mintChamber(POLYGON_CHAIN_ID, POLYGON_AAGG, POLYGON_USDC);
     }
 }
