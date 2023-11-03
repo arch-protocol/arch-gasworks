@@ -97,7 +97,7 @@ contract GaslessTest is Test, Permit2Utils {
     }
 
     /**
-     * Loads params and call instructions (quote) from a local json file, and then 
+     * Loads params and call instructions (quote) from a local json file, and then
      * runs it to mint a chamber
      */
     function runLocalMintQuoteTest(string memory fileName) public {

@@ -158,10 +158,12 @@ contract ArchUtils is Test {
     /**
      * Fetches a Mint quote from the backend and prints a JSON-readable format of it. Used to create tests
      */
-    function fetchMintQuote(uint256 networkId, address archToken, uint256 archTokenAmount, address inputToken)
-        public
-        returns (ITradeIssuerV2.ContractCallInstruction[] memory, uint256)
-    {
+    function fetchMintQuote(
+        uint256 networkId,
+        address archToken,
+        uint256 archTokenAmount,
+        address inputToken
+    ) public returns (ITradeIssuerV2.ContractCallInstruction[] memory, uint256) {
         string[] memory inputs = new string[](6);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-arch-quote.js";
@@ -176,7 +178,12 @@ contract ArchUtils is Test {
         ) = abi.decode(response, (ITradeIssuerV2.ContractCallInstruction[], uint256));
 
         logMintQuoteAsJson(
-            networkId, archToken, archTokenAmount, inputToken, _contractCallInstructions, _maxPayAmount
+            networkId,
+            archToken,
+            archTokenAmount,
+            inputToken,
+            _contractCallInstructions,
+            _maxPayAmount
         );
 
         return (_contractCallInstructions, _maxPayAmount);
@@ -323,7 +330,9 @@ contract ArchUtils is Test {
         );
         console.log(
             string.concat(
-                "      \"allowanceTarget\": \"", vm.toString(callInstruction._allowanceTarget), "\","
+                "      \"allowanceTarget\": \"",
+                vm.toString(callInstruction._allowanceTarget),
+                "\","
             )
         );
         console.log(
@@ -340,7 +349,9 @@ contract ArchUtils is Test {
             )
         );
         console.log(
-            string.concat("      \"minBuyAmount\": ", vm.toString(callInstruction._minBuyAmount), ",")
+            string.concat(
+                "      \"minBuyAmount\": ", vm.toString(callInstruction._minBuyAmount), ","
+            )
         );
         console.log(
             string.concat("      \"callData\": \"", vm.toString(callInstruction._callData), "\"")
