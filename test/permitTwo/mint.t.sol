@@ -141,34 +141,44 @@ contract GaslessTest is Test, Permit2Utils {
      * [SUCCESS] Should make a mint of AAGG with WEB3 using permit2
      */
     function testMintWithPermit2FromWeb3ToAaggOnPolygon() public {
-        runLocalMintQuoteTest("/data/testMintWithPermit2FromWeb3ToAaggOnPolygon.json");
+        runLocalMintQuoteTest(
+            "/data/permitTwo/mint/testMintWithPermit2FromWeb3ToAaggOnPolygon.json"
+        );
     }
 
     /**
      * [SUCCESS] Should make a mint of AMOD with ADDY using permit2
      */
     function testMintWithPermit2FromAddyToAmodOnPolygon() public {
-        runLocalMintQuoteTest("/data/testMintWithPermit2FromAddyToAmodOnPolygon.json");
+        runLocalMintQuoteTest(
+            "/data/permitTwo/mint/testMintWithPermit2FromAddyToAmodOnPolygon.json"
+        );
     }
 
     /**
      * [SUCCESS] Should make a mint of ABAL with CHAIN using permit2
      */
     function testMintWithPermit2FromChainToAbalOnPolygon() public {
-        runLocalMintQuoteTest("/data/testMintWithPermit2FromChainToAbalOnPolygon.json");
+        runLocalMintQuoteTest(
+            "/data/permitTwo/mint/testMintWithPermit2FromChainToAbalOnPolygon.json"
+        );
     }
 
     /**
      * [SUCCESS] Should make a mint of AEDY with USCD using permit2
      */
     function testMintWithPermit2FromUSDCToAedyOnEthereum() public {
-        runLocalMintQuoteTest("/data/testMintWithPermit2FromUSDCToAedyOnEthereum.json");
+        runLocalMintQuoteTest(
+            "/data/permitTwo/mint/testMintWithPermit2FromUSDCToAedyOnEthereum.json"
+        );
     }
 
     /**
      * [SUCCESS] Should make a mint of ADDY with WBTC using permit2
      */
     function testMintWithPermit2FromWbtcToAddyOnEthereum() public {
-        runLocalMintQuoteTest("/data/testMintWithPermit2FromWbtcToAddyOnEthereum.json");
+        runLocalMintQuoteTest(
+            "/data/permitTwo/mint/testMintWithPermit2FromWbtcToAddyOnEthereum.json"
+        );
     }
 }
