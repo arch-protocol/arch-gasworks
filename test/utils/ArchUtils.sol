@@ -2,12 +2,17 @@
 pragma solidity ^0.8.17.0;
 
 import { Test } from "forge-std/Test.sol";
+import "forge-std/StdJson.sol";
 import { Conversor } from "test/utils/HexUtils.sol";
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
 import { Gasworks } from "src/Gasworks.sol";
 import { IGasworks } from "src/interfaces/IGasworks.sol";
+import { console } from "forge-std/console.sol";
 
 contract ArchUtils is Test {
+    using stdJson for string;
+
     // ChainId
     uint256 public constant ETH_CHAIN_ID = 1;
     uint256 public constant POLYGON_CHAIN_ID = 137;
@@ -150,7 +155,10 @@ contract ArchUtils is Test {
         return swapData;
     }
 
-    function fetchMintQuote(address archToken, uint256 archTokenAmount, address inputToken)
+    /**
+     * Fetches a Mint quote from the backend and prints a JSON-readable format of it. Used to create tests
+     */
+    function fetchMintQuote(uint256 networkId, address archToken, uint256 archTokenAmount, address inputToken)
         public
         returns (ITradeIssuerV2.ContractCallInstruction[] memory, uint256)
     {
@@ -166,6 +174,11 @@ contract ArchUtils is Test {
             ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
             uint256 _maxPayAmount
         ) = abi.decode(response, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+
+        logMintQuoteAsJson(
+            networkId, archToken, archTokenAmount, inputToken, _contractCallInstructions, _maxPayAmount
+        );
+
         return (_contractCallInstructions, _maxPayAmount);
     }
 
@@ -188,6 +201,9 @@ contract ArchUtils is Test {
         return (_contractCallInstructions, _minReceiveAmount);
     }
 
+    /**
+     * Transforms ITradeIssuerV2.ContractCallInstruction into IGasworks.SwapCallInstruction
+     */
     function getSwapCallsFromContractCalls(
         ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
     ) public pure returns (IGasworks.SwapCallInstruction[] memory) {
@@ -213,6 +229,9 @@ contract ArchUtils is Test {
         return swapCallInstructions;
     }
 
+    /**
+     * Deploys a new Gasworks contract and allows all tokens used in arch
+     */
     function deployGasworks(uint256 chainId) public returns (Gasworks) {
         if (chainId == 137) {
             Gasworks polygonGasworks = new Gasworks(
@@ -250,5 +269,204 @@ contract ArchUtils is Test {
         ethereumGasworks.setTokens(ETH_WBTC);
         ethereumGasworks.setTokens(ETH_WETH);
         return ethereumGasworks;
+    }
+
+    /**
+     * Logs a contract call instruction in console in a readable format
+     */
+    function logContractCallInstruction(
+        ITradeIssuerV2.ContractCallInstruction memory callInstruction
+    ) public view {
+        console.log("Sell token: ", address(callInstruction._sellToken));
+        console.log("Sell amount: ", callInstruction._sellAmount);
+        console.log("Buy token: ", address(callInstruction._buyToken));
+        console.log("Buy amount: ", callInstruction._minBuyAmount);
+        console.log("Target: ", callInstruction._target);
+        console.log("Allowance target: ", callInstruction._allowanceTarget);
+        console.log("Call data: ");
+        console.logBytes(callInstruction._callData);
+    }
+
+    /**
+     * Logs a mint quote in console in a readable format. Used for debug.
+     */
+    function logMintQuote(
+        address archToken,
+        uint256 archTokenAmount,
+        address inputToken,
+        ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+        uint256 _maxPayAmount
+    ) public view {
+        console.log("---------- Mint request ----------");
+        console.log("Block number: ", block.number);
+        console.log("Mint token: ", archToken);
+        console.log("Mint aomunt: ", archTokenAmount);
+        console.log("Input token: ", inputToken);
+        console.log("---------- Backend response ----------");
+        console.log("Max pay amount: ", _maxPayAmount);
+        for (uint256 i = 0; i < _contractCallInstructions.length; i++) {
+            console.log("Contract call instruction #", i);
+            logContractCallInstruction(_contractCallInstructions[i]);
+        }
+    }
+
+    /**
+     * Logs a contract call instruction in console in a JSON-readable format
+     */
+    function logContractCallInstructionAsJson(
+        ITradeIssuerV2.ContractCallInstruction memory callInstruction,
+        bool logLastComma
+    ) public view {
+        console.log("    {");
+        console.log(
+            string.concat("      \"target\": \"", vm.toString(callInstruction._target), "\",")
+        );
+        console.log(
+            string.concat(
+                "      \"allowanceTarget\": \"", vm.toString(callInstruction._allowanceTarget), "\","
+            )
+        );
+        console.log(
+            string.concat(
+                "      \"sellToken\": \"", vm.toString(address(callInstruction._sellToken)), "\","
+            )
+        );
+        console.log(
+            string.concat("      \"sellAmount\": ", vm.toString(callInstruction._sellAmount), ",")
+        );
+        console.log(
+            string.concat(
+                "      \"buyToken\": \"", vm.toString(address(callInstruction._buyToken)), "\","
+            )
+        );
+        console.log(
+            string.concat("      \"minBuyAmount\": ", vm.toString(callInstruction._minBuyAmount), ",")
+        );
+        console.log(
+            string.concat("      \"callData\": \"", vm.toString(callInstruction._callData), "\"")
+        );
+        if (logLastComma) {
+            console.log("    },");
+        } else {
+            console.log("    }");
+        }
+    }
+
+    /**
+     * Logs a full mint quote in console in a JSON-readable format. Used to create new tests.
+     */
+    function logMintQuoteAsJson(
+        uint256 networkId,
+        address archToken,
+        uint256 archTokenAmount,
+        address inputToken,
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
+        uint256 maxPayAmount
+    ) public view {
+        console.log("{");
+        console.log(string.concat("  \"networkId\": ", vm.toString(networkId), ","));
+        console.log(string.concat("  \"blockNumber\": ", vm.toString(block.number), ","));
+        console.log(string.concat("  \"archToken\": \"", vm.toString(archToken), "\","));
+        console.log(string.concat("  \"archTokenAmount\": ", vm.toString(archTokenAmount), ","));
+        console.log(string.concat("  \"inputToken\": \"", vm.toString(inputToken), "\","));
+        console.log(string.concat("  \"maxPayAmount\": ", vm.toString(maxPayAmount), ","));
+        console.log("  \"callInstructions\": [");
+        for (uint256 i = 0; i < contractCallInstructions.length; i++) {
+            if (i != contractCallInstructions.length - 1) {
+                logContractCallInstructionAsJson(contractCallInstructions[i], true);
+            } else {
+                logContractCallInstructionAsJson(contractCallInstructions[i], false);
+            }
+        }
+        console.log("  ]");
+        console.log("}");
+    }
+
+    /**
+     * Intermediate struct needed to decode a contract call instruction form a JSON file
+     */
+    struct DecodedCallInstruction {
+        address _allowanceTarget;
+        address _buyToken;
+        bytes _callData;
+        uint256 _minBuyAmount;
+        uint256 _sellAmount;
+        address _sellToken;
+        address payable _target;
+    }
+
+    /**
+     * Reads a contract call instruction from a JSON file and returns
+     * an ITradeIssuerV2.ContractCallInstruction[] array
+     */
+    function parseContractCallInstructions(string memory json)
+        public
+        pure
+        returns (ITradeIssuerV2.ContractCallInstruction[] memory)
+    {
+        bytes memory callInstructionsInJson = json.parseRaw(".callInstructions");
+        DecodedCallInstruction[] memory decodedCalls =
+            abi.decode(callInstructionsInJson, (DecodedCallInstruction[]));
+
+        ITradeIssuerV2.ContractCallInstruction[] memory instructions =
+            new ITradeIssuerV2.ContractCallInstruction[](decodedCalls.length);
+
+        for (uint256 i = 0; i < decodedCalls.length; ++i) {
+            DecodedCallInstruction memory decodedCall = decodedCalls[i];
+            instructions[i] = ITradeIssuerV2.ContractCallInstruction({
+                _target: payable(decodedCall._target),
+                _allowanceTarget: decodedCall._allowanceTarget,
+                _sellToken: IERC20(decodedCall._sellToken),
+                _sellAmount: decodedCall._sellAmount,
+                _buyToken: IERC20(decodedCall._buyToken),
+                _minBuyAmount: decodedCall._minBuyAmount,
+                _callData: decodedCall._callData
+            });
+        }
+
+        return instructions;
+    }
+
+    /**
+     * Reads a mint quote from a JSON file and returns all params in the quote
+     * plus an ITradeIssuerV2.ContractCallInstruction[] array
+     */
+    function parseMintQuoteFromJson(string memory json)
+        public
+        pure
+        returns (
+            uint256 networkId,
+            uint256 blockNumber,
+            address archToken,
+            uint256 archTokenAmount,
+            address inputToken,
+            uint256 maxPayAmount,
+            ITradeIssuerV2.ContractCallInstruction[] memory callInstrictions
+        )
+    {
+        bytes memory _networkId = json.parseRaw(".networkId");
+        networkId = abi.decode(_networkId, (uint256));
+        bytes memory _blockNumber = json.parseRaw(".blockNumber");
+        blockNumber = abi.decode(_blockNumber, (uint256));
+        bytes memory _archToken = json.parseRaw(".archToken");
+        archToken = abi.decode(_archToken, (address));
+        bytes memory _archTokenAmount = json.parseRaw(".archTokenAmount");
+        archTokenAmount = abi.decode(_archTokenAmount, (uint256));
+        bytes memory _inputToken = json.parseRaw(".inputToken");
+        inputToken = abi.decode(_inputToken, (address));
+        bytes memory _maxPayAmount = json.parseRaw(".maxPayAmount");
+        maxPayAmount = abi.decode(_maxPayAmount, (uint256));
+
+        callInstrictions = parseContractCallInstructions(json);
+
+        return (
+            networkId,
+            blockNumber,
+            archToken,
+            archTokenAmount,
+            inputToken,
+            maxPayAmount,
+            callInstrictions
+        );
     }
 }
