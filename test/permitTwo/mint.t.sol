@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17.0;
 
+import "forge-std/StdJson.sol";
 import { Test } from "forge-std/Test.sol";
 import { Gasworks } from "src/Gasworks.sol";
 import { IGasworks } from "src/interfaces/IGasworks.sol";
@@ -16,30 +17,47 @@ contract GaslessTest is Test, Permit2Utils {
                               VARIABLES
     //////////////////////////////////////////////////////////////*/
     using SafeERC20 for IERC20;
+    using stdJson for string;
+
+    string root;
+    string path;
+    string json;
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
         addLabbels();
+        root = vm.projectRoot();
     }
 
     /*//////////////////////////////////////////////////////////////
-                              SUCCESS
+                              AUX FUNCT
     //////////////////////////////////////////////////////////////*/
 
-    function mintChamber(uint256 chainId, address archToken, address fromToken) public {
+    /**
+     * Mints a chamber using Permit2, with the params and call instructions (quote) given
+     */
+    function mintChamber(
+        uint256 chainId,
+        uint256 blockNumber,
+        address archToken,
+        uint256 archTokenAmount,
+        address fromToken,
+        uint256 maxPayAmount,
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+    ) public {
         Gasworks gasworks;
         address issuerWizard;
         address uniswapPermit2;
         if (chainId == POLYGON_CHAIN_ID) {
-            vm.createSelectFork("polygon");
+            vm.createSelectFork("polygon", blockNumber);
             gasworks = deployGasworks(chainId);
             issuerWizard = POLYGON_ISSUER_WIZARD;
             uniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
         }
         if (chainId == ETH_CHAIN_ID) {
-            vm.createSelectFork("ethereum");
+            vm.createSelectFork("ethereum", blockNumber);
             gasworks = deployGasworks(chainId);
             issuerWizard = ETH_ISSUER_WIZARD;
             uniswapPermit2 = ETH_UNISWAP_PERMIT2;
@@ -48,21 +66,15 @@ contract GaslessTest is Test, Permit2Utils {
         vm.prank(ALICE);
         IERC20(fromToken).approve(uniswapPermit2, type(uint256).max);
         uint256 previousArchTokenBalance = IERC20(archToken).balanceOf(ALICE);
-        uint256 aaggAmountToMint = 10e18;
-
-        (
-            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
-            uint256 maxPayAmount
-        ) = fetchMintQuote(archToken, aaggAmountToMint, fromToken);
 
         deal(fromToken, ALICE, maxPayAmount);
         uint256 previousFromTokenBalance = IERC20(fromToken).balanceOf(ALICE);
 
         IGasworks.SwapCallInstruction[] memory swapCallInstructions =
-            getSwapCallsFromContractCalls(_contractCallInstructions);
+            getSwapCallsFromContractCalls(contractCallInstructions);
 
         IGasworks.MintData memory myMintData = IGasworks.MintData(
-            archToken, aaggAmountToMint, fromToken, maxPayAmount, issuerWizard, swapCallInstructions
+            archToken, archTokenAmount, fromToken, maxPayAmount, issuerWizard, swapCallInstructions
         );
 
         uint256 currentNonce = getRandomNonce();
@@ -80,42 +92,83 @@ contract GaslessTest is Test, Permit2Utils {
 
         gasworks.mintWithPermit2(permit, ALICE, signature, myMintData);
 
-        assertEq(IERC20(archToken).balanceOf(ALICE) - previousArchTokenBalance, aaggAmountToMint);
+        assertEq(IERC20(archToken).balanceOf(ALICE) - previousArchTokenBalance, archTokenAmount);
         assertLe(previousFromTokenBalance - IERC20(fromToken).balanceOf(ALICE), maxPayAmount);
     }
+
+    /**
+     * Loads params and call instructions (quote) from a local json file, and then 
+     * runs it to mint a chamber
+     */
+    function runLocalMintQuoteTest(string memory fileName) public {
+        path = string.concat(root, fileName);
+        json = vm.readFile(path);
+        (
+            uint256 networkId,
+            uint256 blockNumber,
+            address archToken,
+            uint256 archTokenAmount,
+            address fromToken,
+            uint256 maxPayAmount,
+            ITradeIssuerV2.ContractCallInstruction[] memory callInstrictions
+        ) = parseMintQuoteFromJson(json);
+        mintChamber(
+            networkId,
+            blockNumber,
+            archToken,
+            archTokenAmount,
+            fromToken,
+            maxPayAmount,
+            callInstrictions
+        );
+    }
+
+    /**
+     * Used to create json files, fetches a quote from arch and prints a JSON-readable
+     * quote in console, ready to be saved for new tests. The fork is needed to get the
+     * block number alongside the quote.
+     */
+    function printQuoteToCreateATest() public {
+        vm.createSelectFork("ethereum");
+        fetchMintQuote(ETH_CHAIN_ID, ETH_ADDY, 100e18, ETH_WBTC);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              SUCCESS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * [SUCCESS] Should make a mint of AAGG with WEB3 using permit2
      */
     function testMintWithPermit2FromWeb3ToAaggOnPolygon() public {
-        mintChamber(POLYGON_CHAIN_ID, POLYGON_AAGG, POLYGON_WEB3);
+        runLocalMintQuoteTest("/data/testMintWithPermit2FromWeb3ToAaggOnPolygon.json");
     }
 
     /**
      * [SUCCESS] Should make a mint of AMOD with ADDY using permit2
      */
     function testMintWithPermit2FromAddyToAmodOnPolygon() public {
-        mintChamber(POLYGON_CHAIN_ID, POLYGON_AMOD, POLYGON_ADDY);
+        runLocalMintQuoteTest("/data/testMintWithPermit2FromAddyToAmodOnPolygon.json");
     }
 
     /**
      * [SUCCESS] Should make a mint of ABAL with CHAIN using permit2
      */
     function testMintWithPermit2FromChainToAbalOnPolygon() public {
-        mintChamber(POLYGON_CHAIN_ID, POLYGON_ABAL, POLYGON_CHAIN);
+        runLocalMintQuoteTest("/data/testMintWithPermit2FromChainToAbalOnPolygon.json");
     }
 
     /**
-     * [SUCCESS] Should make a mint of AEDY with WEB3 using permit2
+     * [SUCCESS] Should make a mint of AEDY with USCD using permit2
      */
-    function testMintWithPermit2FromWeb3ToAedyOnEthereum() public {
-        mintChamber(ETH_CHAIN_ID, ETH_AEDY, ETH_WEB3);
+    function testMintWithPermit2FromUSDCToAedyOnEthereum() public {
+        runLocalMintQuoteTest("/data/testMintWithPermit2FromUSDCToAedyOnEthereum.json");
     }
 
     /**
      * [SUCCESS] Should make a mint of ADDY with WBTC using permit2
      */
     function testMintWithPermit2FromWbtcToAddyOnEthereum() public {
-        mintChamber(ETH_CHAIN_ID, ETH_ADDY, ETH_WBTC);
+        runLocalMintQuoteTest("/data/testMintWithPermit2FromWbtcToAddyOnEthereum.json");
     }
 }
