@@ -189,10 +189,12 @@ contract ArchUtils is Test {
         return (_contractCallInstructions, _maxPayAmount);
     }
 
-    function fetchRedeemQuote(address archToken, uint256 archTokenAmount, address outputToken)
-        public
-        returns (ITradeIssuerV2.ContractCallInstruction[] memory, uint256)
-    {
+    function fetchRedeemQuote(
+        uint256 networkId,
+        address archToken,
+        uint256 archTokenAmount,
+        address outputToken
+    ) public returns (ITradeIssuerV2.ContractCallInstruction[] memory, uint256) {
         string[] memory inputs = new string[](6);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-arch-quote.js";
@@ -205,6 +207,16 @@ contract ArchUtils is Test {
             ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
             uint256 _minReceiveAmount
         ) = abi.decode(response, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+
+        logRedeemQuoteAsJson(
+            networkId,
+            archToken,
+            archTokenAmount,
+            outputToken,
+            _contractCallInstructions,
+            _minReceiveAmount
+        );
+
         return (_contractCallInstructions, _minReceiveAmount);
     }
 
@@ -318,6 +330,29 @@ contract ArchUtils is Test {
     }
 
     /**
+     * Logs a redeem quote in console in a readable format. Used for debug.
+     */
+    function logRedeemQuote(
+        address archToken,
+        uint256 archTokenAmount,
+        address outputToken,
+        ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+        uint256 _MinReceiveAmount
+    ) public view {
+        console.log("---------- Redeem request ----------");
+        console.log("Block number: ", block.number);
+        console.log("Redeem token: ", archToken);
+        console.log("Redeem aomunt: ", archTokenAmount);
+        console.log("Output token: ", outputToken);
+        console.log("---------- Backend response ----------");
+        console.log("Min receive amount: ", _MinReceiveAmount);
+        for (uint256 i = 0; i < _contractCallInstructions.length; i++) {
+            console.log("Contract call instruction #", i);
+            logContractCallInstruction(_contractCallInstructions[i]);
+        }
+    }
+
+    /**
      * Logs a contract call instruction in console in a JSON-readable format
      */
     function logContractCallInstructionAsJson(
@@ -381,6 +416,33 @@ contract ArchUtils is Test {
         console.log(string.concat("  \"archTokenAmount\": ", vm.toString(archTokenAmount), ","));
         console.log(string.concat("  \"inputToken\": \"", vm.toString(inputToken), "\","));
         console.log(string.concat("  \"maxPayAmount\": ", vm.toString(maxPayAmount), ","));
+        console.log("  \"callInstructions\": [");
+        for (uint256 i = 0; i < contractCallInstructions.length; i++) {
+            if (i != contractCallInstructions.length - 1) {
+                logContractCallInstructionAsJson(contractCallInstructions[i], true);
+            } else {
+                logContractCallInstructionAsJson(contractCallInstructions[i], false);
+            }
+        }
+        console.log("  ]");
+        console.log("}");
+    }
+
+    function logRedeemQuoteAsJson(
+        uint256 networkId,
+        address archToken,
+        uint256 archTokenAmount,
+        address outputToken,
+        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
+        uint256 minReceiveAmount
+    ) public view {
+        console.log("{");
+        console.log(string.concat("  \"networkId\": ", vm.toString(networkId), ","));
+        console.log(string.concat("  \"blockNumber\": ", vm.toString(block.number), ","));
+        console.log(string.concat("  \"archToken\": \"", vm.toString(archToken), "\","));
+        console.log(string.concat("  \"archTokenAmount\": ", vm.toString(archTokenAmount), ","));
+        console.log(string.concat("  \"outputToken\": \"", vm.toString(outputToken), "\","));
+        console.log(string.concat("  \"minReceiveAmount\": ", vm.toString(minReceiveAmount), ","));
         console.log("  \"callInstructions\": [");
         for (uint256 i = 0; i < contractCallInstructions.length; i++) {
             if (i != contractCallInstructions.length - 1) {
@@ -477,6 +539,49 @@ contract ArchUtils is Test {
             archTokenAmount,
             inputToken,
             maxPayAmount,
+            callInstrictions
+        );
+    }
+
+    /**
+     * Reads a redeem quote from a JSON file and returns all params in the quote
+     * plus an ITradeIssuerV2.ContractCallInstruction[] array
+     */
+    function parseRedeemQuoteFromJson(string memory json)
+        public
+        pure
+        returns (
+            uint256 networkId,
+            uint256 blockNumber,
+            address archToken,
+            uint256 archTokenAmount,
+            address outputToken,
+            uint256 minReceiveAmount,
+            ITradeIssuerV2.ContractCallInstruction[] memory callInstrictions
+        )
+    {
+        bytes memory _networkId = json.parseRaw(".networkId");
+        networkId = abi.decode(_networkId, (uint256));
+        bytes memory _blockNumber = json.parseRaw(".blockNumber");
+        blockNumber = abi.decode(_blockNumber, (uint256));
+        bytes memory _archToken = json.parseRaw(".archToken");
+        archToken = abi.decode(_archToken, (address));
+        bytes memory _archTokenAmount = json.parseRaw(".archTokenAmount");
+        archTokenAmount = abi.decode(_archTokenAmount, (uint256));
+        bytes memory _outputToken = json.parseRaw(".outputToken");
+        outputToken = abi.decode(_outputToken, (address));
+        bytes memory _minReceiveAmount = json.parseRaw(".minReceiveAmount");
+        minReceiveAmount = abi.decode(_minReceiveAmount, (uint256));
+
+        callInstrictions = parseContractCallInstructions(json);
+
+        return (
+            networkId,
+            blockNumber,
+            archToken,
+            archTokenAmount,
+            outputToken,
+            minReceiveAmount,
             callInstrictions
         );
     }
