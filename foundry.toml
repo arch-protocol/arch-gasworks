@@ -21,6 +21,7 @@ remappings = [
   "@prb/test/=lib/foundry-random/lib/prb-test/src/",
   "@openzeppelin/=lib/openzeppelin-contracts/"
 ]
+fs_permissions = [{ access = "read", path = "./data"}]
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_MAINNET_KEY}" }
