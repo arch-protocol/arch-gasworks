@@ -33,7 +33,7 @@ contract GaslessTest is Test, Permit2Utils {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              SUCCESS
+                              AUX FUNCT
     //////////////////////////////////////////////////////////////*/
 
     function redeemChamber(
@@ -62,9 +62,7 @@ contract GaslessTest is Test, Permit2Utils {
         }
 
         vm.prank(ALICE);
-        console.log("1");
         IERC20(archToken).approve(uniswapPermit2, type(uint256).max);
-        console.log("2");
         uint256 previousToTokenBalance = IERC20(toToken).balanceOf(ALICE);
         uint256 adjustedMinReceiveAmount = minReceiveAmount;
 
@@ -103,8 +101,6 @@ contract GaslessTest is Test, Permit2Utils {
         gasworks.redeemWithPermit2(permit, ALICE, signature, myRedeemData, false);
 
         uint256 finalToTokenBalanceDiff = IERC20(toToken).balanceOf(ALICE) - previousToTokenBalance;
-        console.log("realAmountReceived / minAmountReceived [%]:");
-        console.log((100 * finalToTokenBalanceDiff) / minReceiveAmount);
 
         assertGe(finalToTokenBalanceDiff, adjustedMinReceiveAmount);
         assertEq(previousArchTokenBalance - IERC20(archToken).balanceOf(ALICE), archTokenAmount);
@@ -142,18 +138,23 @@ contract GaslessTest is Test, Permit2Utils {
      * quote in console, ready to be saved for new tests. The fork is needed to get the
      * block number alongside the quote.
      */
-    function testPrintQuoteToCreateATest() public {
-        vm.createSelectFork("ethereum");
-        fetchRedeemQuote(POLYGON_CHAIN_ID, POLYGON_ABAL, 10e18, POLYGON_USDC);
+    function printQuoteToCreateATest() public {
+        vm.createSelectFork("polygon");
+        fetchRedeemQuote(POLYGON_CHAIN_ID, POLYGON_AAGG, 30e18, POLYGON_USDT);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                              SUCCESS
+    //////////////////////////////////////////////////////////////*/
+
+
     /**
-     * [SUCCESS] Should redeem AAGG for AEDY using permit2
+     * [SUCCESS] Should redeem AAGG for USDT using permit2
      */
-    function testRedeemWithPermit2FromAaggToAedyOnPolygon() public {
-        // redeemChamber(POLYGON_CHAIN_ID, POLYGON_AAGG, POLYGON_AEDY);
+    function testRedeemWithPermit2FromAaggToUsdtOnPolygon() public {
+        // redeemChamber(POLYGON_CHAIN_ID, POLYGON_AAGG, POLYGON_USDT);
         runLocalRedeemQuoteTest(
-            "/data/permitTwo/redeem/testRedeemWithPermit2FromAaggToAedyOnPolygon.json"
+            "/data/permitTwo/redeem/testRedeemWithPermit2FromAaggToUsdtOnPolygon.json"
         );
     }
 
@@ -161,7 +162,6 @@ contract GaslessTest is Test, Permit2Utils {
      * [SUCCESS] Should redeem AMOD for USDT using permit2 [Test when supply is available]
      */
     // function testRedeemWithPermit2FromAmodToUsdtOnPolygon() public {
-    //     // redeemChamber(POLYGON_CHAIN_ID, POLYGON_AMOD, POLYGON_USDT);
     //     runLocalRedeemQuoteTest(
     //         "/data/permitTwo/redeem/testRedeemWithPermit2FromAmodToUsdtOnPolygon.json"
     //     );
@@ -171,19 +171,17 @@ contract GaslessTest is Test, Permit2Utils {
      * [SUCCESS] Should redeem ABAL for USDC using permit2
      */
     function testRedeemWithPermit2FromAbalToUsdcOnPolygon() public {
-        // redeemChamber(POLYGON_CHAIN_ID, POLYGON_ABAL, POLYGON_USDC);
         runLocalRedeemQuoteTest(
             "/data/permitTwo/redeem/testRedeemWithPermit2FromAbalToUsdcOnPolygon.json"
         );
     }
 
     /**
-     * [SUCCESS] Should redeem AEDY for CHAIN using permit2 [Most of the time fails]
+     * [SUCCESS] Should redeem AEDY for WBTC using permit2
      */
-    function testRedeemWithPermit2FromAedyToChainOnEthereum() public {
-        // redeemChamber(ETH_CHAIN_ID, ETH_AEDY, ETH_CHAIN);
+    function testRedeemWithPermit2FromAedyToWbtcOnEthereum() public {
         runLocalRedeemQuoteTest(
-            "/data/permitTwo/redeem/testRedeemWithPermit2FromAedyToChainOnEthereum.json"
+            "/data/permitTwo/redeem/testRedeemWithPermit2FromAedyToWbtcOnEthereum.json"
         );
     }
 
@@ -191,7 +189,6 @@ contract GaslessTest is Test, Permit2Utils {
      * [SUCCESS] Should redeem ADDY for WETH using permit2 [Most of the time fails]
      */
     function testRedeemWithPermit2FromAddyToWethOnEthereum() public {
-        // redeemChamber(ETH_CHAIN_ID, ETH_ADDY, ETH_WETH);
         runLocalRedeemQuoteTest(
             "/data/permitTwo/redeem/testRedeemWithPermit2FromAddyToWethOnEthereum.json"
         );
