@@ -147,7 +147,6 @@ contract GaslessTest is Test, Permit2Utils {
                               SUCCESS
     //////////////////////////////////////////////////////////////*/
 
-
     /**
      * [SUCCESS] Should redeem AAGG for USDT using permit2
      */

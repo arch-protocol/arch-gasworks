@@ -131,11 +131,12 @@ contract ArchUtils is Test {
         vm.label(ALICE, "Alice");
     }
 
-    function fetchSwapQuote(uint256 networkId,
-    uint256 sellAmount, address sellToken, address buyToken)
-        public
-        returns (IGasworks.SwapData memory swapData)
-    {
+    function fetchSwapQuote(
+        uint256 networkId,
+        uint256 sellAmount,
+        address sellToken,
+        address buyToken
+    ) public returns (IGasworks.SwapData memory swapData) {
         string[] memory inputs = new string[](5);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-quote.js";
@@ -155,15 +156,15 @@ contract ArchUtils is Test {
         );
 
         logSwapQuoteAsJson(
-          networkId,
-          sellToken,
-          sellAmount,
-          buyToken,
-          buyAmount,
-          nativeTokenAmount,
-          swapTarget,
-          swapAllowanceTarget,
-          swapCallData
+            networkId,
+            sellToken,
+            sellAmount,
+            buyToken,
+            buyAmount,
+            nativeTokenAmount,
+            swapTarget,
+            swapAllowanceTarget,
+            swapCallData
         );
 
         return swapData;
@@ -324,15 +325,15 @@ contract ArchUtils is Test {
      * Logs a swap quote in console in a readable format. Used for debug.
      */
     function logSwapQuote(
-      uint256 networkId,
-      address sellToken,
-      uint256 sellAmount,
-      address buyToken,
-      uint256 buyAmount,
-      uint256 nativeTokenAmount,
-      address swapTarget,
-      address swapAllowanceTarget,
-      bytes memory swapCallData
+        uint256 networkId,
+        address sellToken,
+        uint256 sellAmount,
+        address buyToken,
+        uint256 buyAmount,
+        uint256 nativeTokenAmount,
+        address swapTarget,
+        address swapAllowanceTarget,
+        bytes memory swapCallData
     ) public view {
         console.log("---------- Swap request ----------");
         console.log(string.concat("Network Id: ", vm.toString(networkId)));
@@ -444,15 +445,15 @@ contract ArchUtils is Test {
      * Logs a full swap quote in console in a JSON-readable format. Used to create new tests.
      */
     function logSwapQuoteAsJson(
-      uint256 networkId,
-      address sellToken,
-      uint256 sellAmount,
-      address buyToken,
-      uint256 buyAmount,
-      uint256 nativeTokenAmount,
-      address swapTarget,
-      address swapAllowanceTarget,
-      bytes memory swapCallData
+        uint256 networkId,
+        address sellToken,
+        uint256 sellAmount,
+        address buyToken,
+        uint256 buyAmount,
+        uint256 nativeTokenAmount,
+        address swapTarget,
+        address swapAllowanceTarget,
+        bytes memory swapCallData
     ) public view {
         console.log("{");
         console.log(string.concat("  \"networkId\": ", vm.toString(networkId), ","));
@@ -463,7 +464,9 @@ contract ArchUtils is Test {
         console.log(string.concat("  \"buyAmount\": ", vm.toString(buyAmount), ","));
         console.log(string.concat("  \"nativeTokenAmount\": ", vm.toString(nativeTokenAmount), ","));
         console.log(string.concat("  \"swapTarget\": \"", vm.toString(swapTarget), "\","));
-        console.log(string.concat("  \"swapAllowanceTarget\": \"", vm.toString(swapAllowanceTarget), "\","));
+        console.log(
+            string.concat("  \"swapAllowanceTarget\": \"", vm.toString(swapAllowanceTarget), "\",")
+        );
         console.log(string.concat("  \"swapCallData\": \"", vm.toString(swapCallData), "\""));
         console.log("}");
     }

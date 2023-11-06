@@ -169,12 +169,12 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         IERC20(sellToken).approve(uniswapPermit2, type(uint256).max);
 
         IGasworks.SwapData memory swapData = IGasworks.SwapData(
-          buyToken,
-          buyAmount,
-          nativeTokenAmount,
-          payable(swapTarget),
-          swapAllowanceTarget,
-          swapCallData
+            buyToken,
+            buyAmount,
+            nativeTokenAmount,
+            payable(swapTarget),
+            swapAllowanceTarget,
+            swapCallData
         );
 
         deal(sellToken, ALICE, sellAmount);
@@ -252,34 +252,30 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testSwapWithPermit2FromUsdcToWeb3() public {
         // swapWithPermit2(POLYGON_CHAIN_ID, 1e6, POLYGON_USDC, POLYGON_WEB3);
-        runLocalSwapQuoteTest(
-            "/data/permitTwo/swap/testSwapWithPermit2FromUsdcToWeb3.json"
-        );
+        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapWithPermit2FromUsdcToWeb3.json");
     }
 
     /**
      * [SUCCESS] Should make a swap from AEDY to ADDY using permit2
      */
     function testSwapWithPermit2FromAedyToAddy() public {
-        runLocalSwapQuoteTest(
-            "/data/permitTwo/swap/testSwapWithPermit2FromAedyToAddy.json"
-        );
+        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapWithPermit2FromAedyToAddy.json");
     }
-    
+
     /**
      * [SUCCESS] Should make a swap from DAI to CHAIN using permit2
      */
     function testSwapWithPermit2FromDaiToChain() public {
-        runLocalSwapQuoteTest(
-            "/data/permitTwo/swap/testSwapWithPermit2FromDaiToChain.json"
-        );
+        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapWithPermit2FromDaiToChain.json");
     }
 
     /**
      * [SUCCESS] Should make a swap from USDC to native MATIC with permit2
      */
     function testSwapWithPermit2FromUsdcToNativeMatic() public {
-        path = string.concat(root, "/data/permitTwo/swap/testSwapWithPermit2FromUsdcToNativeMatic.json");
+        path = string.concat(
+            root, "/data/permitTwo/swap/testSwapWithPermit2FromUsdcToNativeMatic.json"
+        );
         json = vm.readFile(path);
         (
             ,
@@ -301,12 +297,12 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         vm.prank(ALICE);
         IERC20(sellToken).approve(uniswapPermit2, type(uint256).max);
         IGasworks.SwapData memory swapData = IGasworks.SwapData(
-          buyToken,
-          buyAmount,
-          nativeTokenAmount,
-          payable(swapTarget),
-          swapAllowanceTarget,
-          swapCallData
+            buyToken,
+            buyAmount,
+            nativeTokenAmount,
+            payable(swapTarget),
+            swapAllowanceTarget,
+            swapCallData
         );
 
         deal(sellToken, ALICE, sellAmount);
