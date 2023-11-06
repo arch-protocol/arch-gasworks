@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17.0;
 
+import "forge-std/StdJson.sol";
 import { Test } from "forge-std/Test.sol";
 import { Gasworks } from "src/Gasworks.sol";
 import { IGasworks } from "src/interfaces/IGasworks.sol";
@@ -23,6 +24,11 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
                               VARIABLES
     //////////////////////////////////////////////////////////////*/
     using SafeTransferLib for ERC20;
+    using stdJson for string;
+
+    string root;
+    string path;
+    string json;
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
@@ -30,6 +36,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
     function setUp() public {
         addLabbels();
+        root = vm.projectRoot();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -127,31 +134,48 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     // }
 
     /*//////////////////////////////////////////////////////////////
-                              SUCCESS
+                              AUX FUNCT
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * Does a swap using Permit2, with the params (quote) given
+     */
     function swapWithPermit2(
         uint256 chainId,
-        uint256 sellAmount,
+        uint256 blockNumber,
         address sellToken,
-        address buyToken
+        uint256 sellAmount,
+        address buyToken,
+        uint256 buyAmount,
+        uint256 nativeTokenAmount,
+        address swapTarget,
+        address swapAllowanceTarget,
+        bytes memory swapCallData
     ) public {
         Gasworks gasworks;
         address uniswapPermit2;
         if (chainId == POLYGON_CHAIN_ID) {
-            vm.createSelectFork("polygon");
+            vm.createSelectFork("polygon", blockNumber);
             gasworks = deployGasworks(chainId);
             uniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
         }
         if (chainId == ETH_CHAIN_ID) {
-            vm.createSelectFork("ethereum");
+            vm.createSelectFork("ethereum", blockNumber);
             gasworks = deployGasworks(chainId);
             uniswapPermit2 = ETH_UNISWAP_PERMIT2;
         }
 
         vm.prank(ALICE);
         IERC20(sellToken).approve(uniswapPermit2, type(uint256).max);
-        (IGasworks.SwapData memory swapData) = fetchSwapQuote(sellAmount, sellToken, buyToken);
+
+        IGasworks.SwapData memory swapData = IGasworks.SwapData(
+          buyToken,
+          buyAmount,
+          nativeTokenAmount,
+          payable(swapTarget),
+          swapAllowanceTarget,
+          swapCallData
+        );
 
         deal(sellToken, ALICE, sellAmount);
         uint256 previousSellTokenBalance = IERC20(sellToken).balanceOf(ALICE);
@@ -178,41 +202,112 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     }
 
     /**
+     * Loads params (quote) from a local json file, and then does a swap
+     */
+    function runLocalSwapQuoteTest(string memory fileName) public {
+        path = string.concat(root, fileName);
+        json = vm.readFile(path);
+        (
+            uint256 networkId,
+            uint256 blockNumber,
+            address sellToken,
+            uint256 sellAmount,
+            address buyToken,
+            uint256 buyAmount,
+            uint256 nativeTokenAmount,
+            address swapTarget,
+            address swapAllowanceTarget,
+            bytes memory swapCallData
+        ) = parseSwapQuoteFromJson(json);
+        swapWithPermit2(
+            networkId,
+            blockNumber,
+            sellToken,
+            sellAmount,
+            buyToken,
+            buyAmount,
+            nativeTokenAmount,
+            swapTarget,
+            swapAllowanceTarget,
+            swapCallData
+        );
+    }
+
+    /**
+     * Used to create json files, fetches a quote from arch and prints a JSON-readable
+     * quote in console, ready to be saved for new tests. The fork is needed to get the
+     * block number alongside the quote.
+     */
+    function printQuoteToCreateATest() public {
+        vm.createSelectFork("polygon");
+        fetchSwapQuote(POLYGON_CHAIN_ID, 10e6, POLYGON_USDC, POLYGON_WMATIC);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              SUCCESS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
      * [SUCCESS] Should make a swap from USDC to WEB3 using permit2
      */
     function testSwapWithPermit2FromUsdcToWeb3() public {
-        swapWithPermit2(POLYGON_CHAIN_ID, 1e6, POLYGON_USDC, POLYGON_WEB3);
+        // swapWithPermit2(POLYGON_CHAIN_ID, 1e6, POLYGON_USDC, POLYGON_WEB3);
+        runLocalSwapQuoteTest(
+            "/data/permitTwo/swap/testSwapWithPermit2FromUsdcToWeb3.json"
+        );
     }
 
     /**
      * [SUCCESS] Should make a swap from AEDY to ADDY using permit2
      */
     function testSwapWithPermit2FromAedyToAddy() public {
-        swapWithPermit2(POLYGON_CHAIN_ID, 20e18, POLYGON_AEDY, POLYGON_ADDY);
+        runLocalSwapQuoteTest(
+            "/data/permitTwo/swap/testSwapWithPermit2FromAedyToAddy.json"
+        );
     }
+    
     /**
      * [SUCCESS] Should make a swap from DAI to CHAIN using permit2
      */
-
     function testSwapWithPermit2FromDaiToChain() public {
-        swapWithPermit2(POLYGON_CHAIN_ID, 200e18, POLYGON_DAI, POLYGON_CHAIN);
+        runLocalSwapQuoteTest(
+            "/data/permitTwo/swap/testSwapWithPermit2FromDaiToChain.json"
+        );
     }
 
     /**
      * [SUCCESS] Should make a swap from USDC to native MATIC with permit2
      */
     function testSwapWithPermit2FromUsdcToNativeMatic() public {
-        uint256 sellAmount = 10e6;
-        address sellToken = POLYGON_USDC;
-        address buyToken = POLYGON_WMATIC;
+        path = string.concat(root, "/data/permitTwo/swap/testSwapWithPermit2FromUsdcToNativeMatic.json");
+        json = vm.readFile(path);
+        (
+            ,
+            uint256 blockNumber,
+            address sellToken,
+            uint256 sellAmount,
+            address buyToken,
+            uint256 buyAmount,
+            uint256 nativeTokenAmount,
+            address swapTarget,
+            address swapAllowanceTarget,
+            bytes memory swapCallData
+        ) = parseSwapQuoteFromJson(json);
 
-        vm.createSelectFork("polygon");
+        vm.createSelectFork("polygon", blockNumber);
         Gasworks gasworks = deployGasworks(POLYGON_CHAIN_ID);
         address uniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
 
         vm.prank(ALICE);
         IERC20(sellToken).approve(uniswapPermit2, type(uint256).max);
-        (IGasworks.SwapData memory swapData) = fetchSwapQuote(sellAmount, sellToken, buyToken);
+        IGasworks.SwapData memory swapData = IGasworks.SwapData(
+          buyToken,
+          buyAmount,
+          nativeTokenAmount,
+          payable(swapTarget),
+          swapAllowanceTarget,
+          swapCallData
+        );
 
         deal(sellToken, ALICE, sellAmount);
         uint256 previousSellTokenBalance = IERC20(sellToken).balanceOf(ALICE);
