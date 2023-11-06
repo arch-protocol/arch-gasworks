@@ -131,7 +131,8 @@ contract ArchUtils is Test {
         vm.label(ALICE, "Alice");
     }
 
-    function fetchSwapQuote(uint256 sellAmount, address sellToken, address buyToken)
+    function fetchSwapQuote(uint256 networkId,
+    uint256 sellAmount, address sellToken, address buyToken)
         public
         returns (IGasworks.SwapData memory swapData)
     {
@@ -152,6 +153,19 @@ contract ArchUtils is Test {
         swapData = IGasworks.SwapData(
             buyToken, buyAmount, nativeTokenAmount, swapTarget, swapAllowanceTarget, swapCallData
         );
+
+        logSwapQuoteAsJson(
+          networkId,
+          sellToken,
+          sellAmount,
+          buyToken,
+          buyAmount,
+          nativeTokenAmount,
+          swapTarget,
+          swapAllowanceTarget,
+          swapCallData
+        );
+
         return swapData;
     }
 
@@ -307,6 +321,34 @@ contract ArchUtils is Test {
     }
 
     /**
+     * Logs a swap quote in console in a readable format. Used for debug.
+     */
+    function logSwapQuote(
+      uint256 networkId,
+      address sellToken,
+      uint256 sellAmount,
+      address buyToken,
+      uint256 buyAmount,
+      uint256 nativeTokenAmount,
+      address swapTarget,
+      address swapAllowanceTarget,
+      bytes memory swapCallData
+    ) public view {
+        console.log("---------- Swap request ----------");
+        console.log(string.concat("Network Id: ", vm.toString(networkId)));
+        console.log(string.concat("BlockNumber: ", vm.toString(block.number)));
+        console.log(string.concat("Sell Token: ", vm.toString(sellToken)));
+        console.log(string.concat("Sell Amount: ", vm.toString(sellAmount)));
+        console.log(string.concat("Buy Token: ", vm.toString(buyToken)));
+        console.log("---------- Backend response ----------");
+        console.log(string.concat("Buy Amount: ", vm.toString(buyAmount)));
+        console.log(string.concat("Native Token Amount: ", vm.toString(nativeTokenAmount)));
+        console.log(string.concat("Swap Target: ", vm.toString(swapTarget)));
+        console.log(string.concat("Swap Allowance Target: ", vm.toString(swapAllowanceTarget)));
+        console.log(string.concat("Swap CallData: ", vm.toString(swapCallData)));
+    }
+
+    /**
      * Logs a mint quote in console in a readable format. Used for debug.
      */
     function logMintQuote(
@@ -396,6 +438,34 @@ contract ArchUtils is Test {
         } else {
             console.log("    }");
         }
+    }
+
+    /**
+     * Logs a full swap quote in console in a JSON-readable format. Used to create new tests.
+     */
+    function logSwapQuoteAsJson(
+      uint256 networkId,
+      address sellToken,
+      uint256 sellAmount,
+      address buyToken,
+      uint256 buyAmount,
+      uint256 nativeTokenAmount,
+      address swapTarget,
+      address swapAllowanceTarget,
+      bytes memory swapCallData
+    ) public view {
+        console.log("{");
+        console.log(string.concat("  \"networkId\": ", vm.toString(networkId), ","));
+        console.log(string.concat("  \"blockNumber\": ", vm.toString(block.number), ","));
+        console.log(string.concat("  \"sellToken\": \"", vm.toString(sellToken), "\","));
+        console.log(string.concat("  \"sellAmount\": ", vm.toString(sellAmount), ","));
+        console.log(string.concat("  \"buyToken\": \"", vm.toString(buyToken), "\","));
+        console.log(string.concat("  \"buyAmount\": ", vm.toString(buyAmount), ","));
+        console.log(string.concat("  \"nativeTokenAmount\": ", vm.toString(nativeTokenAmount), ","));
+        console.log(string.concat("  \"swapTarget\": \"", vm.toString(swapTarget), "\","));
+        console.log(string.concat("  \"swapAllowanceTarget\": \"", vm.toString(swapAllowanceTarget), "\","));
+        console.log(string.concat("  \"swapCallData\": \"", vm.toString(swapCallData), "\""));
+        console.log("}");
     }
 
     /**
@@ -583,6 +653,60 @@ contract ArchUtils is Test {
             outputToken,
             minReceiveAmount,
             callInstrictions
+        );
+    }
+
+    /**
+     * Reads a swap quote from a JSON file and returns all params in the quote
+     */
+    function parseSwapQuoteFromJson(string memory json)
+        public
+        pure
+        returns (
+            uint256 networkId,
+            uint256 blockNumber,
+            address sellToken,
+            uint256 sellAmount,
+            address buyToken,
+            uint256 buyAmount,
+            uint256 nativeTokenAmount,
+            address swapTarget,
+            address swapAllowanceTarget,
+            bytes memory swapCallData
+        )
+    {
+        bytes memory _networkId = json.parseRaw(".networkId");
+        networkId = abi.decode(_networkId, (uint256));
+        bytes memory _blockNumber = json.parseRaw(".blockNumber");
+        blockNumber = abi.decode(_blockNumber, (uint256));
+        bytes memory _sellToken = json.parseRaw(".sellToken");
+        sellToken = abi.decode(_sellToken, (address));
+        bytes memory _sellAmount = json.parseRaw(".sellAmount");
+        sellAmount = abi.decode(_sellAmount, (uint256));
+        bytes memory _buyToken = json.parseRaw(".buyToken");
+        buyToken = abi.decode(_buyToken, (address));
+        bytes memory _buyAmount = json.parseRaw(".buyAmount");
+        buyAmount = abi.decode(_buyAmount, (uint256));
+        bytes memory _nativeTokenAmount = json.parseRaw(".nativeTokenAmount");
+        nativeTokenAmount = abi.decode(_nativeTokenAmount, (uint256));
+        bytes memory _swapTarget = json.parseRaw(".swapTarget");
+        swapTarget = abi.decode(_swapTarget, (address));
+        bytes memory _swapAllowanceTarget = json.parseRaw(".swapAllowanceTarget");
+        swapAllowanceTarget = abi.decode(_swapAllowanceTarget, (address));
+        bytes memory _swapCallData = json.parseRaw(".swapCallData");
+        swapCallData = abi.decode(_swapCallData, (bytes));
+
+        return (
+            networkId,
+            blockNumber,
+            sellToken,
+            sellAmount,
+            buyToken,
+            buyAmount,
+            nativeTokenAmount,
+            swapTarget,
+            swapAllowanceTarget,
+            swapCallData
         );
     }
 }
