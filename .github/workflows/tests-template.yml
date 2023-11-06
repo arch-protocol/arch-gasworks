@@ -39,3 +39,6 @@ jobs:
       
       - name: Run tests
         run: FOUNDRY_PROFILE=ci make ${{ inputs.make-command }}
+        env:
+          ETHEREUM_RPC_URL: ${{ secrets.ETHEREUM_RPC_URL }}
+          POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
