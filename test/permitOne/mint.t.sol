@@ -362,9 +362,7 @@ contract GaslessTest is Test, ChamberTestUtils, Permit2Utils, DeployPermit2 {
         );
 
         assertEq(USDC.balanceOf(address(gasworks)), 0);
-        assertEq(
-            USDC.allowance(ALICE, address(gasworks)), 0
-        );
+        assertEq(USDC.allowance(ALICE, address(gasworks)), 0);
         assertEq(IERC20Permit(address(USDC)).nonces(ALICE), 1);
         assertEq(IERC20(address(AAGG)).balanceOf(ALICE), MINT_AMOUNT);
     }
