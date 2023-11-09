@@ -151,7 +151,6 @@ contract GaslessTest is Test, Permit2Utils {
      * [SUCCESS] Should redeem AAGG for USDT using permit2
      */
     function testRedeemWithPermit2FromAaggToUsdtOnPolygon() public {
-        // redeemChamber(POLYGON_CHAIN_ID, POLYGON_AAGG, POLYGON_USDT);
         runLocalRedeemQuoteTest(
             "/data/permitTwo/redeem/testRedeemWithPermit2FromAaggToUsdtOnPolygon.json"
         );
