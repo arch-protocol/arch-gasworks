@@ -140,7 +140,7 @@ contract GaslessTest is Test, Permit2Utils {
      */
     function printQuoteToCreateATest() public {
         vm.createSelectFork("polygon");
-        fetchRedeemQuote(POLYGON_CHAIN_ID, POLYGON_AAGG, 30e18, POLYGON_USDT);
+        fetchRedeemQuote(POLYGON_CHAIN_ID, POLYGON_AMOD, 1e17, POLYGON_USDT);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -151,20 +151,19 @@ contract GaslessTest is Test, Permit2Utils {
      * [SUCCESS] Should redeem AAGG for USDT using permit2
      */
     function testRedeemWithPermit2FromAaggToUsdtOnPolygon() public {
-        // redeemChamber(POLYGON_CHAIN_ID, POLYGON_AAGG, POLYGON_USDT);
         runLocalRedeemQuoteTest(
             "/data/permitTwo/redeem/testRedeemWithPermit2FromAaggToUsdtOnPolygon.json"
         );
     }
 
     /**
-     * [SUCCESS] Should redeem AMOD for USDT using permit2 [Test when supply is available]
+     * [SUCCESS] Should redeem AMOD for USDT using permit2
      */
-    // function testRedeemWithPermit2FromAmodToUsdtOnPolygon() public {
-    //     runLocalRedeemQuoteTest(
-    //         "/data/permitTwo/redeem/testRedeemWithPermit2FromAmodToUsdtOnPolygon.json"
-    //     );
-    // }
+    function testRedeemWithPermit2FromAmodToUsdtOnPolygon() public {
+        runLocalRedeemQuoteTest(
+            "/data/permitTwo/redeem/testRedeemWithPermit2FromAmodToUsdtOnPolygon.json"
+        );
+    }
 
     /**
      * [SUCCESS] Should redeem ABAL for USDC using permit2
@@ -185,7 +184,7 @@ contract GaslessTest is Test, Permit2Utils {
     }
 
     /**
-     * [SUCCESS] Should redeem ADDY for WETH using permit2 [Most of the time fails]
+     * [SUCCESS] Should redeem ADDY for WETH using permit2
      */
     function testRedeemWithPermit2FromAddyToWethOnEthereum() public {
         runLocalRedeemQuoteTest(
