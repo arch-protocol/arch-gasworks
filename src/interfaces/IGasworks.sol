@@ -37,12 +37,14 @@ import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"
 import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
 import { IChamber } from "chambers/interfaces/IChamber.sol";
 import { IIssuerWizard } from "chambers/interfaces/IIssuerWizard.sol";
+import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
 
 interface IGasworks {
     /*//////////////////////////////////////////////////////////////
-                               STRUCTS
+                              STRUCTS
     //////////////////////////////////////////////////////////////*/
 
+    // Permit1
     struct PermitData {
         // The address of the token to which we want to sign a permit for
         address _tokenContract;
@@ -60,21 +62,6 @@ interface IGasworks {
         uint8 _v;
         bytes32 _r;
         bytes32 _s;
-    }
-
-    struct SwapData {
-        // The `buyTokenAddress` field from the API response.
-        address buyToken;
-        // The `allowanceTarget` field from the API response.
-        address spender;
-        // The `to` field from the API response.
-        address payable swapTarget;
-        // The `data` field from the API response.
-        bytes swapCallData;
-        // The `value` field from the API response.
-        uint256 swapValue;
-        // The `buyAmount` field from the API response.
-        uint256 buyAmount;
     }
 
     struct MintSetData {
@@ -105,21 +92,64 @@ interface IGasworks {
         uint256 _mintAmount;
     }
 
-    struct RedeemChamberData {
-        // The address of the chamber to redeem
-        IChamber _chamber;
-        // The address of the issuer wizard that will mint the Chamber
-        IIssuerWizard _issuerWizard;
+    // Permit2
+    struct SwapData {
+        // The `buyTokenAddress` field from the API response.
+        address buyToken;
+        // The `buyAmount` field from the API response.
+        uint256 buyAmount;
+        // The `value` field from the API response.
+        uint256 nativeTokenAmount;
+        // The `to` field from the API response.
+        address payable swapTarget;
+        // The `allowanceTarget` field from the API response.
+        address swapAllowanceTarget;
+        // The `data` field from the API response.
+        bytes swapCallData;
+    }
+
+    struct SwapCallInstruction {
+        address sellToken;
+        uint256 sellAmount;
+        address buyToken;
+        uint256 minBuyAmount;
+        address swapTarget;
+        address swapAllowanceTarget;
+        bytes swapCallData;
+    }
+
+    struct MintData {
+        // The address of the chamber to mint
+        address archToken;
+        // The amount of Chamber to mint
+        uint256 archTokenAmount;
         // The address of the token used to mint
-        IERC20 _baseToken;
-        // Min amount of baseToken to receive after redemption
-        uint256 _minReceiveAmount;
+        address inputToken;
+        // Maximum amount of baseToken to use to mint
+        uint256 inputTokenMaxAmount;
+        // The address of the issuer wizard that will mint the Chamber
+        address issuer;
+        // Intructions to pass the TradeIssuer
+        SwapCallInstruction[] swapCallInstructions;
+    }
+
+    struct RedeemData {
+        // The address of the chamber to redeem
+        address archToken;
         // The amount of Chamber to redeem
-        uint256 _redeemAmount;
+        uint256 archTokenAmount;
+        // The address of the token used to mint
+        address outputToken;
+        // Min amount of baseToken to receive after redemption
+        uint256 outputTokenMinAmount;
+        // The address of the issuer wizard that will mint the Chamber
+        address issuer;
+        // Intructions to pass the TradeIssuer
+        SwapCallInstruction[] swapCallInstructions;
     }
 
     /*//////////////////////////////////////////////////////////////
-                                 EVENTS
+                                EVENTS
     //////////////////////////////////////////////////////////////*/
 
     event Withdrawn(address token, uint256 amount);
@@ -136,7 +166,7 @@ interface IGasworks {
         address tokenRedeemed, uint256 amountRedeemed, address tokenBought, uint256 amountBought
     );
 
-    event MintWithPermit(
+    event MintSetProtocolWithPermit1(
         address tokenMinted, uint256 amountMinted, address tokenPaid, uint256 amountPaid
     );
 
@@ -162,11 +192,12 @@ interface IGasworks {
 
     function setTokens(address token) external;
 
-    function swapWithPermit(PermitData calldata permit, SwapData calldata swapData) external;
+    function swapWithPermit1(PermitData calldata permit, SwapData calldata swapData) external;
 
-    function mintWithPermit(PermitData calldata permit, MintSetData calldata mintData) external;
+    function mintSetProtocolWithPermit1(PermitData calldata permit, MintSetData calldata mintData)
+        external;
 
-    function mintChamberWithPermit(
+    function mintWithPermit1(
         PermitData calldata permit,
         MintChamberData calldata mintChamberData,
         ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
@@ -179,20 +210,18 @@ interface IGasworks {
         SwapData calldata swapData
     ) external;
 
-    function mintChamberWithPermit2(
+    function mintWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        MintChamberData calldata mintChamberData,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+        MintData calldata mintData
     ) external;
 
-    function redeemChamberWithPermit2(
+    function redeemWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        RedeemChamberData calldata redeemChamberData,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
+        RedeemData calldata redeemData,
         bool toNative
     ) external;
 

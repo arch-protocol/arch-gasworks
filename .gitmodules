@@ -22,3 +22,6 @@
 [submodule "lib/chambers"]
 	path = lib/chambers
 	url = https://github.com/arch-protocol/chambers
+[submodule "lib/foundry-random"]
+	path = lib/foundry-random
+	url = https://github.com/joejordan/foundry-random

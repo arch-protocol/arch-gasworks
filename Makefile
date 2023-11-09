@@ -8,11 +8,12 @@ update:; forge update
 
 # Build & test
 build  :; forge build
-test   :; forge test
-test-fork :; forge test --fork-url https://polygon-mainnet.g.alchemy.com/v2/$(ALCHEMY_API_KEY) --ffi -vvv
-test-permit :; forge test --match-path "./test/permit/*.sol" --fork-url https://polygon-mainnet.g.alchemy.com/v2/$(ALCHEMY_API_KEY) --ffi
-test-permit2-chambers :; forge test --match-path "./test/permit2/Chambers/*.sol" --fork-url https://eth-mainnet.g.alchemy.com/v2/$(ALCHEMY_API_KEY) --ffi
-test-permit2-swap :; forge test --match-path "./test/permit2/swapWithPermit2.t.sol" --fork-url https://polygon-mainnet.g.alchemy.com/v2/$(ALCHEMY_API_KEY) --ffi
+test-permit1-mint :; forge test --match-path "./test/permitOne/mint.t.sol" --ffi -vvv --via-ir
+test-permit1-mint-set :; forge test --match-path "./test/permitOne/mintSetProtocol.t.sol" --ffi -vvv --via-ir
+test-permit1-swap :; forge test --match-path "./test/permitOne/swap.t.sol" --ffi -vvv --via-ir
+test-permit2-redeem :; forge test --match-path "./test/permitTwo/redeem.t.sol" --ffi -vvv --via-ir
+test-permit2-mint :; forge test --match-path "./test/permitTwo/mint.t.sol" --ffi -vvv --via-ir
+test-permit2-swap :; forge test --match-path "./test/permitTwo/swap.t.sol" --ffi -vvv --via-ir
 trace   :; forge test -vvv
 clean  :; forge clean
 snapshot :; forge snapshot

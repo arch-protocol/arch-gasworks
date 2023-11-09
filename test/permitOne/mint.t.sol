@@ -1,67 +1,81 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17.0;
 
+import "forge-std/StdJson.sol";
 import { Test } from "forge-std/Test.sol";
 import { Gasworks } from "src/Gasworks.sol";
-import { ISetToken } from "src/interfaces/ISetToken.sol";
 import { IGasworks } from "src/interfaces/IGasworks.sol";
-import { SigUtils } from "test/utils/SigUtils.sol";
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Conversor } from "test/utils/HexUtils.sol";
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
+import { ChamberTestUtils } from "chambers-peripherals/test/utils/ChamberTestUtils.sol";
+import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
+import { IChamber } from "chambers/interfaces/IChamber.sol";
+import { IIssuerWizard } from "chambers/interfaces/IIssuerWizard.sol";
+import { SigUtils } from "test/utils/SigUtils.sol";
+import { IERC20Permit } from
+    "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import { Permit2Utils } from "test/utils/Permit2Utils.sol";
+import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
 
-contract GaslessTest is Test {
-    using SafeTransferLib for ERC20;
-    using SafeTransferLib for ISetToken;
-
+contract GaslessTest is Test, ChamberTestUtils, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
                               VARIABLES
     //////////////////////////////////////////////////////////////*/
+    using SafeERC20 for IERC20;
+    using stdJson for string;
 
-    address internal constant DEBT_MODULE = 0xf2dC2f456b98Af9A6bEEa072AF152a7b0EaA40C9;
-    bool internal constant IS_DEBT_ISSUANCE = true;
+    string root;
+    string path;
+    string json;
+
+    IERC20 internal constant USDC = IERC20(POLYGON_USDC);
+    IChamber internal constant AAGG = IChamber(POLYGON_AAGG);
 
     Gasworks internal gasworks;
-    ERC20 internal constant USDC = ERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
-    ISetToken internal constant AP60 = ISetToken(0x6cA9C8914a14D63a6700556127D09e7721ff7D3b);
     SigUtils internal sigUtils;
 
-    uint256 internal ownerPrivateKey;
-    address internal owner;
-    IGasworks.MintSetData internal mintData;
+    IGasworks.MintChamberData internal mintData;
+    ITradeIssuerV2.ContractCallInstruction[] internal contractCallInstructions;
+    uint256 internal MINT_AMOUNT = 10e18;
+    uint256 internal MAX_PAY_AMOUNT;
+    uint256 internal nonce;
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
-        gasworks = new Gasworks(
-            0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d, 
-            0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320,
-            0x2B13D2b9407D5776B0BB63c8cd144978B6B7cE58
+        addLabbels();
+        root = vm.projectRoot();
+        path = string.concat(root, "/data/permitOne/mint/testMintAaggWithUsdc.json");
+        json = vm.readFile(path);
+        (
+            uint256 chainId,
+            uint256 blockNumber,
+            address archToken,
+            uint256 archTokenAmount,
+            address fromToken,
+            uint256 maxPayAmount,
+            ITradeIssuerV2.ContractCallInstruction[] memory callInstrictions
+        ) = parseMintQuoteFromJson(json);
+
+        mintData = IGasworks.MintChamberData(
+            IChamber(archToken),
+            IIssuerWizard(POLYGON_ISSUER_WIZARD),
+            IERC20(fromToken),
+            maxPayAmount,
+            archTokenAmount
         );
-        gasworks.setTokens(address(USDC));
-        gasworks.setTokens(address(AP60));
-        sigUtils = new SigUtils(USDC.DOMAIN_SEPARATOR());
+        contractCallInstructions = callInstrictions;
+        MAX_PAY_AMOUNT = maxPayAmount;
 
-        ownerPrivateKey = 0xA11CE;
-        owner = vm.addr(ownerPrivateKey);
+        vm.createSelectFork("polygon", blockNumber);
+        gasworks = deployGasworks(chainId);
+        sigUtils = new SigUtils(ERC20(address(USDC)).DOMAIN_SEPARATOR());
 
-        vm.prank(0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245);
-        USDC.safeTransfer(owner, 150e6);
-
-        uint256 amountToMint = 10e18;
-        string[] memory inputs = new string[](6);
-        inputs[0] = "node";
-        inputs[1] = "scripts/fetch-arch-quote.js";
-        inputs[2] = Conversor.iToHex(abi.encode(amountToMint));
-        inputs[3] = Conversor.iToHex(abi.encode(address(AP60)));
-        inputs[4] = Conversor.iToHex(abi.encode(address(USDC)));
-        inputs[5] = Conversor.iToHex(abi.encode(true));
-        bytes memory res = vm.ffi(inputs);
-        (bytes[] memory quotes, uint256 _maxAmountInputToken) = abi.decode(res, (bytes[], uint256));
-        mintData = IGasworks.MintSetData(
-            AP60, amountToMint, _maxAmountInputToken, quotes, DEBT_MODULE, IS_DEBT_ISSUANCE
-        );
+        deal(POLYGON_USDC, ALICE, maxPayAmount);
+        nonce = IERC20Permit(address(USDC)).nonces(ALICE);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -73,24 +87,24 @@ contract GaslessTest is Test {
      */
     function testCannotMintWithExpiredPermit() public {
         SigUtils.Permit memory permit = SigUtils.Permit({
-            owner: owner,
+            owner: ALICE,
             spender: address(gasworks),
-            value: 1e18,
-            nonce: USDC.nonces(owner),
+            value: MAX_PAY_AMOUNT,
+            nonce: nonce,
             deadline: 2 ** 255 - 1
         });
 
         bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ALICE_PRIVATE_KEY, digest);
 
         vm.warp(2 ** 255 + 1); // fast forwards one second past the deadline
 
         vm.expectRevert("Permit: permit is expired");
-        gasworks.mintWithPermit(
+        gasworks.mintWithPermit1(
             IGasworks.PermitData(
                 address(USDC),
-                1e18,
+                MAX_PAY_AMOUNT,
                 permit.owner,
                 permit.spender,
                 permit.value,
@@ -99,7 +113,8 @@ contract GaslessTest is Test {
                 r,
                 s
             ),
-            mintData
+            mintData,
+            contractCallInstructions
         );
     }
 
@@ -109,10 +124,10 @@ contract GaslessTest is Test {
      */
     function testCannotMintWithInvalidSigner() public {
         SigUtils.Permit memory permit = SigUtils.Permit({
-            owner: owner,
+            owner: ALICE,
             spender: address(gasworks),
-            value: 1e18,
-            nonce: USDC.nonces(owner),
+            value: MAX_PAY_AMOUNT,
+            nonce: nonce,
             deadline: 2 ** 256 - 1
         });
 
@@ -121,10 +136,10 @@ contract GaslessTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xB0B, digest); // 0xB0B signs but 0xA11CE is owner
 
         vm.expectRevert("Permit: invalid signature");
-        gasworks.mintWithPermit(
+        gasworks.mintWithPermit1(
             IGasworks.PermitData(
                 address(USDC),
-                1e18,
+                MAX_PAY_AMOUNT,
                 permit.owner,
                 permit.spender,
                 permit.value,
@@ -133,7 +148,8 @@ contract GaslessTest is Test {
                 r,
                 s
             ),
-            mintData
+            mintData,
+            contractCallInstructions
         );
     }
 
@@ -142,22 +158,22 @@ contract GaslessTest is Test {
      */
     function testCannotMintWithInvalidNonce() public {
         SigUtils.Permit memory permit = SigUtils.Permit({
-            owner: owner,
+            owner: ALICE,
             spender: address(gasworks),
-            value: 1e18,
+            value: MAX_PAY_AMOUNT,
             nonce: 1, // set nonce to 1 instead of 0
             deadline: 2 ** 256 - 1
         });
 
         bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ALICE_PRIVATE_KEY, digest);
 
         vm.expectRevert("Permit: invalid signature");
-        gasworks.mintWithPermit(
+        gasworks.mintWithPermit1(
             IGasworks.PermitData(
                 address(USDC),
-                1e18,
+                MAX_PAY_AMOUNT,
                 permit.owner,
                 permit.spender,
                 permit.value,
@@ -166,7 +182,8 @@ contract GaslessTest is Test {
                 r,
                 s
             ),
-            mintData
+            mintData,
+            contractCallInstructions
         );
     }
 
@@ -175,22 +192,22 @@ contract GaslessTest is Test {
      */
     function testCannotMintWithInvalidAllowance() public {
         SigUtils.Permit memory permit = SigUtils.Permit({
-            owner: owner,
+            owner: ALICE,
             spender: address(gasworks),
-            value: 5e5,
+            value: MAX_PAY_AMOUNT / 10, // Permit for less amount
             nonce: 0,
             deadline: 2 ** 256 - 1
         });
 
         bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ALICE_PRIVATE_KEY, digest);
 
         vm.expectRevert("TRANSFER_FROM_FAILED");
-        gasworks.mintWithPermit(
+        gasworks.mintWithPermit1(
             IGasworks.PermitData(
                 address(USDC),
-                1e18,
+                MAX_PAY_AMOUNT,
                 permit.owner,
                 permit.spender,
                 permit.value,
@@ -199,7 +216,8 @@ contract GaslessTest is Test {
                 r,
                 s
             ),
-            mintData
+            mintData,
+            contractCallInstructions
         );
     }
 
@@ -208,22 +226,22 @@ contract GaslessTest is Test {
      */
     function testCannotMintWithInvalidBalance() public {
         SigUtils.Permit memory permit = SigUtils.Permit({
-            owner: owner,
+            owner: ALICE,
             spender: address(gasworks),
-            value: 2e18,
+            value: 10 * MAX_PAY_AMOUNT,
             nonce: 0,
             deadline: 2 ** 256 - 1
         });
 
         bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ALICE_PRIVATE_KEY, digest);
 
         vm.expectRevert("TRANSFER_FROM_FAILED");
-        gasworks.mintWithPermit(
+        gasworks.mintWithPermit1(
             IGasworks.PermitData(
                 address(USDC),
-                2e18, // owner was only minted 1 USDC
+                10 * MAX_PAY_AMOUNT, // More balance than owned
                 permit.owner,
                 permit.spender,
                 permit.value,
@@ -232,32 +250,34 @@ contract GaslessTest is Test {
                 r,
                 s
             ),
-            mintData
+            mintData,
+            contractCallInstructions
         );
     }
 
     /**
-     * [REVERT] Should revert because mintData is invalid
+     * [REVERT] Should revert because one contractInstruction is invalid
      */
     function testCannotMintWithInvalidPayload() public {
-        mintData._componentQuotes[0] = bytes("bad quote");
+        contractCallInstructions[0]._callData = bytes("bad data");
+
         SigUtils.Permit memory permit = SigUtils.Permit({
-            owner: owner,
+            owner: ALICE,
             spender: address(gasworks),
-            value: mintData._maxAmountInputToken,
-            nonce: USDC.nonces(owner),
+            value: mintData._maxPayAmount,
+            nonce: nonce,
             deadline: 2 ** 256 - 1
         });
 
         bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ALICE_PRIVATE_KEY, digest);
 
         vm.expectRevert();
-        gasworks.mintWithPermit(
+        gasworks.mintWithPermit1(
             IGasworks.PermitData(
                 address(USDC),
-                mintData._maxAmountInputToken,
+                mintData._maxPayAmount,
                 permit.owner,
                 permit.spender,
                 permit.value,
@@ -266,7 +286,8 @@ contract GaslessTest is Test {
                 r,
                 s
             ),
-            mintData
+            mintData,
+            contractCallInstructions
         );
     }
 
@@ -275,22 +296,22 @@ contract GaslessTest is Test {
      */
     function testCannotMintWithInvalidToken() public {
         SigUtils.Permit memory permit = SigUtils.Permit({
-            owner: owner,
+            owner: ALICE,
             spender: address(gasworks),
-            value: 1e6,
-            nonce: USDC.nonces(owner),
+            value: MAX_PAY_AMOUNT,
+            nonce: nonce,
             deadline: 2 ** 256 - 1
         });
 
         bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ALICE_PRIVATE_KEY, digest);
 
         vm.expectRevert(abi.encodeWithSelector(IGasworks.InvalidToken.selector, address(0x123123)));
-        gasworks.mintWithPermit(
+        gasworks.mintWithPermit1(
             IGasworks.PermitData(
                 address(0x123123),
-                1e6,
+                MAX_PAY_AMOUNT,
                 permit.owner,
                 permit.spender,
                 permit.value,
@@ -299,7 +320,8 @@ contract GaslessTest is Test {
                 r,
                 s
             ),
-            mintData
+            mintData,
+            contractCallInstructions
         );
     }
 
@@ -308,25 +330,25 @@ contract GaslessTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * [SUCCESS] Should make a success mint with permit with a limited amount allowed
+     * [SUCCESS] Should make a mint of AAGG with USDC using EIP2612 permit
      */
-    function testMintWithLimitedPermit() public {
+    function testMintChamberWithMaxPermit() public {
         SigUtils.Permit memory permit = SigUtils.Permit({
-            owner: owner,
+            owner: ALICE,
             spender: address(gasworks),
-            value: mintData._maxAmountInputToken,
-            nonce: USDC.nonces(owner),
+            value: MAX_PAY_AMOUNT,
+            nonce: nonce,
             deadline: 2 ** 256 - 1
         });
 
         bytes32 digest = sigUtils.getTypedDataHash(permit);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ALICE_PRIVATE_KEY, digest);
 
-        gasworks.mintWithPermit(
+        gasworks.mintWithPermit1(
             IGasworks.PermitData(
                 address(USDC),
-                mintData._maxAmountInputToken,
+                MAX_PAY_AMOUNT,
                 permit.owner,
                 permit.spender,
                 permit.value,
@@ -335,52 +357,13 @@ contract GaslessTest is Test {
                 r,
                 s
             ),
-            mintData
+            mintData,
+            contractCallInstructions
         );
 
         assertEq(USDC.balanceOf(address(gasworks)), 0);
-        assertEq(USDC.allowance(owner, address(gasworks)), 0);
-        assertEq(USDC.nonces(owner), 1);
-        assertGe(AP60.balanceOf(owner), mintData._amountSetToken);
-    }
-
-    /**
-     * [SUCCESS] Should make a success mint with permit with max amount allowed
-     */
-    function testMintWithMaxPermit() public {
-        SigUtils.Permit memory permit = SigUtils.Permit({
-            owner: owner,
-            spender: address(gasworks),
-            value: type(uint256).max,
-            nonce: USDC.nonces(owner),
-            deadline: 2 ** 256 - 1
-        });
-
-        bytes32 digest = sigUtils.getTypedDataHash(permit);
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
-
-        gasworks.mintWithPermit(
-            IGasworks.PermitData(
-                address(USDC),
-                mintData._maxAmountInputToken,
-                permit.owner,
-                permit.spender,
-                permit.value,
-                permit.deadline,
-                v,
-                r,
-                s
-            ),
-            mintData
-        );
-
-        assertEq(USDC.balanceOf(address(gasworks)), 0);
-        assertEq(
-            USDC.allowance(owner, address(gasworks)),
-            type(uint256).max - mintData._maxAmountInputToken
-        );
-        assertEq(USDC.nonces(owner), 1);
-        assertGe(AP60.balanceOf(owner), mintData._amountSetToken);
+        assertEq(USDC.allowance(ALICE, address(gasworks)), 0);
+        assertEq(IERC20Permit(address(USDC)).nonces(ALICE), 1);
+        assertEq(IERC20(address(AAGG)).balanceOf(ALICE), MINT_AMOUNT);
     }
 }

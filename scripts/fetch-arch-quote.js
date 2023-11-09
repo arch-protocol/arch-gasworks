@@ -1,11 +1,10 @@
-const { ethers } = require("ethers")
-const axios = require("axios").default
+import { ethers } from "ethers";
+import qs from "qs";
+import {get} from './get.js';
+import { SignJWT } from "jose";
+import { archTokens } from "./config.js";
+
 const encoder = new ethers.AbiCoder()
-const qs = require("qs")
-const {
-  SignJWT,
-} = require('jose');
-const { archTokens } = require('../config')
 
 async function generateJwt(payload) {
   const privateKey = Buffer.from("dev-jwt-secret-key");
@@ -15,11 +14,13 @@ async function generateJwt(payload) {
   return jwt;
 }
 
+const issuance = '0x0000000000000000000000000000000000000000000000000000000000000001';
+
 async function main(quantity, basketAddress, tokenAddress, operation) {
   const qty = encoder.decode(["uint256"], quantity)[0]
   const basket = encoder.decode(["address"], basketAddress)[0]
   const token = encoder.decode(["address"], tokenAddress)[0]
-  const opt = encoder.decode(["bool"], operation)[0]
+  const opt = operation === issuance;
 
   archTokens[basket].basketAmountInWei = qty.toString()
   archTokens[basket].tokenAddress = token
@@ -30,7 +31,7 @@ async function main(quantity, basketAddress, tokenAddress, operation) {
     archTokens[basket]
   )}`
   try {
-    const response = await axios.get(quoteUrl, {
+    const response = await get(quoteUrl, {
       headers: { Authorization: `Bearer ${jwt}` },
     });
 
@@ -38,7 +39,7 @@ async function main(quantity, basketAddress, tokenAddress, operation) {
     const value = opt ? quote.maxAmountInWei : quote.minAmountInWei
     const data = quote.callInstructions ? quote.callInstructions : quote.encodedComponentQuotes
     const encodedType = quote.callInstructions ? "tuple(address target, address allowanceTarget, address sellToken, uint256 sellAmount, address buyToken, uint256 minBuyAmount, bytes callData)[]" : "bytes[]"
-    encoded = encoder.encode([encodedType, "uint256"], [data, value])
+    const encoded = encoder.encode([encodedType, "uint256"], [data, value])
 
     process.stdout.write(encoded)
   } catch (error) {

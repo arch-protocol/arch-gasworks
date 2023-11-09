@@ -1,12 +1,31 @@
 [profile.default]
 src = 'src'
 out = 'out'
-solc_version = "0.8.17" 
+solc_version = "0.8.17"
+via_ir = true
 libs = ['lib']
-
+auto_detect_remappings = false
+remappings = [
+  "ds-test/=lib/solmate/lib/ds-test/src/",
+  "forge-std/=lib/forge-std/src/",
+  "gsn/=lib/gsn/packages/contracts/src/",
+  "paymasters/=lib/gsn/packages/paymasters/contracts/",
+  "openzeppelin-contracts/=lib/openzeppelin-contracts/",
+  "solmate/=lib/solmate/",
+  "@opengsn/=node_modules/@opengsn/",
+  "indexcoop/=lib/index-coop-smart-contracts/contracts/exchangeIssuance/",
+  "permit2/=lib/permit2/",
+  "chambers-peripherals/=lib/chambers-peripherals/",
+  "chambers/=lib/chambers/src/",
+  "foundry-random/=lib/foundry-random/src/",
+  "@prb/test/=lib/foundry-random/lib/prb-test/src/",
+  "@openzeppelin/=lib/openzeppelin-contracts/"
+]
+fs_permissions = [{ access = "read", path = "./data"}]
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_MAINNET_KEY}" }
+polygon = { key = "${ETHERSCAN_POLYGON_KEY}" }
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
 
 [fuzz]
@@ -16,3 +35,7 @@ runs = 128
 line_length = 100
 tab_width = 4
 bracket_spacing = true
+
+[rpc_endpoints]
+ethereum = "${ETHEREUM_RPC_URL}"
+polygon = "${POLYGON_RPC_URL}"

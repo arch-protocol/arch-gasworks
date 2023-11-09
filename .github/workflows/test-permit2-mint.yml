@@ -1,4 +1,4 @@
-name: Permit2 swap tests
+name: Permit2 mint tests
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
   pull_request:
 
 jobs:
-  test-permit2-swap:
+  test-permit2-mint:
     uses: ./.github/workflows/tests-template.yml
     with:
-      make-command: test-permit2-swap
+      make-command: test-permit2-mint
     secrets: inherit
