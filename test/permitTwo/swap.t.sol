@@ -54,44 +54,44 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      * to test the revert tests with a different quote or asset
      */
     function setUpRevertTestQuote() public {
-      path = string.concat(root, "/data/permitTwo/swap/testSwapWithPermit2FromAedyToAddy.json");
-      json = vm.readFile(path);
-      (
-          uint256 chainId,
-          uint256 blockNumber,
-          address sellToken,
-          uint256 sellAmount,
-          address buyToken,
-          uint256 buyAmount,
-          uint256 nativeTokenAmount,
-          address swapTarget,
-          address swapAllowanceTarget,
-          bytes memory swapCallData
-      ) = parseSwapQuoteFromJson(json);
+        path = string.concat(root, "/data/permitTwo/swap/testSwapWithPermit2FromAedyToAddy.json");
+        json = vm.readFile(path);
+        (
+            uint256 chainId,
+            uint256 blockNumber,
+            address sellToken,
+            uint256 sellAmount,
+            address buyToken,
+            uint256 buyAmount,
+            uint256 nativeTokenAmount,
+            address swapTarget,
+            address swapAllowanceTarget,
+            bytes memory swapCallData
+        ) = parseSwapQuoteFromJson(json);
 
-      revertTestsSwapData = IGasworks.SwapData(
-          buyToken,
-          buyAmount,
-          nativeTokenAmount,
-          payable(swapTarget),
-          swapAllowanceTarget,
-          swapCallData
-      );
-      revertTestsChainId = chainId;
-      revertTestsBlockNumber = blockNumber;
-      revertTestsSellToken = sellToken;
-      revertTestsSellAmount = sellAmount;
+        revertTestsSwapData = IGasworks.SwapData(
+            buyToken,
+            buyAmount,
+            nativeTokenAmount,
+            payable(swapTarget),
+            swapAllowanceTarget,
+            swapCallData
+        );
+        revertTestsChainId = chainId;
+        revertTestsBlockNumber = blockNumber;
+        revertTestsSellToken = sellToken;
+        revertTestsSellAmount = sellAmount;
 
-      if (chainId == POLYGON_CHAIN_ID) {
-          vm.createSelectFork("polygon", blockNumber);
-          reverTestsGasworks = deployGasworks(chainId);
-          revertTestsUniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
-      }
-      if (chainId == ETH_CHAIN_ID) {
-          vm.createSelectFork("ethereum", blockNumber);
-          reverTestsGasworks = deployGasworks(chainId);
-          revertTestsUniswapPermit2 = ETH_UNISWAP_PERMIT2;
-      }
+        if (chainId == POLYGON_CHAIN_ID) {
+            vm.createSelectFork("polygon", blockNumber);
+            reverTestsGasworks = deployGasworks(chainId);
+            revertTestsUniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
+        }
+        if (chainId == ETH_CHAIN_ID) {
+            vm.createSelectFork("ethereum", blockNumber);
+            reverTestsGasworks = deployGasworks(chainId);
+            revertTestsUniswapPermit2 = ETH_UNISWAP_PERMIT2;
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -102,7 +102,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      * [REVERT] Should revert because allowed amount is less than required amount
      */
     function testCannotSwapWithPermit2NotEnoughAllowance() public {
-      vm.prank(ALICE);
+        vm.prank(ALICE);
         IERC20(revertTestsSellToken).approve(revertTestsUniswapPermit2, 1); // Only allow 1 wei to permit2
 
         deal(revertTestsSellToken, ALICE, revertTestsSellAmount); // But give enough balance to mint
@@ -113,13 +113,17 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
 
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: revertTestsSellToken, amount: revertTestsSellAmount }),
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: revertTestsSellToken,
+                amount: revertTestsSellAmount
+            }),
             nonce: currentNonce,
             deadline: currentDeadline
         });
 
-        bytes32 msgToSign =
-            getSwapWithPermit2MessageToSign(revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData);
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+        );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
         vm.expectRevert("TRANSFER_FROM_FAILED");
@@ -144,13 +148,17 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
 
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: revertTestsSellToken, amount: revertTestsSellAmount }),
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: revertTestsSellToken,
+                amount: revertTestsSellAmount
+            }),
             nonce: currentNonce,
             deadline: currentDeadline
         });
 
-        bytes32 msgToSign =
-            getSwapWithPermit2MessageToSign(revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData);
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+        );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
         vm.expectRevert("TRANSFER_FROM_FAILED");
@@ -175,13 +183,17 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
 
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: revertTestsSellToken, amount: revertTestsSellAmount }),
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: revertTestsSellToken,
+                amount: revertTestsSellAmount
+            }),
             nonce: currentNonce,
             deadline: currentDeadline
         });
 
-        bytes32 msgToSign =
-            getSwapWithPermit2MessageToSign(revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData);
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+        );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
         bytes memory invalidSignature = bytes.concat(signature, bytes1(uint8(0)));
         assertEq(invalidSignature.length, 66);
@@ -211,13 +223,17 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
 
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: revertTestsSellToken, amount: revertTestsSellAmount }),
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: revertTestsSellToken,
+                amount: revertTestsSellAmount
+            }),
             nonce: currentNonce,
             deadline: currentDeadline
         });
 
-        bytes32 msgToSign =
-            getSwapWithPermit2MessageToSign(revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData);
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+        );
         bytes memory signature = signMessage(INVALID_SIGNER_PRIVATE_KEY, msgToSign);
 
         vm.expectRevert();
@@ -242,13 +258,17 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         uint256 currentDeadline = 2 ** 255 - 1;
 
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: revertTestsSellToken, amount: revertTestsSellAmount }),
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: revertTestsSellToken,
+                amount: revertTestsSellAmount
+            }),
             nonce: currentNonce,
             deadline: currentDeadline
         });
 
-        bytes32 msgToSign =
-            getSwapWithPermit2MessageToSign(revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData);
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+        );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
         vm.warp(2 ** 255 + 1);
@@ -275,19 +295,29 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
 
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: revertTestsSellToken, amount: revertTestsSellAmount }),
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: revertTestsSellToken,
+                amount: revertTestsSellAmount
+            }),
             nonce: currentNonce,
             deadline: currentDeadline
         });
 
-        bytes32 msgToSign =
-            getSwapWithPermit2MessageToSign(revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData);
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+        );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
         reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
 
-        assertEq(previousSellTokenBalance - IERC20(revertTestsSellToken).balanceOf(ALICE), revertTestsSellAmount);
-        assertGe(IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE) - previousBuyTokenBalance, revertTestsSwapData.buyAmount);
+        assertEq(
+            previousSellTokenBalance - IERC20(revertTestsSellToken).balanceOf(ALICE),
+            revertTestsSellAmount
+        );
+        assertGe(
+            IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE) - previousBuyTokenBalance,
+            revertTestsSwapData.buyAmount
+        );
 
         vm.expectRevert(InvalidNonce.selector);
         reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
@@ -310,13 +340,17 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         address invalidToken = address(0x123123);
 
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: invalidToken, amount: revertTestsSellAmount }),
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: invalidToken,
+                amount: revertTestsSellAmount
+            }),
             nonce: currentNonce,
             deadline: currentDeadline
         });
 
-        bytes32 msgToSign =
-            getSwapWithPermit2MessageToSign(revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData);
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+        );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
         vm.expectRevert(abi.encodeWithSelector(IGasworks.InvalidToken.selector, invalidToken));
@@ -331,12 +365,12 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testCannotSwapWithPermit2SwapCallFailed() public {
         IGasworks.SwapData memory corruptedSwapData = IGasworks.SwapData(
-          revertTestsSwapData.buyToken,
-          revertTestsSwapData.buyAmount,
-          revertTestsSwapData.nativeTokenAmount,
-          payable(revertTestsSwapData.swapTarget),
-          revertTestsSwapData.swapAllowanceTarget,
-          bytes("Corrupted quote")
+            revertTestsSwapData.buyToken,
+            revertTestsSwapData.buyAmount,
+            revertTestsSwapData.nativeTokenAmount,
+            payable(revertTestsSwapData.swapTarget),
+            revertTestsSwapData.swapAllowanceTarget,
+            bytes("Corrupted quote")
         );
 
         vm.prank(ALICE);
@@ -350,13 +384,17 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
 
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: revertTestsSellToken, amount: revertTestsSellAmount }),
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: revertTestsSellToken,
+                amount: revertTestsSellAmount
+            }),
             nonce: currentNonce,
             deadline: currentDeadline
         });
 
-        bytes32 msgToSign =
-            getSwapWithPermit2MessageToSign(revertTestsChainId, permit, address(reverTestsGasworks), corruptedSwapData);
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            revertTestsChainId, permit, address(reverTestsGasworks), corruptedSwapData
+        );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
         vm.expectRevert(IGasworks.SwapCallFailed.selector);
@@ -373,12 +411,12 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         uint256 exaggeratedBuyAmount = 2 * revertTestsSwapData.buyAmount;
 
         IGasworks.SwapData memory invalidSwapData = IGasworks.SwapData(
-          revertTestsSwapData.buyToken,
-          exaggeratedBuyAmount, // Buy amount is twice {swapCallData} will actually get
-          revertTestsSwapData.nativeTokenAmount,
-          payable(revertTestsSwapData.swapTarget),
-          revertTestsSwapData.swapAllowanceTarget,
-          revertTestsSwapData.swapCallData
+            revertTestsSwapData.buyToken,
+            exaggeratedBuyAmount, // Buy amount is twice {swapCallData} will actually get
+            revertTestsSwapData.nativeTokenAmount,
+            payable(revertTestsSwapData.swapTarget),
+            revertTestsSwapData.swapAllowanceTarget,
+            revertTestsSwapData.swapCallData
         );
 
         vm.prank(ALICE);
@@ -392,16 +430,24 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
 
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: revertTestsSellToken, amount: revertTestsSellAmount }),
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: revertTestsSellToken,
+                amount: revertTestsSellAmount
+            }),
             nonce: currentNonce,
             deadline: currentDeadline
         });
 
-        bytes32 msgToSign =
-            getSwapWithPermit2MessageToSign(revertTestsChainId, permit, address(reverTestsGasworks), invalidSwapData);
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            revertTestsChainId, permit, address(reverTestsGasworks), invalidSwapData
+        );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
-        vm.expectRevert(abi.encodeWithSelector(IGasworks.Underbought.selector, invalidSwapData.buyToken, exaggeratedBuyAmount));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGasworks.Underbought.selector, invalidSwapData.buyToken, exaggeratedBuyAmount
+            )
+        );
         reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, invalidSwapData);
 
         assertEq(IERC20(revertTestsSellToken).balanceOf(ALICE), previousSellTokenBalance);
