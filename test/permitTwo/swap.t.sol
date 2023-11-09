@@ -99,6 +99,50 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     //////////////////////////////////////////////////////////////*/
 
     /**
+     * [REVERT] Should revert because the quote signed is not the quote pased as param
+     */
+    function testCannotSwapWithPermit2WithModifiedQuote() public {
+        vm.prank(ALICE);
+        IERC20(revertTestsSellToken).approve(revertTestsUniswapPermit2, type(uint256).max);
+
+        deal(revertTestsSellToken, ALICE, revertTestsSellAmount); // But give enough balance to mint
+        uint256 previousSellTokenBalance = IERC20(revertTestsSellToken).balanceOf(ALICE);
+        uint256 previousBuyTokenBalance = IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE);
+
+        uint256 currentNonce = getRandomNonce();
+        uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
+
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: revertTestsSellToken,
+                amount: revertTestsSellAmount
+            }),
+            nonce: currentNonce,
+            deadline: currentDeadline
+        });
+
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+        );
+        bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
+
+        IGasworks.SwapData memory modifiedSwapData = IGasworks.SwapData(
+            revertTestsSwapData.buyToken,
+            10 * revertTestsSwapData.buyAmount, // Modified data
+            revertTestsSwapData.nativeTokenAmount,
+            payable(revertTestsSwapData.swapTarget),
+            revertTestsSwapData.swapAllowanceTarget,
+            revertTestsSwapData.swapCallData
+        );
+
+        vm.expectRevert();
+        reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, modifiedSwapData);
+
+        assertEq(IERC20(revertTestsSellToken).balanceOf(ALICE), previousSellTokenBalance);
+        assertEq(IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE), previousBuyTokenBalance);
+    }
+
+    /**
      * [REVERT] Should revert because allowed amount is less than required amount
      */
     function testCannotSwapWithPermit2NotEnoughAllowance() public {
