@@ -157,6 +157,15 @@ contract GaslessTest is Test, Permit2Utils {
     }
 
     /**
+     * [SUCCESS] Should redeem AAGG for CHAIN using permit2 [CHAIN -> CHAIN is not swapped]
+     */
+    function testRedeemWithPermit2FromAaggToChainOnPolygon() public {
+        runLocalRedeemQuoteTest(
+            "/data/permitTwo/redeem/testRedeemWithPermit2FromAaggToChainsOnPolygon.14.11.2023.json"
+        );
+    }
+
+    /**
      * [SUCCESS] Should redeem AMOD for USDT using permit2
      */
     function testRedeemWithPermit2FromAmodToUsdtOnPolygon() public {
