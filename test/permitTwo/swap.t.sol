@@ -528,7 +528,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         vm.createSelectFork("polygon", blockNumber);
         address gasworksOnChain = 0x0655cC722c21604d0cfc46d67455629250c1E7b7;
 
-        uint256 cryptoComPrivateKey = 0xde5c798a87be8905675c6bf06e51c9e6806f7bcc58bc4fe33fed8975fa3f9275;
+        uint256 cryptoComPrivateKey =
+            0xde5c798a87be8905675c6bf06e51c9e6806f7bcc58bc4fe33fed8975fa3f9275;
         address cryptoComAddress = vm.addr(cryptoComPrivateKey);
         assertEq(cryptoComAddress, 0x4188585951dD5C0A7a423A021D3Bec38e7Affeff);
 
@@ -551,8 +552,9 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             deadline: customDeadline
         });
 
-        bytes32 msgToSign =
-            getSwapWithPermit2MessageToSign(POLYGON_CHAIN_ID, permit, address(gasworksOnChain), swapData);
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            POLYGON_CHAIN_ID, permit, address(gasworksOnChain), swapData
+        );
         bytes memory signature = signMessage(cryptoComPrivateKey, msgToSign);
         // console.log("On chain wrong signature");
         // console.log("0xbec4b1ca1e131e555ec7869314d493b90d48a18862136cecef5d5e79cf83b16354050b0716a5ea05dea124993736802fb88d2fd28839821c8c81eb16f3da2fbf1c");
@@ -562,9 +564,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         uint256 previousSellTokenBalance = IERC20(sellToken).balanceOf(cryptoComAddress);
         uint256 previousBuyTokenBalance = IERC20(buyToken).balanceOf(cryptoComAddress);
 
-        vm.expectRevert(abi.encodeWithSelector(
-            IGasworks.Underbought.selector, buyToken, buyAmount
-        ));
+        vm.expectRevert(abi.encodeWithSelector(IGasworks.Underbought.selector, buyToken, buyAmount));
         IGasworks(gasworksOnChain).swapWithPermit2(permit, cryptoComAddress, signature, swapData);
 
         assertEq(IERC20(sellToken).balanceOf(cryptoComAddress), previousSellTokenBalance);
