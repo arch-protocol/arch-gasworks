@@ -3,6 +3,7 @@ pragma solidity ^0.8.17.0;
 
 import "forge-std/StdJson.sol";
 import { Test } from "forge-std/Test.sol";
+import { console } from "forge-std/console.sol";
 import { Gasworks } from "src/Gasworks.sol";
 import { IGasworks } from "src/interfaces/IGasworks.sol";
 import { SigUtils } from "test/utils/SigUtils.sol";
@@ -496,6 +497,92 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
         assertEq(IERC20(revertTestsSellToken).balanceOf(ALICE), previousSellTokenBalance);
         assertEq(IERC20(invalidSwapData.buyToken).balanceOf(ALICE), previousBuyTokenBalance);
+    }
+
+    /**
+     * [REVERT] Should make a swap from USDC to WEB3 using permit2, with a custom private key
+     *
+     * Analysis of transaction 0xf831f672416ef80156ad14fe78627c92c11c207ee32c9cb56268c83cc0656f3d
+     * from a dev wallet using Crypto.com wallet
+     *
+     * Context: The permit of this transaction was signed using crypto.com mobile wallet. This caused an
+     * error on-chain called 'INVALID_SIGNER' when deconstructing the owner in Uniswap's Permit2 call.
+     *
+     * What we want to prove here, is that the signature made by that wallet is invalid, being the main
+     * suspected cause, they don't support EIP712, typed signature.
+     *
+     * If using the same private key as the transaction above, the same quote and data passed to
+     * the function call, and end up getting another signature, then our point is proved.
+     *
+     * The call only need to pass the Uniswap's permitTransferFrom call, returning the correct owner.
+     * Actually, the callData gives an Underbought error, but that's beyond signature validation, so its
+     * enough to prove our point.
+     */
+    function testCannotSwapWithPermit2FromUsdcToWeb3WithCustomPrivateKey() public {
+        path = string.concat(
+            root, "/data/permitTwo/swap/testSwapWithPermit2FromUsdcToWeb3.CrptoComWallet.json"
+        );
+        json = vm.readFile(path);
+        (
+            ,
+            uint256 blockNumber,
+            address sellToken,
+            uint256 sellAmount,
+            address buyToken,
+            uint256 buyAmount,
+            uint256 nativeTokenAmount,
+            address swapTarget,
+            address swapAllowanceTarget,
+            bytes memory swapCallData
+        ) = parseSwapQuoteFromJson(json);
+
+        vm.createSelectFork("polygon", blockNumber);
+        address gasworksOnChain = 0x0655cC722c21604d0cfc46d67455629250c1E7b7;
+
+        uint256 cryptoComPrivateKey =
+            0xde5c798a87be8905675c6bf06e51c9e6806f7bcc58bc4fe33fed8975fa3f9275;
+        address cryptoComAddress = vm.addr(cryptoComPrivateKey);
+        assertEq(cryptoComAddress, 0x4188585951dD5C0A7a423A021D3Bec38e7Affeff);
+
+        vm.prank(cryptoComAddress);
+        IGasworks.SwapData memory swapData = IGasworks.SwapData(
+            buyToken,
+            buyAmount,
+            nativeTokenAmount,
+            payable(swapTarget),
+            swapAllowanceTarget,
+            swapCallData
+        );
+
+        uint256 customNonce = 0x0e85d19c42ef30047663fcb3c35c62f570a4c80486baf0825d271b05e7fd831d;
+        uint256 customDeadline = 0x655793e6;
+
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({ token: sellToken, amount: sellAmount }),
+            nonce: customNonce,
+            deadline: customDeadline
+        });
+
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            POLYGON_CHAIN_ID, permit, address(gasworksOnChain), swapData
+        );
+        bytes memory signature = signMessage(cryptoComPrivateKey, msgToSign);
+        bytes memory signatureOnChain = bytes(
+            "0xbec4b1ca1e131e555ec7869314d493b90d48a18862136cecef5d5e79cf83b16354050b0716a5ea05dea124993736802fb88d2fd28839821c8c81eb16f3da2fbf1c"
+        );
+
+        // Let's prove that the signature produced by Crypto.com wallet is invalid [Update when assertNotEqual is available / console.log for now]
+        // assertFalse(assertEq(signatureOnChain, signature));
+
+        // Now proceed to see that the signature produced by us pass the Uniswap's Permit2 signature validation
+        uint256 previousSellTokenBalance = IERC20(sellToken).balanceOf(cryptoComAddress);
+        uint256 previousBuyTokenBalance = IERC20(buyToken).balanceOf(cryptoComAddress);
+
+        vm.expectRevert(abi.encodeWithSelector(IGasworks.Underbought.selector, buyToken, buyAmount));
+        IGasworks(gasworksOnChain).swapWithPermit2(permit, cryptoComAddress, signature, swapData);
+
+        assertEq(IERC20(sellToken).balanceOf(cryptoComAddress), previousSellTokenBalance);
+        assertGe(IERC20(buyToken).balanceOf(cryptoComAddress), previousBuyTokenBalance);
     }
 
     /*//////////////////////////////////////////////////////////////
