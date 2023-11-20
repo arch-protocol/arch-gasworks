@@ -505,7 +505,18 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      * Analysis of transaction 0xf831f672416ef80156ad14fe78627c92c11c207ee32c9cb56268c83cc0656f3d
      * from a dev wallet using Crypto.com wallet
      *
-     * Unfortunately the callData gives an Underbought error, but that's beyond signature validation
+     * Context: The permit of this transaction was signed using crypto.com mobile wallet. This caused an
+     * error on-chain called 'INVALID_SIGNER' when deconstructing the owner in Uniswap's Permit2 call.
+     *
+     * What we want to prove here, is that the signature made by that wallet is invalid, being the main
+     * suspected cause, they don't support EIP712, typed signature.
+     *
+     * If using the same private key as the transaction above, the same quote and data passed to
+     * the function call, and end up getting another signature, then our point is proved.
+     *
+     * The call only need to pass the Uniswap's permitTransferFrom call, returning the correct owner.
+     * Actually, the callData gives an Underbought error, but that's beyond signature validation, so its
+     * enough to prove our point.
      */
     function testCannotSwapWithPermit2FromUsdcToWeb3WithCustomPrivateKey() public {
         path = string.concat(
