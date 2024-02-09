@@ -102,6 +102,19 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
             TOKEN_PERMISSIONS_TYPE
         )
     );
+
+    bytes private constant REDEEM_AND_MINT_DATA_TYPE =
+        "RedeemAndMintData(address archTokenToRedeem,uint256 redeemAmount,address archTokenToMint,uint256 mintAmount,address issuer,SwapCallInstruction[] swapCallInstructions)";
+    bytes32 private constant REDEEM_AND_MINT_DATA_TYPE_HASH =
+        keccak256(abi.encodePacked(REDEEM_AND_MINT_DATA_TYPE, SWAP_CALL_INSTRUCTION_TYPE));
+    string internal constant PERMIT2_REDEEM_AND_MINT_DATA_TYPE = string(
+        abi.encodePacked(
+            "RedeemAndMintData witness)",
+            REDEEM_AND_MINT_DATA_TYPE,
+            SWAP_CALL_INSTRUCTION_TYPE,
+            TOKEN_PERMISSIONS_TYPE
+        )
+    );
     ///
 
     WETH public constant WMATIC = WETH(payable(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270));
@@ -289,6 +302,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         bytes calldata signature,
         SwapData calldata swapData
     ) external {
+        if (permit2.permitted.amount == 0) revert ZeroBalance(permit2.permitted.token);
         if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
         if (!tokens[swapData.buyToken]) revert InvalidToken(swapData.buyToken);
 
@@ -321,6 +335,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         bytes calldata signature,
         MintData calldata mintData
     ) external {
+        if (permit2.permitted.amount == 0) revert ZeroBalance(permit2.permitted.token);
         if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
         if (!tokens[address(mintData.archToken)]) {
             revert InvalidToken(address(mintData.archToken));
@@ -384,6 +399,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         RedeemData calldata redeemData,
         bool toNative
     ) external {
+        if (permit2.permitted.amount == 0) revert ZeroBalance(permit2.permitted.token);
         if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
         if (!tokens[address(redeemData.outputToken)]) {
             revert InvalidToken(address(redeemData.outputToken));
@@ -432,6 +448,70 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
             redeemData.archTokenAmount,
             address(outputToken),
             outputTokenBalance
+        );
+    }
+
+    /**
+     * Redeems a Chamber and mints another Chamber using a permit2
+     *
+     * @param permit2                       Permit2 data of the ERC20 token used
+     * @param owner                         Owner of the tokens to transfer
+     * @param signature                     Signature of the owner of the tokens
+     * @param redeemAndMintData             Data of the chamber redeem and mint to perform
+     */
+    function redeemAndMintWithPermit2(
+        ISignatureTransfer.PermitTransferFrom memory permit2,
+        address owner,
+        bytes calldata signature,
+        RedeemAndMintData calldata redeemAndMintData
+    ) external {
+        if (permit2.permitted.amount == 0) revert ZeroBalance(permit2.permitted.token);
+        if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
+        if (!tokens[address(redeemAndMintData.archTokenToRedeem)]) {
+            revert InvalidToken(address(redeemAndMintData.archTokenToRedeem));
+        }
+        if (!tokens[address(redeemAndMintData.archTokenToMint)]) {
+            revert InvalidToken(address(redeemAndMintData.archTokenToMint));
+        }
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails = ISignatureTransfer
+            .SignatureTransferDetails({ to: address(this), requestedAmount: permit2.permitted.amount });
+
+        (
+            ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions,
+            bytes32 concatenatedHashedSwapCallInstructions
+        ) = _hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
+            redeemAndMintData.swapCallInstructions
+        );
+
+        bytes32 witness =
+            _calculateRedeemAndMintDataTypeWitness(redeemAndMintData, concatenatedHashedSwapCallInstructions);
+
+        signatureTransfer.permitWitnessTransferFrom(
+            permit2, transferDetails, owner, witness, PERMIT2_REDEEM_DATA_TYPE, signature
+        );
+
+        ERC20 fromToken = ERC20(permit2.permitted.token);
+
+        fromToken.safeApprove(address(tradeIssuer), redeemAndMintData.redeemAmount);
+
+        tradeIssuer.redeemAndMint(
+            IChamber(redeemAndMintData.archTokenToRedeem),
+            redeemAndMintData.redeemAmount,
+            IChamber(redeemAndMintData.archTokenToMint),
+            redeemAndMintData.mintAmount,
+            IIssuerWizard(redeemAndMintData.issuer),
+            contractCallInstructions
+        );
+
+        ERC20 mintedToken = ERC20(address(redeemAndMintData.archTokenToMint));
+        mintedToken.safeTransfer(owner, mintedToken.balanceOf(address(this)));
+
+        emit RedeemAndMintWithPermit2(
+            redeemAndMintData.archTokenToRedeem,
+            redeemAndMintData.redeemAmount,
+            redeemAndMintData.archTokenToMint,
+            redeemAndMintData.mintAmount
         );
     }
 
@@ -609,6 +689,24 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
                 redeemData.outputToken,
                 redeemData.outputTokenMinAmount,
                 redeemData.issuer,
+                concatenatedHashedSwapCallInstructions
+            )
+        );
+        return witness;
+    }
+
+    function _calculateRedeemAndMintDataTypeWitness(
+        IGasworks.RedeemAndMintData memory redeemAndMint,
+        bytes32 concatenatedHashedSwapCallInstructions
+    ) internal pure returns (bytes32 witness) {
+        witness = keccak256(
+            abi.encode(
+                REDEEM_AND_MINT_DATA_TYPE_HASH,
+                redeemAndMint.archTokenToRedeem,
+                redeemAndMint.redeemAmount,
+                redeemAndMint.archTokenToMint,
+                redeemAndMint.mintAmount,
+                redeemAndMint.issuer,
                 concatenatedHashedSwapCallInstructions
             )
         );
