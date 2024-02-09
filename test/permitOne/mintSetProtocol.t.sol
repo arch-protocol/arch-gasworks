@@ -12,12 +12,11 @@ import { Conversor } from "test/utils/HexUtils.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { IERC20Permit } from
     "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
-import { ChamberTestUtils } from "chambers-peripherals/test/utils/ChamberTestUtils.sol";
+import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
 import { Permit2Utils } from "test/utils/Permit2Utils.sol";
 import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
 
-contract GaslessTest is Test, ChamberTestUtils, Permit2Utils, DeployPermit2 {
+contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for ISetToken;
     using stdJson for string;
@@ -53,7 +52,7 @@ contract GaslessTest is Test, ChamberTestUtils, Permit2Utils, DeployPermit2 {
             ,
             ,
             uint256 maxPayAmount,
-            ITradeIssuerV2.ContractCallInstruction[] memory callInstrictions
+            ITradeIssuerV3.ContractCallInstruction[] memory callInstrictions
         ) = parseMintQuoteFromJson(json);
 
         bytes[] memory componentQuotes = new bytes[](callInstrictions.length);

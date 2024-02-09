@@ -9,8 +9,7 @@ import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Conversor } from "test/utils/HexUtils.sol";
-import { ChamberTestUtils } from "chambers-peripherals/test/utils/ChamberTestUtils.sol";
-import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
+import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
 import { IChamber } from "chambers/interfaces/IChamber.sol";
 import { IIssuerWizard } from "chambers/interfaces/IIssuerWizard.sol";
 import { SigUtils } from "test/utils/SigUtils.sol";
@@ -19,7 +18,7 @@ import { IERC20Permit } from
 import { Permit2Utils } from "test/utils/Permit2Utils.sol";
 import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
 
-contract GaslessTest is Test, ChamberTestUtils, Permit2Utils, DeployPermit2 {
+contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
                               VARIABLES
     //////////////////////////////////////////////////////////////*/
@@ -37,7 +36,7 @@ contract GaslessTest is Test, ChamberTestUtils, Permit2Utils, DeployPermit2 {
     SigUtils internal sigUtils;
 
     IGasworks.MintChamberData internal mintData;
-    ITradeIssuerV2.ContractCallInstruction[] internal contractCallInstructions;
+    ITradeIssuerV3.ContractCallInstruction[] internal contractCallInstructions;
     uint256 internal MINT_AMOUNT = 10e18;
     uint256 internal MAX_PAY_AMOUNT;
     uint256 internal nonce;
@@ -57,7 +56,7 @@ contract GaslessTest is Test, ChamberTestUtils, Permit2Utils, DeployPermit2 {
             uint256 archTokenAmount,
             address fromToken,
             uint256 maxPayAmount,
-            ITradeIssuerV2.ContractCallInstruction[] memory callInstrictions
+            ITradeIssuerV3.ContractCallInstruction[] memory callInstrictions
         ) = parseMintQuoteFromJson(json);
 
         mintData = IGasworks.MintChamberData(

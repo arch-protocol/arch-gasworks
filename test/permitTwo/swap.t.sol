@@ -690,7 +690,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      * quote in console, ready to be saved for new tests. The fork is needed to get the
      * block number alongside the quote.
      */
-    function printQuoteToCreateATest() public {
+    function testPrintQuoteToCreateATest() public {
         vm.createSelectFork("polygon");
         fetchSwapQuote(POLYGON_CHAIN_ID, 10e6, POLYGON_USDC, POLYGON_WMATIC);
     }

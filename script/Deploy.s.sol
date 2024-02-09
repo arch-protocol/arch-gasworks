@@ -14,7 +14,7 @@ contract DeployGasworks is Script {
         Gasworks gasworks = new Gasworks(
             0xdA78a11FD57aF7be2eDD804840eA7f4c2A38801d, // Biconomy Forwarder
             0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320, // ExchangeIssuanceZeroEx
-            0x2B13D2b9407D5776B0BB63c8cd144978B6B7cE58  // TradeIssuerV2
+            0x2B13D2b9407D5776B0BB63c8cd144978B6B7cE58 // TradeIssuerV2
         );
 
         gasworks.setTokens(0x6cA9C8914a14D63a6700556127D09e7721ff7D3b); // AP60

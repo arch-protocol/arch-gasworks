@@ -27,17 +27,16 @@
  *    @@@@@(((((
  *      @@@((
  */
-
 pragma solidity ^0.8.17.0;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { ISetToken } from "./ISetToken.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
+import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
 import { IChamber } from "chambers/interfaces/IChamber.sol";
 import { IIssuerWizard } from "chambers/interfaces/IIssuerWizard.sol";
-import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
+import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
 
 interface IGasworks {
     /*//////////////////////////////////////////////////////////////
@@ -200,7 +199,7 @@ interface IGasworks {
     function mintWithPermit1(
         PermitData calldata permit,
         MintChamberData calldata mintChamberData,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+        ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions
     ) external;
 
     function swapWithPermit2(

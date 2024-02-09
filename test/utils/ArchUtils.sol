@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import "forge-std/StdJson.sol";
 import { Conversor } from "test/utils/HexUtils.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
+import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
 import { Gasworks } from "src/Gasworks.sol";
 import { IGasworks } from "src/interfaces/IGasworks.sol";
 import { console } from "forge-std/console.sol";
@@ -179,7 +179,7 @@ contract ArchUtils is Test {
         address archToken,
         uint256 archTokenAmount,
         address inputToken
-    ) public returns (ITradeIssuerV2.ContractCallInstruction[] memory, uint256) {
+    ) public returns (ITradeIssuerV3.ContractCallInstruction[] memory, uint256) {
         string[] memory inputs = new string[](6);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-arch-quote.js";
@@ -189,9 +189,11 @@ contract ArchUtils is Test {
         inputs[5] = Conversor.iToHex(abi.encode(true));
         bytes memory response = vm.ffi(inputs);
         (
-            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            ITradeIssuerV3.ContractCallInstruction[] memory _contractCallInstructions,
             uint256 _maxPayAmount
-        ) = abi.decode(response, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        ) = abi.decode(response, (ITradeIssuerV3.ContractCallInstruction[], uint256));
+
+        console.log(_maxPayAmount);
 
         logMintQuoteAsJson(
             networkId,
@@ -210,7 +212,7 @@ contract ArchUtils is Test {
         address archToken,
         uint256 archTokenAmount,
         address outputToken
-    ) public returns (ITradeIssuerV2.ContractCallInstruction[] memory, uint256) {
+    ) public returns (ITradeIssuerV3.ContractCallInstruction[] memory, uint256) {
         string[] memory inputs = new string[](6);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-arch-quote.js";
@@ -220,9 +222,9 @@ contract ArchUtils is Test {
         inputs[5] = Conversor.iToHex(abi.encode(false));
         bytes memory response = vm.ffi(inputs);
         (
-            ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+            ITradeIssuerV3.ContractCallInstruction[] memory _contractCallInstructions,
             uint256 _minReceiveAmount
-        ) = abi.decode(response, (ITradeIssuerV2.ContractCallInstruction[], uint256));
+        ) = abi.decode(response, (ITradeIssuerV3.ContractCallInstruction[], uint256));
 
         logRedeemQuoteAsJson(
             networkId,
@@ -237,10 +239,10 @@ contract ArchUtils is Test {
     }
 
     /**
-     * Transforms ITradeIssuerV2.ContractCallInstruction into IGasworks.SwapCallInstruction
+     * Transforms ITradeIssuerV3.ContractCallInstruction into IGasworks.SwapCallInstruction
      */
     function getSwapCallsFromContractCalls(
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+        ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions
     ) public pure returns (IGasworks.SwapCallInstruction[] memory) {
         IGasworks.SwapCallInstruction[] memory swapCallInstructions =
             new IGasworks.SwapCallInstruction[](contractCallInstructions.length);
@@ -270,9 +272,7 @@ contract ArchUtils is Test {
     function deployGasworks(uint256 chainId) public returns (Gasworks) {
         if (chainId == 137) {
             Gasworks polygonGasworks = new Gasworks(
-                POLYGON_BICONOMY_FORWARDER,
-                POLYGON_EXCHANGE_ISSUANCE,
-                POLYGON_TRADE_ISSUER_V2
+                POLYGON_BICONOMY_FORWARDER, POLYGON_EXCHANGE_ISSUANCE, POLYGON_TRADE_ISSUER_V2
             );
             polygonGasworks.setTokens(POLYGON_WEB3);
             polygonGasworks.setTokens(POLYGON_CHAIN);
@@ -289,11 +289,8 @@ contract ArchUtils is Test {
             polygonGasworks.setTokens(POLYGON_WMATIC);
             return polygonGasworks;
         }
-        Gasworks ethereumGasworks = new Gasworks(
-          ETH_BICONOMY_FORWARDER,
-          ETH_EXCHANGE_ISSUANCE,
-          ETH_TRADE_ISSUER_V2
-      );
+        Gasworks ethereumGasworks =
+            new Gasworks(ETH_BICONOMY_FORWARDER, ETH_EXCHANGE_ISSUANCE, ETH_TRADE_ISSUER_V2);
         ethereumGasworks.setTokens(ETH_WEB3);
         ethereumGasworks.setTokens(ETH_CHAIN);
         ethereumGasworks.setTokens(ETH_AEDY);
@@ -310,7 +307,7 @@ contract ArchUtils is Test {
      * Logs a contract call instruction in console in a readable format
      */
     function logContractCallInstruction(
-        ITradeIssuerV2.ContractCallInstruction memory callInstruction
+        ITradeIssuerV3.ContractCallInstruction memory callInstruction
     ) public view {
         console.log("Sell token: ", address(callInstruction._sellToken));
         console.log("Sell amount: ", callInstruction._sellAmount);
@@ -357,7 +354,7 @@ contract ArchUtils is Test {
         address archToken,
         uint256 archTokenAmount,
         address inputToken,
-        ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+        ITradeIssuerV3.ContractCallInstruction[] memory _contractCallInstructions,
         uint256 _maxPayAmount
     ) public view {
         console.log("---------- Mint request ----------");
@@ -380,7 +377,7 @@ contract ArchUtils is Test {
         address archToken,
         uint256 archTokenAmount,
         address outputToken,
-        ITradeIssuerV2.ContractCallInstruction[] memory _contractCallInstructions,
+        ITradeIssuerV3.ContractCallInstruction[] memory _contractCallInstructions,
         uint256 _MinReceiveAmount
     ) public view {
         console.log("---------- Redeem request ----------");
@@ -400,7 +397,7 @@ contract ArchUtils is Test {
      * Logs a contract call instruction in console in a JSON-readable format
      */
     function logContractCallInstructionAsJson(
-        ITradeIssuerV2.ContractCallInstruction memory callInstruction,
+        ITradeIssuerV3.ContractCallInstruction memory callInstruction,
         bool logLastComma
     ) public view {
         console.log("    {");
@@ -480,7 +477,7 @@ contract ArchUtils is Test {
         address archToken,
         uint256 archTokenAmount,
         address inputToken,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
+        ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions,
         uint256 maxPayAmount
     ) public view {
         console.log("{");
@@ -507,7 +504,7 @@ contract ArchUtils is Test {
         address archToken,
         uint256 archTokenAmount,
         address outputToken,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
+        ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions,
         uint256 minReceiveAmount
     ) public view {
         console.log("{");
@@ -544,23 +541,23 @@ contract ArchUtils is Test {
 
     /**
      * Reads a contract call instruction from a JSON file and returns
-     * an ITradeIssuerV2.ContractCallInstruction[] array
+     * an ITradeIssuerV3.ContractCallInstruction[] array
      */
     function parseContractCallInstructions(string memory json)
         public
         pure
-        returns (ITradeIssuerV2.ContractCallInstruction[] memory)
+        returns (ITradeIssuerV3.ContractCallInstruction[] memory)
     {
         bytes memory callInstructionsInJson = json.parseRaw(".callInstructions");
         DecodedCallInstruction[] memory decodedCalls =
             abi.decode(callInstructionsInJson, (DecodedCallInstruction[]));
 
-        ITradeIssuerV2.ContractCallInstruction[] memory instructions =
-            new ITradeIssuerV2.ContractCallInstruction[](decodedCalls.length);
+        ITradeIssuerV3.ContractCallInstruction[] memory instructions =
+            new ITradeIssuerV3.ContractCallInstruction[](decodedCalls.length);
 
         for (uint256 i = 0; i < decodedCalls.length; ++i) {
             DecodedCallInstruction memory decodedCall = decodedCalls[i];
-            instructions[i] = ITradeIssuerV2.ContractCallInstruction({
+            instructions[i] = ITradeIssuerV3.ContractCallInstruction({
                 _target: payable(decodedCall._target),
                 _allowanceTarget: decodedCall._allowanceTarget,
                 _sellToken: IERC20(decodedCall._sellToken),
@@ -576,7 +573,7 @@ contract ArchUtils is Test {
 
     /**
      * Reads a mint quote from a JSON file and returns all params in the quote
-     * plus an ITradeIssuerV2.ContractCallInstruction[] array
+     * plus an ITradeIssuerV3.ContractCallInstruction[] array
      */
     function parseMintQuoteFromJson(string memory json)
         public
@@ -588,7 +585,7 @@ contract ArchUtils is Test {
             uint256 archTokenAmount,
             address inputToken,
             uint256 maxPayAmount,
-            ITradeIssuerV2.ContractCallInstruction[] memory callInstrictions
+            ITradeIssuerV3.ContractCallInstruction[] memory callInstrictions
         )
     {
         bytes memory _networkId = json.parseRaw(".networkId");
@@ -619,7 +616,7 @@ contract ArchUtils is Test {
 
     /**
      * Reads a redeem quote from a JSON file and returns all params in the quote
-     * plus an ITradeIssuerV2.ContractCallInstruction[] array
+     * plus an ITradeIssuerV3.ContractCallInstruction[] array
      */
     function parseRedeemQuoteFromJson(string memory json)
         public
@@ -631,7 +628,7 @@ contract ArchUtils is Test {
             uint256 archTokenAmount,
             address outputToken,
             uint256 minReceiveAmount,
-            ITradeIssuerV2.ContractCallInstruction[] memory callInstrictions
+            ITradeIssuerV3.ContractCallInstruction[] memory callInstrictions
         )
     {
         bytes memory _networkId = json.parseRaw(".networkId");

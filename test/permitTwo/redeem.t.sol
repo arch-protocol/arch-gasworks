@@ -11,7 +11,7 @@ import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"
 import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import { Permit2Utils } from "test/utils/Permit2Utils.sol";
-import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
+import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
 
 contract GaslessTest is Test, Permit2Utils {
     /*//////////////////////////////////////////////////////////////
@@ -43,7 +43,7 @@ contract GaslessTest is Test, Permit2Utils {
         uint256 archTokenAmount,
         address toToken,
         uint256 minReceiveAmount,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+        ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions
     ) public {
         Gasworks gasworks;
         address issuerWizard;
@@ -120,7 +120,7 @@ contract GaslessTest is Test, Permit2Utils {
             uint256 archTokenAmount,
             address toToken,
             uint256 minReceiveAmount,
-            ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+            ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions
         ) = parseRedeemQuoteFromJson(json);
         redeemChamber(
             networkId,
@@ -216,7 +216,7 @@ contract GaslessTest is Test, Permit2Utils {
             uint256 archTokenAmount,
             address toToken,
             uint256 minReceiveAmount,
-            ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+            ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions
         ) = parseRedeemQuoteFromJson(json);
 
         Gasworks gasworks;
