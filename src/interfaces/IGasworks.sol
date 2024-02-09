@@ -147,6 +147,21 @@ interface IGasworks {
         SwapCallInstruction[] swapCallInstructions;
     }
 
+    struct RedeemAndMintData {
+      // The address of the chamber to redeem
+      address archTokenToRedeem;
+      // The amount of Chamber to redeem
+      uint256 redeemAmount;
+      // The address of the token to mint
+      address archTokenToMint;
+      // The amount of Chamber to mint
+      uint256 mintAmount;
+      // The address of the issuer wizard that will mint the Chamber
+      address issuer;
+      // Intructions to pass the TradeIssuer
+      SwapCallInstruction[] swapCallInstructions;
+    }
+
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -163,6 +178,10 @@ interface IGasworks {
 
     event RedeemWithPermit2(
         address tokenRedeemed, uint256 amountRedeemed, address tokenBought, uint256 amountBought
+    );
+
+    event RedeemAndMintWithPermit2(
+        address tokenRedeemed, uint256 amountRedeemed, address tokenMinted, uint256 amountMinted
     );
 
     event MintSetProtocolWithPermit1(
@@ -222,6 +241,13 @@ interface IGasworks {
         bytes calldata signature,
         RedeemData calldata redeemData,
         bool toNative
+    ) external;
+
+    function redeemAndMintWithPermit2(
+        ISignatureTransfer.PermitTransferFrom memory permit2,
+        address owner,
+        bytes calldata signature,
+        RedeemAndMintData calldata redeemAndMintData
     ) external;
 
     function withdrawTokenBalance(ERC20 token) external;
