@@ -29,7 +29,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     string path;
     string json;
 
-    IERC20 internal constant USDC = IERC20(POLYGON_USDC);
+    IERC20 internal constant USDC = IERC20(POLYGON_USDC_e);
     IChamber internal constant AAGG = IChamber(POLYGON_AAGG);
 
     Gasworks internal gasworks;
@@ -47,7 +47,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     function setUp() public {
         addLabbels();
         root = vm.projectRoot();
-        path = string.concat(root, "/data/permitOne/mint/testMintAaggWithUsdc.json");
+        path = string.concat(root, "/data/permitOne/mint/testMintAaggWithUsdcE.json");
         json = vm.readFile(path);
         (
             uint256 chainId,
@@ -73,7 +73,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         gasworks = deployGasworks(chainId);
         sigUtils = new SigUtils(ERC20(address(USDC)).DOMAIN_SEPARATOR());
 
-        deal(POLYGON_USDC, ALICE, maxPayAmount);
+        deal(address(USDC), ALICE, maxPayAmount);
         nonce = IERC20Permit(address(USDC)).nonces(ALICE);
     }
 
