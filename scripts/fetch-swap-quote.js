@@ -1,9 +1,26 @@
 import { ethers } from "ethers";
-import qs from "qs";
 import { get } from './get.js';
 import { archTokens } from "./config.js";
 
 const encoder = new ethers.AbiCoder()
+
+function getQueryString(
+  params,
+) {
+  const queryString = Object.entries(params)
+    .map(([key, value]) => {
+      if (value !== undefined && value != null) {
+        if (Array.isArray(value)) {
+          return value.map((v) => `${key}[]=${encodeURIComponent(v)}`).join('&'); 
+        }
+
+        return `${key}=${encodeURIComponent(value)}`;
+      }
+      return '';
+    })
+    .join('&');
+  return queryString;
+}
 
 async function main(fromTokenAmountInWei, fromTokenAddress, toTokenAddress, recipientAddress) {
   const fromAmountInWei = encoder.decode(["uint256"], fromTokenAmountInWei)[0].toString()
@@ -25,11 +42,11 @@ async function main(fromTokenAmountInWei, fromTokenAddress, toTokenAddress, reci
     toAddress,
     slippagePercentageProportion,
     recipient,
-    liquiditySources: ["zero-ex"],
+    liquiditySources: ["zero-ex", "uniswap"],
   }
 
   const baseUrl = "https://dev-api.archfinance.io/exchange/v2/get-quote"
-  const quoteUrl = `${baseUrl}?${qs.stringify(params, { arrayFormat: 'comma' })}`
+  const quoteUrl = `${baseUrl}?${getQueryString(params)}`
 
   try {
     const response = await get(quoteUrl);
