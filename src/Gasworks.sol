@@ -164,58 +164,6 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     }
 
     /**
-     * Issues an exact amount of SetTokens for given amount of input ERC20 tokens.
-     * Using a permit for the ERC20 token transfer
-     * The excess amount of tokens is returned in an equivalent amount of ether.
-     *
-     * @param permit              Permit data of the ERC20 token used (USDC)
-     * @param mintData            Data of the issuance to perform
-     */
-    function mintSetProtocolWithPermit1(PermitData calldata permit, MintSetData calldata mintData)
-        external
-    {
-        if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
-        if (!tokens[address(mintData._setToken)]) revert InvalidToken(address(mintData._setToken));
-
-        IERC20Permit permitToken = IERC20Permit(permit._tokenContract);
-        permitToken.permit(
-            permit._owner,
-            permit._spender,
-            permit._value,
-            permit._deadline,
-            permit._v,
-            permit._r,
-            permit._s
-        );
-
-        ERC20 token = ERC20(permit._tokenContract);
-        token.safeTransferFrom(permit._owner, address(this), permit._amount);
-
-        token.safeApprove(address(exchangeIssuance), mintData._maxAmountInputToken);
-
-        exchangeIssuance.issueExactSetFromToken(
-            mintData._setToken,
-            IERC20(permit._tokenContract),
-            mintData._amountSetToken,
-            mintData._maxAmountInputToken,
-            mintData._componentQuotes,
-            mintData._issuanceModule,
-            mintData._isDebtIssuance
-        );
-
-        ERC20(address(mintData._setToken)).safeTransfer(permit._owner, mintData._amountSetToken);
-
-        emit MintSetProtocolWithPermit1(
-            address(mintData._setToken),
-            mintData._amountSetToken,
-            address(token),
-            permit._amount - token.balanceOf(address(this))
-        );
-
-        token.safeTransfer(owner, token.balanceOf(address(this)));
-    }
-
-    /**
      * Issues an exact amount of Chamber tokens for given amount of input ERC20 tokens.
      * Using a permit for the ERC20 token transfer
      * The excess amount of tokens is returned
@@ -266,11 +214,8 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         );
         token.safeTransfer(permit._owner, token.balanceOf(address(this)));
 
-        emit MintSetProtocolWithPermit1(
-            address(mintChamberData._chamber),
-            mintChamberData._mintAmount,
-            address(token),
-            totalPaid
+        emit MintWithPermit1(
+          address(mintChamberData._chamber), mintChamberData._mintAmount, address(token), totalPaid
         );
     }
 
