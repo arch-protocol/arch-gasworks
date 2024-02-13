@@ -5,7 +5,7 @@ import { archTokens } from "./config.js";
 
 const encoder = new ethers.AbiCoder()
 
-async function main(fromTokenAmountInWei, fromTokenAddress, toTokenAddress) {
+async function main(fromTokenAmountInWei, fromTokenAddress, toTokenAddress, recipientAddress) {
   const fromAmountInWei = encoder.decode(["uint256"], fromTokenAmountInWei)[0].toString()
   const fromAddress = encoder.decode(["address"], fromTokenAddress)[0]
   const toAddress = encoder.decode(["address"], toTokenAddress)[0]
@@ -16,17 +16,20 @@ async function main(fromTokenAmountInWei, fromTokenAddress, toTokenAddress) {
     slippagePercentageProportion,
   } = archTokens[fromAddress];
 
+  const recipient = recipientAddress ? encoder.decode(["address"], recipientAddress)[0] : traderPeripheralAddress;
+
   const params = {
     networkId,
     fromAddress,
     fromAmountInWei,
     toAddress,
     slippagePercentageProportion,
-    recipient: traderPeripheralAddress,
+    recipient,
+    liquiditySources: ["zero-ex"],
   }
 
   const baseUrl = "https://dev-api.archfinance.io/exchange/v2/get-quote"
-  const quoteUrl = `${baseUrl}?${qs.stringify(params)}`
+  const quoteUrl = `${baseUrl}?${qs.stringify(params, { arrayFormat: 'comma' })}`
 
   try {
     const response = await get(quoteUrl);
@@ -62,10 +65,14 @@ async function main(fromTokenAmountInWei, fromTokenAddress, toTokenAddress) {
 
 const args = process.argv.slice(2)
 
-if (args.length != 3) {
-  console.log(`please supply the correct encoded parameters: sellAmount sellToken buyToken
+if (args.length < 3) {
+  console.log(`please supply the correct encoded parameters: sellAmount sellToken buyToken recipient
   `)
   process.exit(1)
 }
 
-main(args[0], args[1], args[2])
+if (args.length === 3) {
+  main(args[0], args[1], args[2])
+}
+
+main(args[0], args[1], args[2], args[3])
