@@ -158,14 +158,16 @@ contract ArchUtils is Test {
         uint256 networkId,
         uint256 sellAmount,
         address sellToken,
-        address buyToken
+        address buyToken,
+        address gasworks
     ) public returns (IGasworks.SwapData memory swapData) {
-        string[] memory inputs = new string[](5);
+        string[] memory inputs = new string[](6);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-swap-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(sellAmount));
         inputs[3] = Conversor.iToHex(abi.encode(sellToken));
         inputs[4] = Conversor.iToHex(abi.encode(buyToken));
+        inputs[5] = Conversor.iToHex(abi.encode(gasworks));
         bytes memory response = vm.ffi(inputs);
         (
             address swapAllowanceTarget,
@@ -294,7 +296,7 @@ contract ArchUtils is Test {
     function deployGasworks(uint256 chainId) public returns (Gasworks) {
         if (chainId == 137) {
             Gasworks polygonGasworks = new Gasworks(
-                POLYGON_BICONOMY_FORWARDER, POLYGON_EXCHANGE_ISSUANCE, POLYGON_TRADE_ISSUER_V2
+                POLYGON_BICONOMY_FORWARDER, POLYGON_EXCHANGE_ISSUANCE, POLYGON_TRADE_ISSUER_V3
             );
             polygonGasworks.setTokens(POLYGON_WEB3);
             polygonGasworks.setTokens(POLYGON_CHAIN);
