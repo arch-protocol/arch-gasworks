@@ -28,8 +28,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     Gasworks internal gasworks;
     SigUtils internal sigUtils;
     IGasworks.SwapData internal swapData;
-    ERC20 internal constant USDC = ERC20(POLYGON_USDC_e);
-    uint256 internal constant SELL_AMOUNT = 1e6;
+    ERC20 internal USDC;
+    uint256 internal SELL_AMOUNT;
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
@@ -42,8 +42,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         (
             uint256 chainId,
             uint256 blockNumber,
-            ,
-            ,
+            address sellToken,
+            uint256 sellAmount,
             address buyToken,
             uint256 buyAmount,
             uint256 nativeTokenAmount,
@@ -51,6 +51,9 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             address swapAllowanceTarget,
             bytes memory swapCallData
         ) = parseSwapQuoteFromJson(json);
+
+        USDC = ERC20(sellToken);
+        SELL_AMOUNT = sellAmount;
 
         swapData = IGasworks.SwapData(
             buyToken,
