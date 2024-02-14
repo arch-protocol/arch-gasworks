@@ -692,13 +692,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function printQuoteToCreateATest() public {
         vm.createSelectFork("polygon");
-        fetchSwapQuote(
-            POLYGON_CHAIN_ID,
-            500e6,
-            POLYGON_USDC_e,
-            POLYGON_WMATIC,
-            address(0)
-        );
+        fetchSwapQuote(POLYGON_CHAIN_ID, 500e6, POLYGON_USDC_e, POLYGON_WMATIC, address(0));
     }
 
     /*//////////////////////////////////////////////////////////////
