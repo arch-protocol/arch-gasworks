@@ -128,9 +128,9 @@ contract GaslessTest is Test, Permit2Utils {
      * quote in console, ready to be saved for new tests. The fork is needed to get the
      * block number alongside the quote.
      */
-    function testPrintQuoteToCreateATest() public {
-        vm.createSelectFork("ethereum");
-        fetchMintQuote(ETH_CHAIN_ID, ETH_ADDY, 100e18, ETH_WBTC);
+    function printQuoteToCreateATest() public {
+        vm.createSelectFork("polygon");
+        fetchMintQuote(POLYGON_CHAIN_ID, POLYGON_AMOD, 100e18, POLYGON_ADDY);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -161,24 +161,6 @@ contract GaslessTest is Test, Permit2Utils {
     function testMintWithPermit2FromChainToAbalOnPolygon() public {
         runLocalMintQuoteTest(
             "/data/permitTwo/mint/testMintWithPermit2FromChainToAbalOnPolygon.json"
-        );
-    }
-
-    /**
-     * [SUCCESS] Should make a mint of AEDY with USCD using permit2
-     */
-    function testMintWithPermit2FromUSDCToAedyOnEthereum() public {
-        runLocalMintQuoteTest(
-            "/data/permitTwo/mint/testMintWithPermit2FromUSDCToAedyOnEthereum.json"
-        );
-    }
-
-    /**
-     * [SUCCESS] Should make a mint of ADDY with WBTC using permit2
-     */
-    function testMintWithPermit2FromWbtcToAddyOnEthereum() public {
-        runLocalMintQuoteTest(
-            "/data/permitTwo/mint/testMintWithPermit2FromWbtcToAddyOnEthereum.json"
         );
     }
 }

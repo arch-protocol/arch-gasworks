@@ -61,6 +61,7 @@ export async function get(
     const { headers, data } = response;
     return { headers, data };
   } catch (error) {
+    console.log(JSON.stringify(error, null, 2))
     const {
       status,
       data,

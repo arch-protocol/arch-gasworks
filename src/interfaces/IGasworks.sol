@@ -63,21 +63,6 @@ interface IGasworks {
         bytes32 _s;
     }
 
-    struct MintSetData {
-        // Address of the SetToken to be issued
-        ISetToken _setToken;
-        // Amount of SetTokens to issue
-        uint256 _amountSetToken;
-        // Maximum amount of input tokens to be used to issue SetTokens.
-        uint256 _maxAmountInputToken;
-        // The encoded 0x transactions to execute
-        bytes[] _componentQuotes;
-        // The address of the issuance module for the SetToken
-        address _issuanceModule;
-        // Is the SetToken using debt issuance?
-        bool _isDebtIssuance;
-    }
-
     struct MintChamberData {
         // The address of the chamber to mint
         IChamber _chamber;
@@ -168,6 +153,10 @@ interface IGasworks {
 
     event Withdrawn(address token, uint256 amount);
 
+    event MintWithPermit1(
+        address tokenMinted, uint256 amountMinted, address tokenPaid, uint256 amountPaid
+    );
+
     event SwapWithPermit(
         address buyToken, uint256 buyAmount, address sellToken, uint256 sellAmount
     );
@@ -182,10 +171,6 @@ interface IGasworks {
 
     event RedeemAndMintWithPermit2(
         address tokenRedeemed, uint256 amountRedeemed, address tokenMinted, uint256 amountMinted
-    );
-
-    event MintSetProtocolWithPermit1(
-        address tokenMinted, uint256 amountMinted, address tokenPaid, uint256 amountPaid
     );
 
     /*//////////////////////////////////////////////////////////////
@@ -211,9 +196,6 @@ interface IGasworks {
     function setTokens(address token) external;
 
     function swapWithPermit1(PermitData calldata permit, SwapData calldata swapData) external;
-
-    function mintSetProtocolWithPermit1(PermitData calldata permit, MintSetData calldata mintData)
-        external;
 
     function mintWithPermit1(
         PermitData calldata permit,

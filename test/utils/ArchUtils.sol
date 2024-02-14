@@ -21,6 +21,8 @@ contract ArchUtils is Test {
     address public constant ETH_CHAIN = 0x0d20e86AbAb680C038Ac8bBDc1446585e67f8951;
     address public constant ETH_AEDY = 0x103bb3EBc6F61b3DB2d6e01e54eF7D9899A2E16B;
     address public constant ETH_ADDY = 0xE15A66b7B8e385CAa6F69FD0d55984B96D7263CF;
+    address public constant ETH_WEB3V2 = 0x8F0d5660929cA6ac394c5c41f59497629b1dbc23;
+    address public constant ETH_CHAINV2 = 0x89c53B02558E4D1c24b9Bf3beD1279871187EF0B;
     address public constant ETH_USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant ETH_USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address public constant ETH_DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -50,10 +52,14 @@ contract ArchUtils is Test {
     address public constant POLYGON_AEDY = 0x027aF1E12a5869eD329bE4c05617AD528E997D5A;
     address public constant POLYGON_ADDY = 0xAb1B1680f6037006e337764547fb82d17606c187;
     address public constant POLYGON_AAGG = 0xAfb6E8331355faE99C8E8953bB4c6Dc5d11E9F3c;
-    address public constant POLYGON_AMOD = 0x8F0d5660929cA6ac394c5c41f59497629b1dbc23;
+    address public constant POLYGON_AMOD = 0xa5a979Aa7F55798e99f91Abe815c114A09164beb; // UPDATED
     address public constant POLYGON_ABAL = 0xF401E2c1ce8F252947b60BFB92578f84217A1545;
     address public constant POLYGON_AP60 = 0x6cA9C8914a14D63a6700556127D09e7721ff7D3b;
-    address public constant POLYGON_USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    address public constant POLYGON_WEB3V2 = 0xC4ea087fc2cB3a1D9ff86c676F03abE4F3EE906F;
+    address public constant POLYGON_CHAINV2 = 0x70A13201Df2364B634cb5Aac8d735Db3A654b30c;
+    address public constant POLYGON_ABDY = 0xdE2925D582fc8711a0E93271c12615Bdd043Ed1C;
+    address public constant POLYGON_USDC_e = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    address public constant POLYGON_USDC = 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359;
     address public constant POLYGON_USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
     address public constant POLYGON_DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
     address public constant POLYGON_WBTC = 0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6;
@@ -72,6 +78,13 @@ contract ArchUtils is Test {
     address public constant POLYGON_UNIV3_LP_WETH_CHAIN = 0x538b2B1aCF51b6C9A620F57de8619F9B428EBf9D;
     address public constant POLYGON_UNIV3_LP_USDC_ADDY = 0xC9621a0667fA6fE5BCb81B5E1ecCa7810c52FF8B;
     address public constant POLYGON_UNIV3_LP_WETH_AEDY = 0xefbA86413285584582cBEb556E1b89914b67eD02;
+    address public constant POLYGON_UNIV2_LP_WETH_WEB3V2 =
+        0x2FFDf61AAF883ac71D806f4Ee85c4A4F6c04f4B7;
+    address public constant POLYGON_UNIV3_LP_WETH_CHAINV2 =
+        0x12358fb37801303Aeb9d9677E89D23723B7fF0ba;
+    address public constant POLYGON_UNISWAP_ROUTER = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
+    address public constant POLYGON_CHAMBER_GOD = 0x0C9Aa1e4B4E39DA01b7459607995368E4C38cFEF;
+    address public constant POLYGON_TRADE_ISSUER_V3 = 0xdCB99117Ba207b996EE3c49eE6F8c0f1d371867A;
     // Utils
     uint256 public constant ALICE_PRIVATE_KEY = 0xa11ce000000b0b;
     address public ALICE = vm.addr(ALICE_PRIVATE_KEY);
@@ -81,6 +94,8 @@ contract ArchUtils is Test {
         vm.label(ETH_CHAIN, "CHAIN");
         vm.label(ETH_AEDY, "AEDY");
         vm.label(ETH_ADDY, "ADDY");
+        vm.label(ETH_WEB3V2, "WEB3V2");
+        vm.label(ETH_CHAINV2, "CHAINV2");
         vm.label(ETH_USDC, "USDC");
         vm.label(ETH_USDT, "USDT");
         vm.label(ETH_DAI, "DAI");
@@ -111,6 +126,10 @@ contract ArchUtils is Test {
         vm.label(POLYGON_AMOD, "AMOD");
         vm.label(POLYGON_ABAL, "ABAL");
         vm.label(POLYGON_AP60, "AP60");
+        vm.label(POLYGON_WEB3V2, "WEB3V2");
+        vm.label(POLYGON_CHAINV2, "CHAINV2");
+        vm.label(POLYGON_ABDY, "ABDY");
+        vm.label(POLYGON_USDC_e, "USDC.e");
         vm.label(POLYGON_USDC, "USDC");
         vm.label(POLYGON_USDT, "USDT");
         vm.label(POLYGON_DAI, "DAI");
@@ -129,6 +148,11 @@ contract ArchUtils is Test {
         vm.label(POLYGON_UNIV3_LP_WETH_CHAIN, "UNIV3 WETH/CHAIN");
         vm.label(POLYGON_UNIV3_LP_USDC_ADDY, "UNIV3 WETH/ADDY");
         vm.label(POLYGON_UNIV3_LP_WETH_AEDY, "UNIV3 WETH/AEDY");
+        vm.label(POLYGON_UNIV2_LP_WETH_WEB3V2, "UNIV3 WETH/WEB3V2");
+        vm.label(POLYGON_UNIV3_LP_WETH_CHAINV2, "UNIV3 WETH/CHAINV2");
+        vm.label(POLYGON_UNISWAP_ROUTER, "UniswapRouter");
+        vm.label(POLYGON_CHAMBER_GOD, "ChamberGod");
+        vm.label(POLYGON_TRADE_ISSUER_V3, "TradeIssuerV3");
         vm.label(ALICE, "Alice");
     }
 
@@ -136,14 +160,16 @@ contract ArchUtils is Test {
         uint256 networkId,
         uint256 sellAmount,
         address sellToken,
-        address buyToken
+        address buyToken,
+        address gasworks
     ) public returns (IGasworks.SwapData memory swapData) {
-        string[] memory inputs = new string[](5);
+        string[] memory inputs = new string[](6);
         inputs[0] = "node";
-        inputs[1] = "scripts/fetch-quote.js";
+        inputs[1] = "scripts/fetch-swap-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(sellAmount));
         inputs[3] = Conversor.iToHex(abi.encode(sellToken));
         inputs[4] = Conversor.iToHex(abi.encode(buyToken));
+        inputs[5] = Conversor.iToHex(abi.encode(gasworks));
         bytes memory response = vm.ffi(inputs);
         (
             address swapAllowanceTarget,
@@ -182,7 +208,7 @@ contract ArchUtils is Test {
     ) public returns (ITradeIssuerV3.ContractCallInstruction[] memory, uint256) {
         string[] memory inputs = new string[](6);
         inputs[0] = "node";
-        inputs[1] = "scripts/fetch-arch-quote.js";
+        inputs[1] = "scripts/fetch-mint-or-redeem-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(archTokenAmount));
         inputs[3] = Conversor.iToHex(abi.encode(archToken));
         inputs[4] = Conversor.iToHex(abi.encode(inputToken));
@@ -215,7 +241,7 @@ contract ArchUtils is Test {
     ) public returns (ITradeIssuerV3.ContractCallInstruction[] memory, uint256) {
         string[] memory inputs = new string[](6);
         inputs[0] = "node";
-        inputs[1] = "scripts/fetch-arch-quote.js";
+        inputs[1] = "scripts/fetch-mint-or-redeem-quote.js";
         inputs[2] = Conversor.iToHex(abi.encode(archTokenAmount));
         inputs[3] = Conversor.iToHex(abi.encode(archToken));
         inputs[4] = Conversor.iToHex(abi.encode(outputToken));
@@ -272,7 +298,7 @@ contract ArchUtils is Test {
     function deployGasworks(uint256 chainId) public returns (Gasworks) {
         if (chainId == 137) {
             Gasworks polygonGasworks = new Gasworks(
-                POLYGON_BICONOMY_FORWARDER, POLYGON_EXCHANGE_ISSUANCE, POLYGON_TRADE_ISSUER_V2
+                POLYGON_BICONOMY_FORWARDER, POLYGON_EXCHANGE_ISSUANCE, POLYGON_TRADE_ISSUER_V3
             );
             polygonGasworks.setTokens(POLYGON_WEB3);
             polygonGasworks.setTokens(POLYGON_CHAIN);
@@ -282,11 +308,15 @@ contract ArchUtils is Test {
             polygonGasworks.setTokens(POLYGON_AMOD);
             polygonGasworks.setTokens(POLYGON_ABAL);
             polygonGasworks.setTokens(POLYGON_AP60);
+            polygonGasworks.setTokens(POLYGON_USDC_e);
             polygonGasworks.setTokens(POLYGON_USDC);
             polygonGasworks.setTokens(POLYGON_USDT);
             polygonGasworks.setTokens(POLYGON_DAI);
             polygonGasworks.setTokens(POLYGON_WBTC);
             polygonGasworks.setTokens(POLYGON_WMATIC);
+            polygonGasworks.setTokens(POLYGON_WEB3V2);
+            polygonGasworks.setTokens(POLYGON_CHAINV2);
+            polygonGasworks.setTokens(POLYGON_ABDY);
             return polygonGasworks;
         }
         Gasworks ethereumGasworks =
@@ -300,6 +330,8 @@ contract ArchUtils is Test {
         ethereumGasworks.setTokens(ETH_DAI);
         ethereumGasworks.setTokens(ETH_WBTC);
         ethereumGasworks.setTokens(ETH_WETH);
+        ethereumGasworks.setTokens(ETH_WEB3V2);
+        ethereumGasworks.setTokens(ETH_CHAINV2);
         return ethereumGasworks;
     }
 

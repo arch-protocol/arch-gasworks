@@ -29,7 +29,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     string path;
     string json;
 
-    IERC20 internal constant USDC = IERC20(POLYGON_USDC);
+    IERC20 internal USDC;
     IChamber internal constant AAGG = IChamber(POLYGON_AAGG);
 
     Gasworks internal gasworks;
@@ -37,7 +37,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
     IGasworks.MintChamberData internal mintData;
     ITradeIssuerV3.ContractCallInstruction[] internal contractCallInstructions;
-    uint256 internal MINT_AMOUNT = 10e18;
+    uint256 internal MINT_AMOUNT;
     uint256 internal MAX_PAY_AMOUNT;
     uint256 internal nonce;
 
@@ -47,7 +47,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     function setUp() public {
         addLabbels();
         root = vm.projectRoot();
-        path = string.concat(root, "/data/permitOne/mint/testMintAaggWithUsdc.json");
+        path = string.concat(root, "/data/permitOne/mint/testMintAaggWithUsdcE.json");
         json = vm.readFile(path);
         (
             uint256 chainId,
@@ -59,6 +59,10 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             ITradeIssuerV3.ContractCallInstruction[] memory callInstrictions
         ) = parseMintQuoteFromJson(json);
 
+        USDC = IERC20(fromToken);
+        MINT_AMOUNT = archTokenAmount;
+        MAX_PAY_AMOUNT = maxPayAmount;
+
         mintData = IGasworks.MintChamberData(
             IChamber(archToken),
             IIssuerWizard(POLYGON_ISSUER_WIZARD),
@@ -67,13 +71,12 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             archTokenAmount
         );
         contractCallInstructions = callInstrictions;
-        MAX_PAY_AMOUNT = maxPayAmount;
 
         vm.createSelectFork("polygon", blockNumber);
         gasworks = deployGasworks(chainId);
         sigUtils = new SigUtils(ERC20(address(USDC)).DOMAIN_SEPARATOR());
 
-        deal(POLYGON_USDC, ALICE, maxPayAmount);
+        deal(address(USDC), ALICE, maxPayAmount);
         nonce = IERC20Permit(address(USDC)).nonces(ALICE);
     }
 
