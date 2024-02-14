@@ -71,7 +71,6 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             archTokenAmount
         );
         contractCallInstructions = callInstrictions;
-        
 
         vm.createSelectFork("polygon", blockNumber);
         gasworks = deployGasworks(chainId);
