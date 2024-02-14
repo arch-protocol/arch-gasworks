@@ -10,10 +10,6 @@ function getQueryString(
   const queryString = Object.entries(params)
     .map(([key, value]) => {
       if (value !== undefined && value != null) {
-        if (Array.isArray(value)) {
-          return value.map((v) => `${key}[]=${encodeURIComponent(v)}`).join('&'); 
-        }
-
         return `${key}=${encodeURIComponent(value)}`;
       }
       return '';
@@ -42,7 +38,7 @@ async function main(fromTokenAmountInWei, fromTokenAddress, toTokenAddress, reci
     toAddress,
     slippagePercentageProportion,
     recipient,
-    liquiditySources: ["zero-ex", "uniswap"],
+    liquiditySources: "zero-ex,uniswap-v3",
   }
 
   const baseUrl = "https://dev-api.archfinance.io/exchange/v2/get-quote"
