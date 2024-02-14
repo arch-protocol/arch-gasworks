@@ -11,7 +11,7 @@ import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"
 import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import { Permit2Utils } from "test/utils/Permit2Utils.sol";
-import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
+import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
 
 contract GaslessTest is Test, Permit2Utils {
     /*//////////////////////////////////////////////////////////////
@@ -43,7 +43,7 @@ contract GaslessTest is Test, Permit2Utils {
         uint256 archTokenAmount,
         address toToken,
         uint256 minReceiveAmount,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+        ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions
     ) public {
         Gasworks gasworks;
         address issuerWizard;
@@ -120,7 +120,7 @@ contract GaslessTest is Test, Permit2Utils {
             uint256 archTokenAmount,
             address toToken,
             uint256 minReceiveAmount,
-            ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+            ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions
         ) = parseRedeemQuoteFromJson(json);
         redeemChamber(
             networkId,
@@ -140,7 +140,7 @@ contract GaslessTest is Test, Permit2Utils {
      */
     function printQuoteToCreateATest() public {
         vm.createSelectFork("polygon");
-        fetchRedeemQuote(POLYGON_CHAIN_ID, POLYGON_AMOD, 1e17, POLYGON_USDT);
+        fetchRedeemQuote(POLYGON_CHAIN_ID, POLYGON_AMOD, 100e18, POLYGON_USDT);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -161,7 +161,16 @@ contract GaslessTest is Test, Permit2Utils {
      */
     function testRedeemWithPermit2FromAaggToChainOnPolygon() public {
         runLocalRedeemQuoteTest(
-            "/data/permitTwo/redeem/testRedeemWithPermit2FromAaggToChainsOnPolygon.14.11.2023.json"
+            "/data/permitTwo/redeem/testRedeemWithPermit2FromAaggToChainOnPolygon.json"
+        );
+    }
+
+    /**
+     * [SUCCESS] Should redeem ABAL for USDC using permit2
+     */
+    function testRedeemWithPermit2FromAbalToUsdcOnPolygon() public {
+        runLocalRedeemQuoteTest(
+            "/data/permitTwo/redeem/testRedeemWithPermit2FromAbalToUsdcEOnPolygon.json"
         );
     }
 
@@ -175,38 +184,11 @@ contract GaslessTest is Test, Permit2Utils {
     }
 
     /**
-     * [SUCCESS] Should redeem ABAL for USDC using permit2
+     * [SUCCESS] Should redeem ADDY for native MATIC using permit2
      */
-    function testRedeemWithPermit2FromAbalToUsdcOnPolygon() public {
-        runLocalRedeemQuoteTest(
-            "/data/permitTwo/redeem/testRedeemWithPermit2FromAbalToUsdcOnPolygon.json"
-        );
-    }
-
-    /**
-     * [SUCCESS] Should redeem AEDY for WBTC using permit2
-     */
-    function testRedeemWithPermit2FromAedyToWbtcOnEthereum() public {
-        runLocalRedeemQuoteTest(
-            "/data/permitTwo/redeem/testRedeemWithPermit2FromAedyToWbtcOnEthereum.json"
-        );
-    }
-
-    /**
-     * [SUCCESS] Should redeem ADDY for WETH using permit2
-     */
-    function testRedeemWithPermit2FromAddyToWethOnEthereum() public {
-        runLocalRedeemQuoteTest(
-            "/data/permitTwo/redeem/testRedeemWithPermit2FromAddyToWethOnEthereum.json"
-        );
-    }
-
-    /**
-     * [SUCCESS] Should redeem ADDY for native ETH using permit2
-     */
-    function testRedeemWithPermit2FromAddyToNativeETHOnEthereum() public {
+    function testRedeemWithPermit2FromAmodToMaticOnPolygon() public {
         path = string.concat(
-            root, "/data/permitTwo/redeem/testRedeemWithPermit2FromAddyToWethOnEthereum.json"
+            root, "/data/permitTwo/redeem/testRedeemWithPermit2FromAmodToMaticOnPolygon.json"
         );
         json = vm.readFile(path);
         (
@@ -216,7 +198,7 @@ contract GaslessTest is Test, Permit2Utils {
             uint256 archTokenAmount,
             address toToken,
             uint256 minReceiveAmount,
-            ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+            ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions
         ) = parseRedeemQuoteFromJson(json);
 
         Gasworks gasworks;

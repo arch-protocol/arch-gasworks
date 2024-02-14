@@ -27,7 +27,6 @@
  *    @@@@@(((((
  *      @@@((
  */
-
 pragma solidity ^0.8.17.0;
 
 import { ERC2771Recipient } from "gsn/ERC2771Recipient.sol";
@@ -36,12 +35,12 @@ import { ISetToken } from "./interfaces/ISetToken.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Permit } from
-    "openzeppelin-contracts/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
+    "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { Owned } from "solmate/src/auth/Owned.sol";
 import { IExchangeIssuanceZeroEx } from "./interfaces/IExchangeIssuanceZeroEx.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
+import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
 import { IChamber } from "chambers/interfaces/IChamber.sol";
 import { IIssuerWizard } from "chambers/interfaces/IIssuerWizard.sol";
 import { WETH } from "solmate/src/tokens/WETH.sol";
@@ -64,7 +63,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
 
     IExchangeIssuanceZeroEx public immutable exchangeIssuance;
     ISignatureTransfer public immutable signatureTransfer;
-    ITradeIssuerV2 public immutable tradeIssuer;
+    ITradeIssuerV3 public immutable tradeIssuer;
 
     bytes private constant TOKEN_PERMISSIONS_TYPE = "TokenPermissions(address token,uint256 amount)";
 
@@ -119,7 +118,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         _setTrustedForwarder(_forwarder);
         exchangeIssuance = IExchangeIssuanceZeroEx(payable(_exchangeIssuance));
         signatureTransfer = ISignatureTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
-        tradeIssuer = ITradeIssuerV2(_tradeIssuer);
+        tradeIssuer = ITradeIssuerV3(_tradeIssuer);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -138,7 +137,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
 
     /**
      * Swaps an exact amount of SetTokens in 0x for a given amount of ERC20 tokens.
-     * Using a safePermit for the ERC20 token transfer
+     * Using a permit for the ERC20 token transfer
      *
      * @param permit              Permit data of the ERC20 token used (USDC)
      * @param swapData            Data of the swap to perform
@@ -148,7 +147,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         if (!tokens[swapData.buyToken]) revert InvalidToken(swapData.buyToken);
 
         IERC20Permit permitToken = IERC20Permit(permit._tokenContract);
-        permitToken.safePermit(
+        permitToken.permit(
             permit._owner,
             permit._spender,
             permit._value,
@@ -165,60 +164,8 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     }
 
     /**
-     * Issues an exact amount of SetTokens for given amount of input ERC20 tokens.
-     * Using a safePermit for the ERC20 token transfer
-     * The excess amount of tokens is returned in an equivalent amount of ether.
-     *
-     * @param permit              Permit data of the ERC20 token used (USDC)
-     * @param mintData            Data of the issuance to perform
-     */
-    function mintSetProtocolWithPermit1(PermitData calldata permit, MintSetData calldata mintData)
-        external
-    {
-        if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
-        if (!tokens[address(mintData._setToken)]) revert InvalidToken(address(mintData._setToken));
-
-        IERC20Permit permitToken = IERC20Permit(permit._tokenContract);
-        permitToken.safePermit(
-            permit._owner,
-            permit._spender,
-            permit._value,
-            permit._deadline,
-            permit._v,
-            permit._r,
-            permit._s
-        );
-
-        ERC20 token = ERC20(permit._tokenContract);
-        token.safeTransferFrom(permit._owner, address(this), permit._amount);
-
-        token.safeApprove(address(exchangeIssuance), mintData._maxAmountInputToken);
-
-        exchangeIssuance.issueExactSetFromToken(
-            mintData._setToken,
-            IERC20(permit._tokenContract),
-            mintData._amountSetToken,
-            mintData._maxAmountInputToken,
-            mintData._componentQuotes,
-            mintData._issuanceModule,
-            mintData._isDebtIssuance
-        );
-
-        ERC20(address(mintData._setToken)).safeTransfer(permit._owner, mintData._amountSetToken);
-
-        emit MintSetProtocolWithPermit1(
-            address(mintData._setToken),
-            mintData._amountSetToken,
-            address(token),
-            permit._amount - token.balanceOf(address(this))
-        );
-
-        token.safeTransfer(owner, token.balanceOf(address(this)));
-    }
-
-    /**
      * Issues an exact amount of Chamber tokens for given amount of input ERC20 tokens.
-     * Using a safePermit for the ERC20 token transfer
+     * Using a permit for the ERC20 token transfer
      * The excess amount of tokens is returned
      *
      * @param permit                        Permit data of the ERC20 token used (USDC)
@@ -228,7 +175,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     function mintWithPermit1(
         PermitData calldata permit,
         MintChamberData calldata mintChamberData,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+        ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions
     ) external {
         if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
         if (!tokens[address(mintChamberData._chamber)]) {
@@ -236,7 +183,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         }
 
         IERC20Permit permitToken = IERC20Permit(permit._tokenContract);
-        permitToken.safePermit(
+        permitToken.permit(
             permit._owner,
             permit._spender,
             permit._value,
@@ -251,7 +198,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         uint256 beforeBalance = token.balanceOf(address(this));
         token.safeApprove(address(tradeIssuer), mintChamberData._maxPayAmount);
 
-        tradeIssuer.mintChamberFromToken(
+        tradeIssuer.mintFromToken(
             contractCallInstructions,
             mintChamberData._chamber,
             mintChamberData._issuerWizard,
@@ -267,7 +214,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         );
         token.safeTransfer(permit._owner, token.balanceOf(address(this)));
 
-        emit MintSetProtocolWithPermit1(
+        emit MintWithPermit1(
             address(mintChamberData._chamber),
             mintChamberData._mintAmount,
             address(token),
@@ -331,7 +278,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
             .SignatureTransferDetails({ to: address(this), requestedAmount: permit2.permitted.amount });
 
         (
-            ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
+            ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions,
             bytes32 concatenatedHashedSwapCallInstructions
         ) = _hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
             mintData.swapCallInstructions
@@ -349,7 +296,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
 
         token.safeApprove(address(tradeIssuer), mintData.inputTokenMaxAmount);
 
-        tradeIssuer.mintChamberFromToken(
+        tradeIssuer.mintFromToken(
             contractCallInstructions,
             IChamber(mintData.archToken),
             IIssuerWizard(mintData.issuer),
@@ -394,7 +341,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
             .SignatureTransferDetails({ to: address(this), requestedAmount: permit2.permitted.amount });
 
         (
-            ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
+            ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions,
             bytes32 concatenatedHashedSwapCallInstructions
         ) = _hashSwapCallInstructionAndConvertToTraderIssuerCallInstruction(
             redeemData.swapCallInstructions
@@ -411,7 +358,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
 
         token.safeApprove(address(tradeIssuer), redeemData.archTokenAmount);
 
-        tradeIssuer.redeemChamberToToken(
+        tradeIssuer.redeemToToken(
             contractCallInstructions,
             IChamber(redeemData.archToken),
             IIssuerWizard(redeemData.issuer),
@@ -514,7 +461,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     }
 
     /**
-     * Cast IGasworks.SwapCallInstruction to ITradeIssuerV2.Contract call instruction, and also
+     * Cast IGasworks.SwapCallInstruction to ITradeIssuerV3.Contract call instruction, and also
      * returns the EIP-712 hashed swapCallInstructions
      *
      * @param swapCallInstructions  Mint or Redeem swap call instructions array
@@ -525,16 +472,16 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         internal
         pure
         returns (
-            ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions,
+            ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions,
             bytes32 concatenatedHashedSwapCallInstructions
         )
     {
         bytes32[] memory instructionHashes = new bytes32[](swapCallInstructions.length);
         contractCallInstructions =
-            new ITradeIssuerV2.ContractCallInstruction[](swapCallInstructions.length);
+            new ITradeIssuerV3.ContractCallInstruction[](swapCallInstructions.length);
 
         for (uint256 i = 0; i < swapCallInstructions.length;) {
-            contractCallInstructions[i] = ITradeIssuerV2.ContractCallInstruction(
+            contractCallInstructions[i] = ITradeIssuerV3.ContractCallInstruction(
                 payable(swapCallInstructions[i].swapTarget),
                 swapCallInstructions[i].swapAllowanceTarget,
                 IERC20(swapCallInstructions[i].sellToken),

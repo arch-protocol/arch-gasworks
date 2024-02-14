@@ -28,8 +28,8 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     Gasworks internal gasworks;
     SigUtils internal sigUtils;
     IGasworks.SwapData internal swapData;
-    ERC20 internal constant USDC = ERC20(POLYGON_USDC);
-    uint256 internal constant SELL_AMOUNT = 1e6;
+    ERC20 internal USDC;
+    uint256 internal SELL_AMOUNT;
 
     /*//////////////////////////////////////////////////////////////
                               SET UP
@@ -37,13 +37,13 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     function setUp() public {
         addLabbels();
         root = vm.projectRoot();
-        path = string.concat(root, "/data/permitOne/swap/testSwapUsdcToWeb3.json");
+        path = string.concat(root, "/data/permitOne/swap/testSwapUsdcEToWeb3V2.json");
         json = vm.readFile(path);
         (
             uint256 chainId,
             uint256 blockNumber,
-            ,
-            ,
+            address sellToken,
+            uint256 sellAmount,
             address buyToken,
             uint256 buyAmount,
             uint256 nativeTokenAmount,
@@ -51,6 +51,9 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             address swapAllowanceTarget,
             bytes memory swapCallData
         ) = parseSwapQuoteFromJson(json);
+
+        USDC = ERC20(sellToken);
+        SELL_AMOUNT = sellAmount;
 
         swapData = IGasworks.SwapData(
             buyToken,
@@ -65,7 +68,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         gasworks = deployGasworks(chainId);
         sigUtils = new SigUtils(USDC.DOMAIN_SEPARATOR());
 
-        deal(POLYGON_USDC, ALICE, SELL_AMOUNT);
+        deal(address(USDC), ALICE, SELL_AMOUNT);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -428,7 +431,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      * [SUCCESS] Should make a success swap to native token with permit with max amount allowed
      */
     function testSwapToNativeTokenWithLimitedPermit() public {
-        path = string.concat(root, "/data/permitOne/swap/testSwapUsdcToNativeMatic.json");
+        path = string.concat(root, "/data/permitOne/swap/testSwapUsdcEToNativeMatic.json");
         json = vm.readFile(path);
         (
             uint256 chainId,

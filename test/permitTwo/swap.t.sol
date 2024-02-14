@@ -692,7 +692,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function printQuoteToCreateATest() public {
         vm.createSelectFork("polygon");
-        fetchSwapQuote(POLYGON_CHAIN_ID, 10e6, POLYGON_USDC, POLYGON_WMATIC);
+        fetchSwapQuote(POLYGON_CHAIN_ID, 500e6, POLYGON_USDC_e, POLYGON_WMATIC, address(0));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -704,7 +704,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testSwapWithPermit2FromUsdcToWeb3() public {
         // swapWithPermit2(POLYGON_CHAIN_ID, 1e6, POLYGON_USDC, POLYGON_WEB3);
-        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapWithPermit2FromUsdcToWeb3.json");
+        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapWithPermit2FromUsdcEToWeb3.json");
     }
 
     /**
@@ -726,7 +726,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      */
     function testSwapWithPermit2FromUsdcToNativeMatic() public {
         path = string.concat(
-            root, "/data/permitTwo/swap/testSwapWithPermit2FromUsdcToNativeMatic.json"
+            root, "/data/permitTwo/swap/testSwapWithPermit2FromUsdcEToNativeMatic.json"
         );
         json = vm.readFile(path);
         (

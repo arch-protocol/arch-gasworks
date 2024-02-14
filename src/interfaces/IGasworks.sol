@@ -27,17 +27,16 @@
  *    @@@@@(((((
  *      @@@((
  */
-
 pragma solidity ^0.8.17.0;
 
 import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { ISetToken } from "./ISetToken.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
+import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
 import { IChamber } from "chambers/interfaces/IChamber.sol";
 import { IIssuerWizard } from "chambers/interfaces/IIssuerWizard.sol";
-import { ITradeIssuerV2 } from "chambers-peripherals/src/interfaces/ITradeIssuerV2.sol";
+import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
 
 interface IGasworks {
     /*//////////////////////////////////////////////////////////////
@@ -62,21 +61,6 @@ interface IGasworks {
         uint8 _v;
         bytes32 _r;
         bytes32 _s;
-    }
-
-    struct MintSetData {
-        // Address of the SetToken to be issued
-        ISetToken _setToken;
-        // Amount of SetTokens to issue
-        uint256 _amountSetToken;
-        // Maximum amount of input tokens to be used to issue SetTokens.
-        uint256 _maxAmountInputToken;
-        // The encoded 0x transactions to execute
-        bytes[] _componentQuotes;
-        // The address of the issuance module for the SetToken
-        address _issuanceModule;
-        // Is the SetToken using debt issuance?
-        bool _isDebtIssuance;
     }
 
     struct MintChamberData {
@@ -154,6 +138,10 @@ interface IGasworks {
 
     event Withdrawn(address token, uint256 amount);
 
+    event MintWithPermit1(
+        address tokenMinted, uint256 amountMinted, address tokenPaid, uint256 amountPaid
+    );
+
     event SwapWithPermit(
         address buyToken, uint256 buyAmount, address sellToken, uint256 sellAmount
     );
@@ -164,10 +152,6 @@ interface IGasworks {
 
     event RedeemWithPermit2(
         address tokenRedeemed, uint256 amountRedeemed, address tokenBought, uint256 amountBought
-    );
-
-    event MintSetProtocolWithPermit1(
-        address tokenMinted, uint256 amountMinted, address tokenPaid, uint256 amountPaid
     );
 
     /*//////////////////////////////////////////////////////////////
@@ -194,13 +178,10 @@ interface IGasworks {
 
     function swapWithPermit1(PermitData calldata permit, SwapData calldata swapData) external;
 
-    function mintSetProtocolWithPermit1(PermitData calldata permit, MintSetData calldata mintData)
-        external;
-
     function mintWithPermit1(
         PermitData calldata permit,
         MintChamberData calldata mintChamberData,
-        ITradeIssuerV2.ContractCallInstruction[] memory contractCallInstructions
+        ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions
     ) external;
 
     function swapWithPermit2(
