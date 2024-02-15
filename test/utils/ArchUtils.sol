@@ -269,12 +269,12 @@ contract ArchUtils is Test {
         address fromToken,
         uint256 fromTokenAmount,
         address toToken
-    ) public returns (ITradeIssuerV3.ContractCallInstruction[] memory, uint256) {
+    ) public returns (address, uint256, address, uint256, address, ITradeIssuerV3.ContractCallInstruction[] memory) {
         string[] memory inputs = new string[](5);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-redeem-and-mint-quote.js";
-        inputs[2] = Conversor.iToHex(abi.encode(archTokenAmount));
-        inputs[3] = Conversor.iToHex(abi.encode(archToken));
+        inputs[2] = Conversor.iToHex(abi.encode(fromTokenAmount));
+        inputs[3] = Conversor.iToHex(abi.encode(fromToken));
         inputs[4] = Conversor.iToHex(abi.encode(toToken));
         bytes memory response = vm.ffi(inputs);
         (
@@ -282,20 +282,21 @@ contract ArchUtils is Test {
             uint256 _fromTokenAmount,
             address _toToken,
             uint256 _toTokenAmount,
-            uint256 _issuerWizard,
+            address _issuerWizard,
             ITradeIssuerV3.ContractCallInstruction[] memory _contractCallInstructions
-        ) = abi.decode(response, (ITradeIssuerV3.ContractCallInstruction[], uint256));
+        ) = abi.decode(response, (address, uint256, address, uint256, address, ITradeIssuerV3.ContractCallInstruction[]));
 
-        logRedeemQuoteAsJson(
+        logRedeemAndMintQuoteAsJson(
             networkId,
             _fromToken,
             _fromTokenAmount,
-            _toToken._toTokenAmount,
+            _toToken,
+            _toTokenAmount,
             _issuerWizard,
             _contractCallInstructions
         );
 
-        return (_contractCallInstructions, _minReceiveAmount);
+        return (_fromToken, _fromTokenAmount, _toToken, _toTokenAmount, _issuerWizard, _contractCallInstructions);
     }
 
     /**
@@ -810,7 +811,7 @@ contract ArchUtils is Test {
      * Reads a mint quote from a JSON file and returns all params in the quote
      * plus an ITradeIssuerV3.ContractCallInstruction[] array
      */
-    function parseRedeenAndMintQuoteFromJson(string memory json)
+    function parseRedeemAndMintQuoteFromJson(string memory json)
         public
         pure
         returns (
