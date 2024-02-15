@@ -432,8 +432,9 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
             redeemAndMintData.swapCallInstructions
         );
 
-        bytes32 witness =
-            _calculateRedeemAndMintDataTypeWitness(redeemAndMintData, concatenatedHashedSwapCallInstructions);
+        bytes32 witness = _calculateRedeemAndMintDataTypeWitness(
+            redeemAndMintData, concatenatedHashedSwapCallInstructions
+        );
 
         signatureTransfer.permitWitnessTransferFrom(
             permit2, transferDetails, owner, witness, PERMIT2_REDEEM_DATA_TYPE, signature
