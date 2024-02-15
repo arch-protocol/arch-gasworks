@@ -264,6 +264,40 @@ contract ArchUtils is Test {
         return (_contractCallInstructions, _minReceiveAmount);
     }
 
+    function fetchRedeemAndMintQuote(
+        uint256 networkId,
+        address fromToken,
+        uint256 fromTokenAmount,
+        address toToken
+    ) public returns (ITradeIssuerV3.ContractCallInstruction[] memory, uint256) {
+        string[] memory inputs = new string[](5);
+        inputs[0] = "node";
+        inputs[1] = "scripts/fetch-redeem-and-mint-quote.js";
+        inputs[2] = Conversor.iToHex(abi.encode(archTokenAmount));
+        inputs[3] = Conversor.iToHex(abi.encode(archToken));
+        inputs[4] = Conversor.iToHex(abi.encode(toToken));
+        bytes memory response = vm.ffi(inputs);
+        (
+            address _fromToken,
+            uint256 _fromTokenAmount,
+            address _toToken,
+            uint256 _toTokenAmount,
+            uint256 _issuerWizard,
+            ITradeIssuerV3.ContractCallInstruction[] memory _contractCallInstructions
+        ) = abi.decode(response, (ITradeIssuerV3.ContractCallInstruction[], uint256));
+
+        logRedeemQuoteAsJson(
+            networkId,
+            _fromToken,
+            _fromTokenAmount,
+            _toToken._toTokenAmount,
+            _issuerWizard,
+            _contractCallInstructions
+        );
+
+        return (_contractCallInstructions, _minReceiveAmount);
+    }
+
     /**
      * Transforms ITradeIssuerV3.ContractCallInstruction into IGasworks.SwapCallInstruction
      */
@@ -558,6 +592,35 @@ contract ArchUtils is Test {
         console.log("}");
     }
 
+    function logRedeemAndMintQuoteAsJson(
+        uint256 networkId,
+        address fromToken,
+        uint256 fromTokenAmount,
+        address toToken,
+        uint256 toTokenAmount,
+        address issuerWizard,
+        ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions
+    ) public view {
+        console.log("{");
+        console.log(string.concat("  \"networkId\": ", vm.toString(networkId), ","));
+        console.log(string.concat("  \"blockNumber\": ", vm.toString(block.number), ","));
+        console.log(string.concat("  \"fromToken\": \"", vm.toString(fromToken), "\","));
+        console.log(string.concat("  \"fromTokenAmount\": ", vm.toString(fromTokenAmount), ","));
+        console.log(string.concat("  \"toToken\": \"", vm.toString(toToken), "\","));
+        console.log(string.concat("  \"toTokenAmount\": ", vm.toString(toTokenAmount), ","));
+        console.log(string.concat("  \"issuerWizard\": \"", vm.toString(issuerWizard), "\","));
+        console.log("  \"callInstructions\": [");
+        for (uint256 i = 0; i < contractCallInstructions.length; i++) {
+            if (i != contractCallInstructions.length - 1) {
+                logContractCallInstructionAsJson(contractCallInstructions[i], true);
+            } else {
+                logContractCallInstructionAsJson(contractCallInstructions[i], false);
+            }
+        }
+        console.log("  ]");
+        console.log("}");
+    }
+
     /**
      * Intermediate struct needed to decode a contract call instruction form a JSON file
      */
@@ -740,6 +803,53 @@ contract ArchUtils is Test {
             swapTarget,
             swapAllowanceTarget,
             swapCallData
+        );
+    }
+
+    /**
+     * Reads a mint quote from a JSON file and returns all params in the quote
+     * plus an ITradeIssuerV3.ContractCallInstruction[] array
+     */
+    function parseRedeenAndMintQuoteFromJson(string memory json)
+        public
+        pure
+        returns (
+            uint256 networkId,
+            uint256 blockNumber,
+            address fromToken,
+            uint256 fromTokenAmount,
+            address toToken,
+            uint256 toTokenAmount,
+            address issuerWizard,
+            ITradeIssuerV3.ContractCallInstruction[] memory callInstrictions
+        )
+    {
+        bytes memory _networkId = json.parseRaw(".networkId");
+        networkId = abi.decode(_networkId, (uint256));
+        bytes memory _blockNumber = json.parseRaw(".blockNumber");
+        blockNumber = abi.decode(_blockNumber, (uint256));
+        bytes memory _fromToken = json.parseRaw(".fromToken");
+        fromToken = abi.decode(_fromToken, (address));
+        bytes memory _fromTokenAmount = json.parseRaw(".fromTokenAmount");
+        fromTokenAmount = abi.decode(_fromTokenAmount, (uint256));
+        bytes memory _toToken = json.parseRaw(".toToken");
+        toToken = abi.decode(_toToken, (address));
+        bytes memory _toTokenAmount = json.parseRaw(".toTokenAmount");
+        toTokenAmount = abi.decode(_toTokenAmount, (uint256));
+        bytes memory _issuerWizard = json.parseRaw(".issuerWizard");
+        issuerWizard = abi.decode(_issuerWizard, (address));
+
+        callInstrictions = parseContractCallInstructions(json);
+
+        return (
+            networkId,
+            blockNumber,
+            fromToken,
+            fromTokenAmount,
+            toToken,
+            toTokenAmount,
+            issuerWizard,
+            callInstrictions
         );
     }
 }
