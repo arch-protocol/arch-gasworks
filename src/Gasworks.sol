@@ -437,7 +437,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         );
 
         signatureTransfer.permitWitnessTransferFrom(
-            permit2, transferDetails, owner, witness, PERMIT2_REDEEM_DATA_TYPE, signature
+            permit2, transferDetails, owner, witness, PERMIT2_REDEEM_AND_MINT_DATA_TYPE, signature
         );
 
         ERC20 fromToken = ERC20(permit2.permitted.token);
