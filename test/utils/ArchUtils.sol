@@ -64,6 +64,7 @@ contract ArchUtils is Test {
     address public constant POLYGON_DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
     address public constant POLYGON_WBTC = 0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6;
     address public constant POLYGON_WMATIC = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
+    address public constant POLYGON_WETH = 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619;
     address public constant POLYGON_TRADE_ISSUER_V2 = 0x2B13D2b9407D5776B0BB63c8cd144978B6B7cE58;
     address public constant POLYGON_ISSUER_WIZARD = 0x60F56236CD3C1Ac146BD94F2006a1335BaA4c449;
     address public constant POLYGON_EXCHANGE_ISSUANCE = 0x1c0c05a2aA31692e5dc9511b04F651db9E4d8320;
@@ -135,6 +136,7 @@ contract ArchUtils is Test {
         vm.label(POLYGON_DAI, "DAI");
         vm.label(POLYGON_WBTC, "WBTC");
         vm.label(POLYGON_WMATIC, "WMATIC");
+        vm.label(POLYGON_WETH, "WETH");
         vm.label(POLYGON_TRADE_ISSUER_V2, "TradeIssuerV2");
         vm.label(POLYGON_ISSUER_WIZARD, "IssuerWizard");
         vm.label(POLYGON_EXCHANGE_ISSUANCE, "ExchangeIssuance");
@@ -333,7 +335,7 @@ contract ArchUtils is Test {
     function deployGasworks(uint256 chainId) public returns (Gasworks) {
         if (chainId == 137) {
             Gasworks polygonGasworks = new Gasworks(
-                POLYGON_BICONOMY_FORWARDER, POLYGON_EXCHANGE_ISSUANCE, POLYGON_TRADE_ISSUER_V3
+                POLYGON_BICONOMY_FORWARDER, POLYGON_TRADE_ISSUER_V3
             );
             polygonGasworks.setTokens(POLYGON_WEB3);
             polygonGasworks.setTokens(POLYGON_CHAIN);
@@ -355,7 +357,7 @@ contract ArchUtils is Test {
             return polygonGasworks;
         }
         Gasworks ethereumGasworks =
-            new Gasworks(ETH_BICONOMY_FORWARDER, ETH_EXCHANGE_ISSUANCE, ETH_TRADE_ISSUER_V2);
+            new Gasworks(ETH_BICONOMY_FORWARDER, ETH_TRADE_ISSUER_V2);
         ethereumGasworks.setTokens(ETH_WEB3);
         ethereumGasworks.setTokens(ETH_CHAIN);
         ethereumGasworks.setTokens(ETH_AEDY);
