@@ -55,6 +55,21 @@ contract Permit2Utils is ArchUtils {
         abi.encodePacked("SwapData witness)", SWAP_DATA_TYPE, TOKEN_PERMISSIONS_TYPE);
     bytes32 public constant PERMIT2_TRANSFERFROM_SWAP_DATA_TYPE_HASH =
         keccak256(abi.encodePacked(PERMIT_WITNESS_TRANSFER_FROM_TYPE, PERMIT2_SWAP_DATA_TYPE));
+    // RedeemAndMintData
+    bytes private constant REDEEM_AND_MINT_DATA_TYPE =
+        "RedeemAndMintData(address archTokenToRedeem,uint256 redeemAmount,address archTokenToMint,uint256 mintAmount,address issuer,SwapCallInstruction[] swapCallInstructions)";
+    bytes32 private constant REDEEM_AND_MINT_DATA_TYPE_HASH =
+        keccak256(abi.encodePacked(REDEEM_AND_MINT_DATA_TYPE, SWAP_CALL_INSTRUCTION_TYPE));
+    string internal constant PERMIT2_REDEEM_AND_MINT_DATA_TYPE = string(
+        abi.encodePacked(
+            "RedeemAndMintData witness)",
+            REDEEM_AND_MINT_DATA_TYPE,
+            SWAP_CALL_INSTRUCTION_TYPE,
+            TOKEN_PERMISSIONS_TYPE
+        )
+    );
+    bytes32 public constant PERMIT2_TRANSFERFROM_REDEEM_AND_MINT_DATA_TYPE_HASH =
+        keccak256(abi.encodePacked(PERMIT_WITNESS_TRANSFER_FROM_TYPE, PERMIT2_REDEEM_AND_MINT_DATA_TYPE));
 
     function getDomainSeparatorHashed(uint256 chainId, address permit2Address)
         internal
@@ -142,6 +157,27 @@ contract Permit2Utils is ArchUtils {
         return witnessHash;
     }
 
+    function getRedeemAndMintWitnessHashed(IGasworks.RedeemAndMintData memory redeemAndMintData)
+        public
+        pure
+        returns (bytes32 witnessHash)
+    {
+        bytes32 swapCallInstructionsHash =
+            getSwapCallIntructionHashed(redeemAndMintData.swapCallInstructions);
+        witnessHash = keccak256(
+            abi.encode(
+                REDEEM_AND_MINT_DATA_TYPE_HASH,
+                redeemAndMintData.archTokenToRedeem,
+                redeemAndMintData.redeemAmount,
+                redeemAndMintData.archTokenToMint,
+                redeemAndMintData.mintAmount,
+                redeemAndMintData.issuer,
+                swapCallInstructionsHash
+            )
+        );
+        return witnessHash;
+    }
+
     function getSwapWitnessHashed(IGasworks.SwapData memory swapData)
         public
         pure
@@ -209,6 +245,37 @@ contract Permit2Utils is ArchUtils {
         bytes32 permitWitnessTransferFromHash = keccak256(
             abi.encode(
                 PERMIT2_TRANSFERFROM_REDEEM_DATA_TYPE_HASH,
+                tokenPermissions,
+                spender,
+                permit.nonce,
+                permit.deadline,
+                witnessHash
+            )
+        );
+        messageHashed = keccak256(
+            abi.encodePacked("\x19\x01", domainSeparatorHashed, permitWitnessTransferFromHash)
+        );
+        return messageHashed;
+    }
+
+    function getRedeemAndMintWithPermit2MessageToSign(
+        uint256 chainId,
+        ISignatureTransfer.PermitTransferFrom memory permit,
+        address spender,
+        IGasworks.RedeemAndMintData memory redeemAndMintData
+    ) public pure returns (bytes32 messageHashed) {
+        bytes32 domainSeparatorHashed;
+        if (chainId == 137) {
+            domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
+        }
+        if (chainId == 1) {
+            domainSeparatorHashed = getDomainSeparatorHashed(chainId, POLYGON_UNISWAP_PERMIT2);
+        }
+        bytes32 tokenPermissions = getTokenPermissionsHahed(permit);
+        bytes32 witnessHash = getRedeemAndMintWitnessHashed(redeemAndMintData);
+        bytes32 permitWitnessTransferFromHash = keccak256(
+            abi.encode(
+                PERMIT2_TRANSFERFROM_REDEEM_AND_MINT_DATA_TYPE_HASH,
                 tokenPermissions,
                 spender,
                 permit.nonce,
