@@ -37,7 +37,6 @@ import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/Sa
 import { IERC20Permit } from
     "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { Owned } from "solmate/src/auth/Owned.sol";
-import { IExchangeIssuanceZeroEx } from "./interfaces/IExchangeIssuanceZeroEx.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
@@ -61,7 +60,6 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
                                   STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    IExchangeIssuanceZeroEx public immutable exchangeIssuance;
     ISignatureTransfer public immutable signatureTransfer;
     ITradeIssuerV3 public immutable tradeIssuer;
 
@@ -125,11 +123,10 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _forwarder, address _exchangeIssuance, address _tradeIssuer)
+    constructor(address _forwarder, address _tradeIssuer)
         Owned(_msgSender())
     {
         _setTrustedForwarder(_forwarder);
-        exchangeIssuance = IExchangeIssuanceZeroEx(payable(_exchangeIssuance));
         signatureTransfer = ISignatureTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
         tradeIssuer = ITradeIssuerV3(_tradeIssuer);
     }
