@@ -15,7 +15,7 @@ import { console } from "forge-std/console.sol";
 
 contract GaslessTest is Test, Permit2Utils {
     /*//////////////////////////////////////////////////////////////
-                              VARIABLES
+                            VARIABLES
     //////////////////////////////////////////////////////////////*/
     using SafeERC20 for IERC20;
     using stdJson for string;
@@ -25,7 +25,7 @@ contract GaslessTest is Test, Permit2Utils {
     string json;
 
     /*//////////////////////////////////////////////////////////////
-                              SET UP
+                            SET UP
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
         addLabbels();
@@ -33,7 +33,7 @@ contract GaslessTest is Test, Permit2Utils {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              AUX FUNCT
+                            AUX FUNCT
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -137,48 +137,60 @@ contract GaslessTest is Test, Permit2Utils {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              SUCCESS
+                            SUCCESS
     //////////////////////////////////////////////////////////////*/
 
     /**
      * [SUCCESS] Should redeem AAGG and mint ABAL
      */
     function testRedeemAndMintFromAaggToAbal() public {
-        runLocalRedeemAndMintQuoteTest("/data/permitTwo/redeemAndMint/testRedeemAndMintFromAaggToAbal.json");
+        runLocalRedeemAndMintQuoteTest(
+            "/data/permitTwo/redeemAndMint/testRedeemAndMintFromAaggToAbal.json"
+        );
     }
 
     /**
      * [SUCCESS] Should redeem AAGG and mint ABAL
      */
     function testRedeemAndMintFromAaggToAmod() public {
-        runLocalRedeemAndMintQuoteTest("/data/permitTwo/redeemAndMint/testRedeemAndMintFromAaggToAmod.json");
+        runLocalRedeemAndMintQuoteTest(
+            "/data/permitTwo/redeemAndMint/testRedeemAndMintFromAaggToAmod.json"
+        );
     }
 
     /**
      * [SUCCESS] Should redeem ABAL and mint AAGG
      */
     function testRedeemAndMintFromAbalToAagg() public {
-        runLocalRedeemAndMintQuoteTest("/data/permitTwo/redeemAndMint/testRedeemAndMintFromAbalToAagg.json");
+        runLocalRedeemAndMintQuoteTest(
+            "/data/permitTwo/redeemAndMint/testRedeemAndMintFromAbalToAagg.json"
+        );
     }
 
     /**
      * [SUCCESS] Should redeem ABAL and mint AMOD
      */
     function testRedeemAndMintFromAbalToAmod() public {
-        runLocalRedeemAndMintQuoteTest("/data/permitTwo/redeemAndMint/testRedeemAndMintFromAbalToAmod.json");
+        runLocalRedeemAndMintQuoteTest(
+            "/data/permitTwo/redeemAndMint/testRedeemAndMintFromAbalToAmod.json"
+        );
     }
 
     /**
      * [SUCCESS] Should redeem AMOD and mint AAGG
      */
     function testRedeemAndMintFromAmodToAagg() public {
-        runLocalRedeemAndMintQuoteTest("/data/permitTwo/redeemAndMint/testRedeemAndMintFromAmodToAagg.json");
+        runLocalRedeemAndMintQuoteTest(
+            "/data/permitTwo/redeemAndMint/testRedeemAndMintFromAmodToAagg.json"
+        );
     }
 
     /**
      * [SUCCESS] Should redeem AMOD and mint ABAL
      */
     function testRedeemAndMintFromAmodToAbal() public {
-        runLocalRedeemAndMintQuoteTest("/data/permitTwo/redeemAndMint/testRedeemAndMintFromAmodToAbal.json");
+        runLocalRedeemAndMintQuoteTest(
+            "/data/permitTwo/redeemAndMint/testRedeemAndMintFromAmodToAbal.json"
+        );
     }
 }

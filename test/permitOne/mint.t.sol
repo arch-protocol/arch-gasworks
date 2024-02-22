@@ -20,7 +20,7 @@ import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
 
 contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
-                              VARIABLES
+                            VARIABLES
     //////////////////////////////////////////////////////////////*/
     using SafeERC20 for IERC20;
     using stdJson for string;
@@ -81,7 +81,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              REVERT
+                            REVERT
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -328,7 +328,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              SUCCESS
+                            SUCCESS
     //////////////////////////////////////////////////////////////*/
 
     /**

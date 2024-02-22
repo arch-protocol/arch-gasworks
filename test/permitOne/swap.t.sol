@@ -22,7 +22,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     string json;
 
     /*//////////////////////////////////////////////////////////////
-                              VARIABLES
+                            VARIABLES
     //////////////////////////////////////////////////////////////*/
 
     Gasworks internal gasworks;
@@ -32,7 +32,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     uint256 internal SELL_AMOUNT;
 
     /*//////////////////////////////////////////////////////////////
-                              SET UP
+                            SET UP
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
         addLabbels();
@@ -72,7 +72,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              REVERT
+                            REVERT
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -347,7 +347,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              SUCCESS
+                            SUCCESS
     //////////////////////////////////////////////////////////////*/
 
     /**

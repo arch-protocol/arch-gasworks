@@ -14,7 +14,7 @@ import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuer
 
 contract GaslessTest is Test, Permit2Utils {
     /*//////////////////////////////////////////////////////////////
-                              VARIABLES
+                            VARIABLES
     //////////////////////////////////////////////////////////////*/
     using SafeERC20 for IERC20;
     using stdJson for string;
@@ -24,7 +24,7 @@ contract GaslessTest is Test, Permit2Utils {
     string json;
 
     /*//////////////////////////////////////////////////////////////
-                              SET UP
+                            SET UP
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
         addLabbels();
@@ -32,7 +32,7 @@ contract GaslessTest is Test, Permit2Utils {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              AUX FUNCT
+                            AUX FUNCT
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -134,7 +134,7 @@ contract GaslessTest is Test, Permit2Utils {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              SUCCESS
+                            SUCCESS
     //////////////////////////////////////////////////////////////*/
 
     /**
