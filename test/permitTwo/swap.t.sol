@@ -22,7 +22,7 @@ import { WETH } from "solmate/src/tokens/WETH.sol";
 
 contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     /*//////////////////////////////////////////////////////////////
-                              VARIABLES
+                            VARIABLES
     //////////////////////////////////////////////////////////////*/
     using SafeTransferLib for ERC20;
     using stdJson for string;
@@ -40,7 +40,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     address revertTestsUniswapPermit2;
 
     /*//////////////////////////////////////////////////////////////
-                              SET UP
+                            SET UP
     //////////////////////////////////////////////////////////////*/
 
     function setUp() public {
@@ -96,7 +96,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              REVERT
+                            REVERT
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -586,7 +586,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              AUX FUNCT
+                            AUX FUNCT
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -696,7 +696,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                              SUCCESS
+                            SUCCESS
     //////////////////////////////////////////////////////////////*/
 
     /**
