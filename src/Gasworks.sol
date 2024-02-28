@@ -150,9 +150,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param permit              Permit data of the ERC20 token used (USDC)
      * @param swapData            Data of the swap to perform
      */
-    function swapWithPermit1(PermitData calldata permit, IGasworks.SwapData calldata swapData)
-        external
-    {
+    function swapWithPermit1(PermitData calldata permit, SwapData calldata swapData) external {
         if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
         if (!tokens[swapData.buyToken]) revert InvalidToken(swapData.buyToken);
 
@@ -245,7 +243,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        IGasworks.SwapData calldata swapData
+        SwapData calldata swapData
     ) external {
         if (permit2.permitted.amount == 0) revert ZeroBalance(permit2.permitted.token);
         if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
@@ -485,7 +483,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param sellToken         ERC20 token to sell
      */
     function _fillQuoteInternal(
-        IGasworks.SwapData calldata swap,
+        SwapData calldata swap,
         uint256 sellAmount,
         address owner,
         ERC20 sellToken
@@ -519,7 +517,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     /**
      * Calculate the EIP-712 bytes32 hash of a swapDAta struct.
      *
-     * @param swapData  IGasworks.SwapData
+     * @param swapData  SwapData
      */
     function _calculateSwapDataTypeWitness(SwapData memory swapData)
         internal

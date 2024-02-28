@@ -27,7 +27,7 @@
  *    @@@@@(((((
  *      @@@((
  */
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Owned } from "solmate/src/auth/Owned.sol";
