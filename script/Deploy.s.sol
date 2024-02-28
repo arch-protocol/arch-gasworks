@@ -33,7 +33,7 @@ contract DeployGasworks is Script {
         gasworks.setTokens(0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6); // WBTC
         gasworks.setTokens(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270); // WMATIC
         gasworks.setTokens(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619); // WETH
-        
+
         gasworks.transferOwnership(0xe560EfD37a77486aa0ecAed4203365BDe5363dbB); // Arch Safe Address
 
         vm.stopBroadcast();

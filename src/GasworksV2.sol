@@ -135,7 +135,11 @@ contract GasworksV2 is IGasworksV2, Owned {
                             EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    receive() external payable { }
+    receive() external payable {
+        if (msg.sender != address(WMATIC)) {
+            revert InvalidMaticReceived(msg.sender, msg.value);
+        }
+    }
 
     function addAllowedToken(address token) public onlyOwner {
         allowedTokens.add(token);
@@ -209,6 +213,9 @@ contract GasworksV2 is IGasworksV2, Owned {
         if (permit2.permitted.token != address(mintData.inputToken)) {
             revert InvalidToken(address(mintData.inputToken));
         }
+        if (permit2.permitted.amount != mintData.inputTokenMaxAmount) {
+            revert InvalidBaseTokenAmount(permit2.permitted.amount, mintData.inputTokenMaxAmount);
+        }
 
         ISignatureTransfer.SignatureTransferDetails memory transferDetails = ISignatureTransfer
             .SignatureTransferDetails({ to: address(this), requestedAmount: permit2.permitted.amount });
@@ -258,7 +265,7 @@ contract GasworksV2 is IGasworksV2, Owned {
 
     /**
      * Redeems an exact amount of Chamber to a given amount of ERC20 tokens.
-     * Using a permit for the Chamber token (through Permit2)
+     * Using a permit for the Chamber token (through Permit2).
      *
      * @param permit2     Permit2 data of the ERC20 token used
      * @param owner       Owner of the tokens to transfer
@@ -278,6 +285,9 @@ contract GasworksV2 is IGasworksV2, Owned {
         if (!isAllowedToken(redeemData.outputToken)) revert InvalidToken(redeemData.outputToken);
         if (permit2.permitted.token != redeemData.archToken) {
             revert InvalidToken(redeemData.archToken);
+        }
+        if (permit2.permitted.amount != redeemData.archTokenAmount) {
+            revert InvalidRedeemAmount(permit2.permitted.amount, redeemData.archTokenAmount);
         }
 
         ISignatureTransfer.SignatureTransferDetails memory transferDetails = ISignatureTransfer
@@ -336,7 +346,9 @@ contract GasworksV2 is IGasworksV2, Owned {
     }
 
     /**
-     * Redeems a Chamber and mints another Chamber using a permit2
+     * Redeems a Chamber and mints another Chamber using a permit2.
+     * The minted amount is transferred to the owner. Using a permit
+     * for the redeem chamber token transfer (through Permit2).
      *
      * @param permit2             Permit2 data of the ERC20 token used
      * @param owner               Owner of the tokens to transfer
@@ -358,6 +370,9 @@ contract GasworksV2 is IGasworksV2, Owned {
         }
         if (permit2.permitted.token != redeemAndMintData.archTokenToRedeem) {
             revert InvalidToken(redeemAndMintData.archTokenToRedeem);
+        }
+        if (permit2.permitted.amount != redeemAndMintData.redeemAmount) {
+            revert InvalidRedeemAmount(permit2.permitted.amount, redeemAndMintData.redeemAmount);
         }
 
         ISignatureTransfer.SignatureTransferDetails memory transferDetails = ISignatureTransfer
@@ -430,7 +445,7 @@ contract GasworksV2 is IGasworksV2, Owned {
     /**
      * Performs a low-level call to swapTarget to perform a swap between two tokens
      *
-     * @param swapData     Swap data of the trade to perform
+     * @param swapData    Swap data of the trade to perform
      * @param sellToken   ERC20 token to sell
      * @param sellAmount  Amount of sellToken to sell
      * @param owner       Owner of the tokens to transfer
@@ -493,6 +508,7 @@ contract GasworksV2 is IGasworksV2, Owned {
     {
         witness = keccak256(
             abi.encode(
+                SWAP_DATA_TYPE_HASH,
                 swapData.buyToken,
                 swapData.buyAmount,
                 swapData.nativeTokenAmount,

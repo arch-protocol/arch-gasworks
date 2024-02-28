@@ -150,7 +150,9 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param permit              Permit data of the ERC20 token used (USDC)
      * @param swapData            Data of the swap to perform
      */
-    function swapWithPermit1(PermitData calldata permit, SwapData calldata swapData) external {
+    function swapWithPermit1(PermitData calldata permit, IGasworks.SwapData calldata swapData)
+        external
+    {
         if (!tokens[permit._tokenContract]) revert InvalidToken(permit._tokenContract);
         if (!tokens[swapData.buyToken]) revert InvalidToken(swapData.buyToken);
 
@@ -243,7 +245,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        SwapData calldata swapData
+        IGasworks.SwapData calldata swapData
     ) external {
         if (permit2.permitted.amount == 0) revert ZeroBalance(permit2.permitted.token);
         if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
@@ -276,7 +278,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        MintData calldata mintData
+        IGasworks.MintData calldata mintData
     ) external {
         if (permit2.permitted.amount == 0) revert ZeroBalance(permit2.permitted.token);
         if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
@@ -339,7 +341,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        RedeemData calldata redeemData,
+        IGasworks.RedeemData calldata redeemData,
         bool toNative
     ) external {
         if (permit2.permitted.amount == 0) revert ZeroBalance(permit2.permitted.token);
@@ -406,7 +408,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        RedeemAndMintData calldata redeemAndMintData
+        IGasworks.RedeemAndMintData calldata redeemAndMintData
     ) external {
         if (permit2.permitted.amount == 0) revert ZeroBalance(permit2.permitted.token);
         if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
@@ -483,7 +485,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      * @param sellToken         ERC20 token to sell
      */
     function _fillQuoteInternal(
-        SwapData calldata swap,
+        IGasworks.SwapData calldata swap,
         uint256 sellAmount,
         address owner,
         ERC20 sellToken
@@ -519,7 +521,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
      *
      * @param swapData  IGasworks.SwapData
      */
-    function _calculateSwapDataTypeWitness(IGasworks.SwapData memory swapData)
+    function _calculateSwapDataTypeWitness(SwapData memory swapData)
         internal
         pure
         returns (bytes32 witness)

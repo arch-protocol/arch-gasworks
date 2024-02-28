@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17.0;
+pragma solidity ^0.8.21;
 
 import { ArchUtils } from "./ArchUtils.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import { IGasworks } from "src/interfaces/IGasworks.sol";
 import { FoundryRandom } from "foundry-random/FoundryRandom.sol";
+import {
+    SwapData,
+    MintData,
+    RedeemData,
+    RedeemAndMintData,
+    SwapCallInstruction
+} from "src/structs/GasworksV2.sol";
 
 contract Permit2Utils is ArchUtils {
     // Uniswap's Permit2 EIP712 Domain
@@ -68,8 +75,9 @@ contract Permit2Utils is ArchUtils {
             TOKEN_PERMISSIONS_TYPE
         )
     );
-    bytes32 public constant PERMIT2_TRANSFERFROM_REDEEM_AND_MINT_DATA_TYPE_HASH =
-        keccak256(abi.encodePacked(PERMIT_WITNESS_TRANSFER_FROM_TYPE, PERMIT2_REDEEM_AND_MINT_DATA_TYPE));
+    bytes32 public constant PERMIT2_TRANSFERFROM_REDEEM_AND_MINT_DATA_TYPE_HASH = keccak256(
+        abi.encodePacked(PERMIT_WITNESS_TRANSFER_FROM_TYPE, PERMIT2_REDEEM_AND_MINT_DATA_TYPE)
+    );
 
     function getDomainSeparatorHashed(uint256 chainId, address permit2Address)
         internal
@@ -94,9 +102,11 @@ contract Permit2Utils is ArchUtils {
         return tokenPermissionsHashed;
     }
 
-    function getSwapCallIntructionHashed(
-        IGasworks.SwapCallInstruction[] memory swapCallInstructions
-    ) public pure returns (bytes32 swapCallInstructionsHash) {
+    function getSwapCallIntructionHashed(SwapCallInstruction[] memory swapCallInstructions)
+        public
+        pure
+        returns (bytes32 swapCallInstructionsHash)
+    {
         bytes32[] memory instructionsHashes = new bytes32[](swapCallInstructions.length);
         for (uint256 i = 0; i < swapCallInstructions.length; i++) {
             instructionsHashes[i] = keccak256(
@@ -115,7 +125,7 @@ contract Permit2Utils is ArchUtils {
         return swapCallInstructionsHash;
     }
 
-    function getMintWitnessHashed(IGasworks.MintData memory mintData)
+    function getMintWitnessHashed(MintData memory mintData)
         public
         pure
         returns (bytes32 witnessHash)
@@ -136,7 +146,7 @@ contract Permit2Utils is ArchUtils {
         return witnessHash;
     }
 
-    function getRedeemWitnessHashed(IGasworks.RedeemData memory redeemData)
+    function getRedeemWitnessHashed(RedeemData memory redeemData)
         public
         pure
         returns (bytes32 witnessHash)
@@ -157,7 +167,7 @@ contract Permit2Utils is ArchUtils {
         return witnessHash;
     }
 
-    function getRedeemAndMintWitnessHashed(IGasworks.RedeemAndMintData memory redeemAndMintData)
+    function getRedeemAndMintWitnessHashed(RedeemAndMintData memory redeemAndMintData)
         public
         pure
         returns (bytes32 witnessHash)
@@ -178,7 +188,7 @@ contract Permit2Utils is ArchUtils {
         return witnessHash;
     }
 
-    function getSwapWitnessHashed(IGasworks.SwapData memory swapData)
+    function getSwapWitnessHashed(SwapData memory swapData)
         public
         pure
         returns (bytes32 witnessHash)
@@ -200,7 +210,7 @@ contract Permit2Utils is ArchUtils {
         uint256 chainId,
         ISignatureTransfer.PermitTransferFrom memory permit,
         address spender,
-        IGasworks.MintData memory mintData
+        MintData memory mintData
     ) public pure returns (bytes32 messageHashed) {
         bytes32 domainSeparatorHashed;
         if (chainId == 137) {
@@ -231,7 +241,7 @@ contract Permit2Utils is ArchUtils {
         uint256 chainId,
         ISignatureTransfer.PermitTransferFrom memory permit,
         address spender,
-        IGasworks.RedeemData memory redeemData
+        RedeemData memory redeemData
     ) public pure returns (bytes32 messageHashed) {
         bytes32 domainSeparatorHashed;
         if (chainId == 137) {
@@ -262,7 +272,7 @@ contract Permit2Utils is ArchUtils {
         uint256 chainId,
         ISignatureTransfer.PermitTransferFrom memory permit,
         address spender,
-        IGasworks.RedeemAndMintData memory redeemAndMintData
+        RedeemAndMintData memory redeemAndMintData
     ) public pure returns (bytes32 messageHashed) {
         bytes32 domainSeparatorHashed;
         if (chainId == 137) {
@@ -293,7 +303,7 @@ contract Permit2Utils is ArchUtils {
         uint256 chainId,
         ISignatureTransfer.PermitTransferFrom memory permit,
         address spender,
-        IGasworks.SwapData memory swapData
+        SwapData memory swapData
     ) public pure returns (bytes32 messageHashed) {
         bytes32 domainSeparatorHashed;
         if (chainId == 137) {

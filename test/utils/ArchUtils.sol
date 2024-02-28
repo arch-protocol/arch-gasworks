@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17.0;
+pragma solidity ^0.8.21;
 
 import { Test } from "forge-std/Test.sol";
 import "forge-std/StdJson.sol";
 import { Conversor } from "test/utils/HexUtils.sol";
-import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import { ITradeIssuerV3 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
+import { ITradeIssuerV3, IERC20 } from "chambers-peripherals/src/interfaces/ITradeIssuerV3.sol";
 import { Gasworks } from "src/Gasworks.sol";
+import { GasworksV2 } from "src/GasworksV2.sol";
 import { IGasworks } from "src/interfaces/IGasworks.sol";
+import { IGasworksV2 } from "src/interfaces/IGasworksV2.sol";
 import { console } from "forge-std/console.sol";
+import { SwapCallInstruction } from "src/structs/GasworksV2.sol";
 
 contract ArchUtils is Test {
     using stdJson for string;
@@ -45,20 +47,19 @@ contract ArchUtils is Test {
     address public constant ETH_UNIV3_LP_WETH_CHAIN = 0xBb9300f467BA73a35002dDEDd27B1BF1210822a4;
     address public constant ETH_UNIV3_LP_USDC_ADDY = 0x43c1E1BFFaB26715abC107aFA50cffA0Dfe72648;
     address public constant ETH_UNIV3_LP_WETH_AEDY = 0x247027635f32a25c7F93212CB9db91419BbB10f2;
-
     // Polygon
-    address public constant POLYGON_WEB3 = 0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A;
-    address public constant POLYGON_CHAIN = 0x9a41E03fEF7f16f552C6FbA37fFA7590fb1Ec0c4;
+    address public constant POLYGON_WEB3 = 0xC4ea087fc2cB3a1D9ff86c676F03abE4F3EE906F;
+    address public constant POLYGON_CHAIN = 0x70A13201Df2364B634cb5Aac8d735Db3A654b30c;
     address public constant POLYGON_AEDY = 0x027aF1E12a5869eD329bE4c05617AD528E997D5A;
     address public constant POLYGON_ADDY = 0xAb1B1680f6037006e337764547fb82d17606c187;
+    address public constant POLYGON_ABDY = 0xdE2925D582fc8711a0E93271c12615Bdd043Ed1C;
     address public constant POLYGON_AAGG = 0xAfb6E8331355faE99C8E8953bB4c6Dc5d11E9F3c;
-    address public constant POLYGON_AMOD = 0xa5a979Aa7F55798e99f91Abe815c114A09164beb; // UPDATED
+    address public constant POLYGON_AMOD = 0xa5a979Aa7F55798e99f91Abe815c114A09164beb;
     address public constant POLYGON_ABAL = 0xF401E2c1ce8F252947b60BFB92578f84217A1545;
     address public constant POLYGON_AP60 = 0x6cA9C8914a14D63a6700556127D09e7721ff7D3b;
-    address public constant POLYGON_WEB3V2 = 0xC4ea087fc2cB3a1D9ff86c676F03abE4F3EE906F;
-    address public constant POLYGON_CHAINV2 = 0x70A13201Df2364B634cb5Aac8d735Db3A654b30c;
-    address public constant POLYGON_ABDY = 0xdE2925D582fc8711a0E93271c12615Bdd043Ed1C;
-    address public constant POLYGON_USDC_e = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    address public constant POLYGON_WEB3_SET = 0xBcD2C5C78000504EFBC1cE6489dfcaC71835406A;
+    address public constant POLYGON_CHAIN_SET = 0x9a41E03fEF7f16f552C6FbA37fFA7590fb1Ec0c4;
+    address public constant POLYGON_USDC_E = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
     address public constant POLYGON_USDC = 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359;
     address public constant POLYGON_USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
     address public constant POLYGON_DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
@@ -119,18 +120,18 @@ contract ArchUtils is Test {
         vm.label(ETH_UNIV3_LP_WETH_CHAIN, "UNIV3 WETH/CHAIN");
         vm.label(ETH_UNIV3_LP_USDC_ADDY, "UNIV3 WETH/ADDY");
         vm.label(ETH_UNIV3_LP_WETH_AEDY, "UNIV3 WETH/AEDY");
-        vm.label(POLYGON_WEB3, "WEB3");
-        vm.label(POLYGON_CHAIN, "CHAIN");
+        vm.label(POLYGON_WEB3_SET, "WEB3_SET");
+        vm.label(POLYGON_CHAIN_SET, "CHAIN_SET");
         vm.label(POLYGON_AEDY, "AEDY");
         vm.label(POLYGON_ADDY, "ADDY");
         vm.label(POLYGON_AAGG, "AAGG");
         vm.label(POLYGON_AMOD, "AMOD");
         vm.label(POLYGON_ABAL, "ABAL");
         vm.label(POLYGON_AP60, "AP60");
-        vm.label(POLYGON_WEB3V2, "WEB3V2");
-        vm.label(POLYGON_CHAINV2, "CHAINV2");
+        vm.label(POLYGON_WEB3, "WEB3V2");
+        vm.label(POLYGON_CHAIN, "CHAINV2");
         vm.label(POLYGON_ABDY, "ABDY");
-        vm.label(POLYGON_USDC_e, "USDC.e");
+        vm.label(POLYGON_USDC_E, "USDC.e");
         vm.label(POLYGON_USDC, "USDC");
         vm.label(POLYGON_USDT, "USDT");
         vm.label(POLYGON_DAI, "DAI");
@@ -271,7 +272,17 @@ contract ArchUtils is Test {
         address fromToken,
         uint256 fromTokenAmount,
         address toToken
-    ) public returns (address, uint256, address, uint256, address, ITradeIssuerV3.ContractCallInstruction[] memory) {
+    )
+        public
+        returns (
+            address,
+            uint256,
+            address,
+            uint256,
+            address,
+            ITradeIssuerV3.ContractCallInstruction[] memory
+        )
+    {
         string[] memory inputs = new string[](5);
         inputs[0] = "node";
         inputs[1] = "scripts/fetch-redeem-and-mint-quote.js";
@@ -286,7 +297,10 @@ contract ArchUtils is Test {
             uint256 _toTokenAmount,
             address _issuerWizard,
             ITradeIssuerV3.ContractCallInstruction[] memory _contractCallInstructions
-        ) = abi.decode(response, (address, uint256, address, uint256, address, ITradeIssuerV3.ContractCallInstruction[]));
+        ) = abi.decode(
+            response,
+            (address, uint256, address, uint256, address, ITradeIssuerV3.ContractCallInstruction[])
+        );
 
         logRedeemAndMintQuoteAsJson(
             networkId,
@@ -298,7 +312,14 @@ contract ArchUtils is Test {
             _contractCallInstructions
         );
 
-        return (_fromToken, _fromTokenAmount, _toToken, _toTokenAmount, _issuerWizard, _contractCallInstructions);
+        return (
+            _fromToken,
+            _fromTokenAmount,
+            _toToken,
+            _toTokenAmount,
+            _issuerWizard,
+            _contractCallInstructions
+        );
     }
 
     /**
@@ -306,12 +327,12 @@ contract ArchUtils is Test {
      */
     function getSwapCallsFromContractCalls(
         ITradeIssuerV3.ContractCallInstruction[] memory contractCallInstructions
-    ) public pure returns (IGasworks.SwapCallInstruction[] memory) {
-        IGasworks.SwapCallInstruction[] memory swapCallInstructions =
-            new IGasworks.SwapCallInstruction[](contractCallInstructions.length);
+    ) public pure returns (SwapCallInstruction[] memory) {
+        SwapCallInstruction[] memory swapCallInstructions =
+            new SwapCallInstruction[](contractCallInstructions.length);
 
         for (uint256 i = 0; i < contractCallInstructions.length;) {
-            IGasworks.SwapCallInstruction memory instruction = IGasworks.SwapCallInstruction(
+            SwapCallInstruction memory instruction = SwapCallInstruction(
                 address(contractCallInstructions[i]._sellToken),
                 contractCallInstructions[i]._sellAmount,
                 address(contractCallInstructions[i]._buyToken),
@@ -334,9 +355,8 @@ contract ArchUtils is Test {
      */
     function deployGasworks(uint256 chainId) public returns (Gasworks) {
         if (chainId == 137) {
-            Gasworks polygonGasworks = new Gasworks(
-                POLYGON_BICONOMY_FORWARDER, POLYGON_TRADE_ISSUER_V3
-            );
+            Gasworks polygonGasworks =
+                new Gasworks(POLYGON_BICONOMY_FORWARDER, POLYGON_TRADE_ISSUER_V3);
             polygonGasworks.setTokens(POLYGON_WEB3);
             polygonGasworks.setTokens(POLYGON_CHAIN);
             polygonGasworks.setTokens(POLYGON_AEDY);
@@ -345,19 +365,18 @@ contract ArchUtils is Test {
             polygonGasworks.setTokens(POLYGON_AMOD);
             polygonGasworks.setTokens(POLYGON_ABAL);
             polygonGasworks.setTokens(POLYGON_AP60);
-            polygonGasworks.setTokens(POLYGON_USDC_e);
+            polygonGasworks.setTokens(POLYGON_USDC_E);
             polygonGasworks.setTokens(POLYGON_USDC);
             polygonGasworks.setTokens(POLYGON_USDT);
             polygonGasworks.setTokens(POLYGON_DAI);
             polygonGasworks.setTokens(POLYGON_WBTC);
             polygonGasworks.setTokens(POLYGON_WMATIC);
-            polygonGasworks.setTokens(POLYGON_WEB3V2);
-            polygonGasworks.setTokens(POLYGON_CHAINV2);
+            polygonGasworks.setTokens(POLYGON_WEB3);
+            polygonGasworks.setTokens(POLYGON_CHAIN);
             polygonGasworks.setTokens(POLYGON_ABDY);
             return polygonGasworks;
         }
-        Gasworks ethereumGasworks =
-            new Gasworks(ETH_BICONOMY_FORWARDER, ETH_TRADE_ISSUER_V2);
+        Gasworks ethereumGasworks = new Gasworks(ETH_BICONOMY_FORWARDER, ETH_TRADE_ISSUER_V2);
         ethereumGasworks.setTokens(ETH_WEB3);
         ethereumGasworks.setTokens(ETH_CHAIN);
         ethereumGasworks.setTokens(ETH_AEDY);
@@ -370,6 +389,28 @@ contract ArchUtils is Test {
         ethereumGasworks.setTokens(ETH_WEB3V2);
         ethereumGasworks.setTokens(ETH_CHAINV2);
         return ethereumGasworks;
+    }
+
+    /**
+     * Deploys a new GasworksV2 contract and allows all tokens used in arch
+     */
+    function deployGasworksV2() public returns (GasworksV2) {
+        GasworksV2 gasworks = new GasworksV2(POLYGON_UNISWAP_PERMIT2, POLYGON_TRADE_ISSUER_V3);
+        gasworks.addAllowedToken(POLYGON_WEB3);
+        gasworks.addAllowedToken(POLYGON_CHAIN);
+        gasworks.addAllowedToken(POLYGON_AEDY);
+        gasworks.addAllowedToken(POLYGON_ADDY);
+        gasworks.addAllowedToken(POLYGON_ABDY);
+        gasworks.addAllowedToken(POLYGON_AAGG);
+        gasworks.addAllowedToken(POLYGON_AMOD);
+        gasworks.addAllowedToken(POLYGON_ABAL);
+        gasworks.addAllowedToken(POLYGON_USDC);
+        gasworks.addAllowedToken(POLYGON_USDC_E);
+        gasworks.addAllowedToken(POLYGON_USDT);
+        gasworks.addAllowedToken(POLYGON_DAI);
+        gasworks.addAllowedToken(POLYGON_WMATIC);
+
+        return gasworks;
     }
 
     /**
@@ -683,7 +724,7 @@ contract ArchUtils is Test {
             uint256 archTokenAmount,
             address inputToken,
             uint256 maxPayAmount,
-            ITradeIssuerV3.ContractCallInstruction[] memory callInstrictions
+            ITradeIssuerV3.ContractCallInstruction[] memory callInstructions
         )
     {
         bytes memory _networkId = json.parseRaw(".networkId");
@@ -699,7 +740,7 @@ contract ArchUtils is Test {
         bytes memory _maxPayAmount = json.parseRaw(".maxPayAmount");
         maxPayAmount = abi.decode(_maxPayAmount, (uint256));
 
-        callInstrictions = parseContractCallInstructions(json);
+        callInstructions = parseContractCallInstructions(json);
 
         return (
             networkId,
@@ -708,7 +749,7 @@ contract ArchUtils is Test {
             archTokenAmount,
             inputToken,
             maxPayAmount,
-            callInstrictions
+            callInstructions
         );
     }
 
@@ -726,7 +767,7 @@ contract ArchUtils is Test {
             uint256 archTokenAmount,
             address outputToken,
             uint256 minReceiveAmount,
-            ITradeIssuerV3.ContractCallInstruction[] memory callInstrictions
+            ITradeIssuerV3.ContractCallInstruction[] memory callInstructions
         )
     {
         bytes memory _networkId = json.parseRaw(".networkId");
@@ -742,7 +783,7 @@ contract ArchUtils is Test {
         bytes memory _minReceiveAmount = json.parseRaw(".minReceiveAmount");
         minReceiveAmount = abi.decode(_minReceiveAmount, (uint256));
 
-        callInstrictions = parseContractCallInstructions(json);
+        callInstructions = parseContractCallInstructions(json);
 
         return (
             networkId,
@@ -751,7 +792,7 @@ contract ArchUtils is Test {
             archTokenAmount,
             outputToken,
             minReceiveAmount,
-            callInstrictions
+            callInstructions
         );
     }
 
@@ -824,7 +865,7 @@ contract ArchUtils is Test {
             address toToken,
             uint256 toTokenAmount,
             address issuerWizard,
-            ITradeIssuerV3.ContractCallInstruction[] memory callInstrictions
+            ITradeIssuerV3.ContractCallInstruction[] memory callInstructions
         )
     {
         bytes memory _networkId = json.parseRaw(".networkId");
@@ -842,7 +883,7 @@ contract ArchUtils is Test {
         bytes memory _issuerWizard = json.parseRaw(".issuerWizard");
         issuerWizard = abi.decode(_issuerWizard, (address));
 
-        callInstrictions = parseContractCallInstructions(json);
+        callInstructions = parseContractCallInstructions(json);
 
         return (
             networkId,
@@ -852,7 +893,7 @@ contract ArchUtils is Test {
             toToken,
             toTokenAmount,
             issuerWizard,
-            callInstrictions
+            callInstructions
         );
     }
 }
