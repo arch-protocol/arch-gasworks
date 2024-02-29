@@ -70,7 +70,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     bytes32 private constant SWAP_DATA_TYPE_HASH = keccak256(SWAP_DATA_TYPE);
 
     string internal constant PERMIT2_SWAP_DATA_TYPE =
-        string(abi.encodePacked("    witness)", SWAP_DATA_TYPE, TOKEN_PERMISSIONS_TYPE));
+        string(abi.encodePacked("SwapData witness)", SWAP_DATA_TYPE, TOKEN_PERMISSIONS_TYPE));
 
     bytes private constant SWAP_CALL_INSTRUCTION_TYPE =
         "SwapCallInstruction(address sellToken,uint256 sellAmount,address buyToken,uint256 minBuyAmount,address swapTarget,address swapAllowanceTarget)";
