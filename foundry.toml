@@ -1,7 +1,7 @@
 [profile.default]
 src = 'src'
 out = 'out'
-solc_version = "0.8.21"
+solc_version = "0.8.24"
 via_ir = true
 libs = ['lib']
 auto_detect_remappings = false

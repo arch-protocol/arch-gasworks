@@ -64,6 +64,10 @@ interface IGasworksV2 {
 
     error InvalidToken(address token);
 
+    error InvalidBaseTokenAmount(uint256 permittedAmount, uint256 mintDataAmount);
+
+    error InvalidRedeemAmount(uint256 permittedAmount, uint256 redeemDataAmount);
+
     error ZeroTokenBalance(address token);
 
     error ZeroPermittedAmount();
@@ -73,6 +77,8 @@ interface IGasworksV2 {
     error Underbought(address token, uint256 amountToBuy);
 
     error TransferFailed(address recipient, uint256 amount, bytes returnData);
+
+    error InvalidMaticReceived(address sender, uint256 amount);
 
     /*//////////////////////////////////////////////////////////////
                                 FUNCTIONS

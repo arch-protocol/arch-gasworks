@@ -1,43 +1,39 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17.0;
+pragma solidity ^0.8.24;
 
 import "forge-std/StdJson.sol";
 import { Test } from "forge-std/Test.sol";
-import { console } from "forge-std/console.sol";
-import { Gasworks } from "src/Gasworks.sol";
-import { IGasworks } from "src/interfaces/IGasworks.sol";
+import { GasworksV2 } from "src/GasworksV2.sol";
+import { IGasworksV2 } from "src/interfaces/IGasworksV2.sol";
 import { SigUtils } from "test/utils/SigUtils.sol";
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import { Conversor } from "test/utils/HexUtils.sol";
 import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
 import { ISignatureTransfer } from "permit2/src/interfaces/ISignatureTransfer.sol";
 import { SignatureVerification } from "permit2/src/libraries/SignatureVerification.sol";
 import { InvalidNonce, SignatureExpired } from "permit2/src/PermitErrors.sol";
 import { Permit2Utils } from "test/utils/Permit2Utils.sol";
-import { EIP712 } from "permit2/src/EIP712.sol";
-import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
 import { SignatureExpired } from "permit2/src/PermitErrors.sol";
-import { WETH } from "solmate/src/tokens/WETH.sol";
+import { SwapData } from "src/structs/GasworksV2.sol";
+import { console } from "forge-std/console.sol";
 
-contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
+contract GasworksV2Test is Test, Permit2Utils {
     /*//////////////////////////////////////////////////////////////
                             VARIABLES
     //////////////////////////////////////////////////////////////*/
-    using SafeTransferLib for ERC20;
+    using SafeTransferLib for IERC20;
     using stdJson for string;
 
     string root;
     string path;
     string json;
 
-    IGasworks.SwapData internal revertTestsSwapData;
-    uint256 revertTestsChainId;
-    uint256 revertTestsBlockNumber;
-    address revertTestsSellToken;
-    uint256 revertTestsSellAmount;
-    Gasworks reverTestsGasworks;
-    address revertTestsUniswapPermit2;
+    SwapData internal revertTestsSwapData;
+    GasworksV2 internal revertTestsGasworks;
+    uint256 internal revertTestsChainId;
+    uint256 internal revertTestsBlockNumber;
+    address internal revertTestsSellToken;
+    uint256 internal revertTestsSellAmount;
+    address internal revertTestsUniswapPermit2;
 
     /*//////////////////////////////////////////////////////////////
                             SET UP
@@ -49,13 +45,16 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         setUpRevertTestQuote();
     }
 
+    /*//////////////////////////////////////////////////////////////
+                        REVERT AUX FUNCTION
+    //////////////////////////////////////////////////////////////*/
     /**
      * Saves a single quote in global variables, to use across all revert tests,
      * and therefore, avoid code duplication. You can change the JSON file quote
      * to test the revert tests with a different quote or asset
      */
     function setUpRevertTestQuote() public {
-        path = string.concat(root, "/data/permitTwo/swap/testSwapWithPermit2FromAedyToAddy.json");
+        path = string.concat(root, "/data/permitTwo/swap/testSwapFromAedyToAddy.json");
         json = vm.readFile(path);
         (
             uint256 chainId,
@@ -70,7 +69,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             bytes memory swapCallData
         ) = parseSwapQuoteFromJson(json);
 
-        revertTestsSwapData = IGasworks.SwapData(
+        revertTestsSwapData = SwapData(
             buyToken,
             buyAmount,
             nativeTokenAmount,
@@ -83,32 +82,22 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         revertTestsSellToken = sellToken;
         revertTestsSellAmount = sellAmount;
 
-        if (chainId == POLYGON_CHAIN_ID) {
-            vm.createSelectFork("polygon", blockNumber);
-            reverTestsGasworks = deployGasworks(chainId);
-            revertTestsUniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
-        }
-        if (chainId == ETH_CHAIN_ID) {
-            vm.createSelectFork("ethereum", blockNumber);
-            reverTestsGasworks = deployGasworks(chainId);
-            revertTestsUniswapPermit2 = ETH_UNISWAP_PERMIT2;
-        }
+        vm.createSelectFork("polygon", blockNumber);
+        revertTestsGasworks = deployGasworksV2();
     }
 
     /*//////////////////////////////////////////////////////////////
-                            REVERT
+                        REVERT CASES
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * [REVERT] Should revert because the quote signed is not the quote pased as param
+     * [REVERT] Should revert because the swap data signed is not the one passed
      */
-    function testCannotSwapWithPermit2WithModifiedQuote() public {
+    function testCannotSwapWithModifiedData() public {
         vm.prank(ALICE);
-        IERC20(revertTestsSellToken).approve(revertTestsUniswapPermit2, type(uint256).max);
+        IERC20(revertTestsSellToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max);
 
-        deal(revertTestsSellToken, ALICE, revertTestsSellAmount); // But give enough balance to mint
-        uint256 previousSellTokenBalance = IERC20(revertTestsSellToken).balanceOf(ALICE);
-        uint256 previousBuyTokenBalance = IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE);
+        deal(revertTestsSellToken, ALICE, revertTestsSellAmount); // Give enough balance to swap
 
         uint256 currentNonce = getRandomNonce();
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
@@ -123,36 +112,31 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         });
 
         bytes32 msgToSign = getSwapWithPermit2MessageToSign(
-            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+            revertTestsChainId, permit, address(revertTestsGasworks), revertTestsSwapData
         );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
-        IGasworks.SwapData memory modifiedSwapData = IGasworks.SwapData(
+        SwapData memory modifiedSwapData = SwapData(
             revertTestsSwapData.buyToken,
-            10 * revertTestsSwapData.buyAmount, // Modified data
+            revertTestsSwapData.buyAmount * 10, // Modified data
             revertTestsSwapData.nativeTokenAmount,
             payable(revertTestsSwapData.swapTarget),
             revertTestsSwapData.swapAllowanceTarget,
             revertTestsSwapData.swapCallData
         );
 
-        vm.expectRevert();
-        reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, modifiedSwapData);
-
-        assertEq(IERC20(revertTestsSellToken).balanceOf(ALICE), previousSellTokenBalance);
-        assertEq(IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE), previousBuyTokenBalance);
+        vm.expectRevert(SignatureVerification.InvalidSigner.selector);
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, signature, modifiedSwapData);
     }
 
     /**
      * [REVERT] Should revert because allowed amount is less than required amount
      */
-    function testCannotSwapWithPermit2NotEnoughAllowance() public {
+    function testCannotSwapNotEnoughAllowance() public {
         vm.prank(ALICE);
-        IERC20(revertTestsSellToken).approve(revertTestsUniswapPermit2, 1); // Only allow 1 wei to permit2
+        IERC20(revertTestsSellToken).approve(POLYGON_UNISWAP_PERMIT2, 1); // Only allow 1 wei to permit2
 
-        deal(revertTestsSellToken, ALICE, revertTestsSellAmount); // But give enough balance to mint
-        uint256 previousSellTokenBalance = IERC20(revertTestsSellToken).balanceOf(ALICE);
-        uint256 previousBuyTokenBalance = IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE);
+        deal(revertTestsSellToken, ALICE, revertTestsSellAmount); // But give enough balance to swap
 
         uint256 currentNonce = getRandomNonce();
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
@@ -167,27 +151,22 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         });
 
         bytes32 msgToSign = getSwapWithPermit2MessageToSign(
-            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+            revertTestsChainId, permit, address(revertTestsGasworks), revertTestsSwapData
         );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
         vm.expectRevert("TRANSFER_FROM_FAILED");
-        reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
-
-        assertEq(IERC20(revertTestsSellToken).balanceOf(ALICE), previousSellTokenBalance);
-        assertEq(IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE), previousBuyTokenBalance);
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
     }
 
     /**
      * [REVERT] Should revert because balance is less than required amount
      */
-    function testCannotSwapWithPermit2NotEnoughBalance() public {
+    function testCannotSwapNotEnoughBalance() public {
         vm.prank(ALICE);
-        IERC20(revertTestsSellToken).approve(revertTestsUniswapPermit2, type(uint256).max); // Max allowance to permit2
+        IERC20(revertTestsSellToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max); // Max allowance to permit2
 
         deal(revertTestsSellToken, ALICE, 1); // Bot not enough balance [1 wei]
-        uint256 previousSellTokenBalance = IERC20(revertTestsSellToken).balanceOf(ALICE);
-        uint256 previousBuyTokenBalance = IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE);
 
         uint256 currentNonce = getRandomNonce();
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
@@ -202,27 +181,22 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         });
 
         bytes32 msgToSign = getSwapWithPermit2MessageToSign(
-            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+            revertTestsChainId, permit, address(revertTestsGasworks), revertTestsSwapData
         );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
         vm.expectRevert("TRANSFER_FROM_FAILED");
-        reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
-
-        assertEq(IERC20(revertTestsSellToken).balanceOf(ALICE), previousSellTokenBalance);
-        assertEq(IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE), previousBuyTokenBalance);
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
     }
 
     /**
      * [REVERT] Should revert because the signature length is invalid
      */
-    function testCannotSwapWithPermit2IncorrectSignatureLength() public {
+    function testCannotSwapIncorrectSignatureLength() public {
         vm.prank(ALICE);
-        IERC20(revertTestsSellToken).approve(revertTestsUniswapPermit2, type(uint256).max);
+        IERC20(revertTestsSellToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max);
 
         deal(revertTestsSellToken, ALICE, revertTestsSellAmount);
-        uint256 previousSellTokenBalance = IERC20(revertTestsSellToken).balanceOf(ALICE);
-        uint256 previousBuyTokenBalance = IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE);
 
         uint256 currentNonce = getRandomNonce();
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
@@ -237,32 +211,27 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         });
 
         bytes32 msgToSign = getSwapWithPermit2MessageToSign(
-            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+            revertTestsChainId, permit, address(revertTestsGasworks), revertTestsSwapData
         );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
         bytes memory invalidSignature = bytes.concat(signature, bytes1(uint8(0)));
         assertEq(invalidSignature.length, 66);
 
         vm.expectRevert(SignatureVerification.InvalidSignatureLength.selector);
-        reverTestsGasworks.swapWithPermit2(permit, ALICE, invalidSignature, revertTestsSwapData);
-
-        assertEq(IERC20(revertTestsSellToken).balanceOf(ALICE), previousSellTokenBalance);
-        assertEq(IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE), previousBuyTokenBalance);
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, invalidSignature, revertTestsSwapData);
     }
 
     /**
      * [REVERT] Should revert because the signer of the permit
      * is not the owner of the tokens
      */
-    function testCannotSwapWithPermit2IncorrectSigner() public {
+    function testCannotSwapIncorrectSigner() public {
         uint256 INVALID_SIGNER_PRIVATE_KEY = 0xb0b0000d3ad;
 
         vm.prank(ALICE);
-        IERC20(revertTestsSellToken).approve(revertTestsUniswapPermit2, type(uint256).max);
+        IERC20(revertTestsSellToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max);
 
         deal(revertTestsSellToken, ALICE, revertTestsSellAmount);
-        uint256 previousSellTokenBalance = IERC20(revertTestsSellToken).balanceOf(ALICE);
-        uint256 previousBuyTokenBalance = IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE);
 
         uint256 currentNonce = getRandomNonce();
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
@@ -277,27 +246,53 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         });
 
         bytes32 msgToSign = getSwapWithPermit2MessageToSign(
-            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+            revertTestsChainId, permit, address(revertTestsGasworks), revertTestsSwapData
         );
         bytes memory signature = signMessage(INVALID_SIGNER_PRIVATE_KEY, msgToSign);
 
         vm.expectRevert();
-        reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
+    }
 
-        assertEq(IERC20(revertTestsSellToken).balanceOf(ALICE), previousSellTokenBalance);
-        assertEq(IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE), previousBuyTokenBalance);
+    /**
+     * [REVERT] Should revert because the spender is not the one specified in the signature
+     */
+    function testCannotSwapIncorrectSpender() public {
+        vm.prank(ALICE);
+        IERC20(revertTestsSellToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max);
+
+        deal(revertTestsSellToken, ALICE, 3 * revertTestsSellAmount); // Give enough to swap 3 times
+
+        uint256 currentNonce = getRandomNonce();
+        uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
+
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: revertTestsSellToken,
+                amount: revertTestsSellAmount
+            }),
+            nonce: currentNonce,
+            deadline: currentDeadline
+        });
+
+        address INVALID_SPENDER = address(0xb0b0000d3ad);
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            revertTestsChainId, permit, address(INVALID_SPENDER), revertTestsSwapData
+        );
+        bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
+
+        vm.expectRevert(SignatureVerification.InvalidSigner.selector);
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
     }
 
     /**
      * [REVERT] Should revert because the signature is expired
      */
-    function testCannotSwapWithPermit2SignatureExpired() public {
+    function testCannotSwapSignatureExpired() public {
         vm.prank(ALICE);
-        IERC20(revertTestsSellToken).approve(revertTestsUniswapPermit2, type(uint256).max);
+        IERC20(revertTestsSellToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max);
 
         deal(revertTestsSellToken, ALICE, revertTestsSellAmount);
-        uint256 previousSellTokenBalance = IERC20(revertTestsSellToken).balanceOf(ALICE);
-        uint256 previousBuyTokenBalance = IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE);
 
         uint256 currentNonce = getRandomNonce();
         uint256 currentDeadline = 2 ** 255 - 1;
@@ -312,29 +307,24 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         });
 
         bytes32 msgToSign = getSwapWithPermit2MessageToSign(
-            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+            revertTestsChainId, permit, address(revertTestsGasworks), revertTestsSwapData
         );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
         vm.warp(2 ** 255 + 1);
 
         vm.expectRevert(abi.encodeWithSelector(SignatureExpired.selector, permit.deadline));
-        reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
-
-        assertEq(IERC20(revertTestsSellToken).balanceOf(ALICE), previousSellTokenBalance);
-        assertEq(IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE), previousBuyTokenBalance);
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
     }
 
     /**
      * [REVERT] Should revert because the nonce was used twice and should only be used once [replay attack]
      */
-    function testCannotSwapWithPermit2InvalidNonce() public {
+    function testCannotSwapInvalidNonce() public {
         vm.prank(ALICE);
-        IERC20(revertTestsSellToken).approve(revertTestsUniswapPermit2, type(uint256).max);
+        IERC20(revertTestsSellToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max);
 
-        deal(revertTestsSellToken, ALICE, 3 * revertTestsSellAmount); // Give enough to mint 3 times
-        uint256 previousSellTokenBalance = IERC20(revertTestsSellToken).balanceOf(ALICE);
-        uint256 previousBuyTokenBalance = IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE);
+        deal(revertTestsSellToken, ALICE, 3 * revertTestsSellAmount); // Give enough to swap 3 times
 
         uint256 currentNonce = getRandomNonce();
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
@@ -349,44 +339,33 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         });
 
         bytes32 msgToSign = getSwapWithPermit2MessageToSign(
-            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+            revertTestsChainId, permit, address(revertTestsGasworks), revertTestsSwapData
         );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
-        reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
-
-        assertEq(
-            previousSellTokenBalance - IERC20(revertTestsSellToken).balanceOf(ALICE),
-            revertTestsSellAmount
-        );
-        assertGe(
-            IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE) - previousBuyTokenBalance,
-            revertTestsSwapData.buyAmount
-        );
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
 
         vm.expectRevert(InvalidNonce.selector);
-        reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
     }
 
     /**
-     * [REVERT] Should revert because token is not permitted
+     * [REVERT] Should revert because sell token is not permitted
      */
-    function testCannotSwapWithPermit2InvalidToken() public {
+    function testCannotSwapInvalidSellToken() public {
         vm.prank(ALICE);
-        IERC20(revertTestsSellToken).approve(revertTestsUniswapPermit2, type(uint256).max);
+        IERC20(revertTestsSellToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max);
 
-        deal(revertTestsSellToken, ALICE, 3 * revertTestsSellAmount); // Give enough to mint 3 times
-        uint256 previousSellTokenBalance = IERC20(revertTestsSellToken).balanceOf(ALICE);
-        uint256 previousBuyTokenBalance = IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE);
+        deal(revertTestsSellToken, ALICE, 3 * revertTestsSellAmount); // Give enough to swap 3 times
 
         uint256 currentNonce = getRandomNonce();
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
 
-        address invalidToken = address(0x123123);
+        address invalidSellToken = address(0x123123);
 
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
             permitted: ISignatureTransfer.TokenPermissions({
-                token: invalidToken,
+                token: invalidSellToken,
                 amount: revertTestsSellAmount
             }),
             nonce: currentNonce,
@@ -394,22 +373,60 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         });
 
         bytes32 msgToSign = getSwapWithPermit2MessageToSign(
-            revertTestsChainId, permit, address(reverTestsGasworks), revertTestsSwapData
+            revertTestsChainId, permit, address(revertTestsGasworks), revertTestsSwapData
         );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
-        vm.expectRevert(abi.encodeWithSelector(IGasworks.InvalidToken.selector, invalidToken));
-        reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
+        vm.expectRevert(abi.encodeWithSelector(IGasworksV2.InvalidToken.selector, invalidSellToken));
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, signature, revertTestsSwapData);
+    }
 
-        assertEq(IERC20(revertTestsSellToken).balanceOf(ALICE), previousSellTokenBalance);
-        assertEq(IERC20(revertTestsSwapData.buyToken).balanceOf(ALICE), previousBuyTokenBalance);
+    /**
+     * [REVERT] Should revert because buy token is not permitted
+     */
+    function testCannotSwapInvalidBuyToken() public {
+        address invalidBuyToken = address(0x123123);
+        // swapData with invalid buy token
+        SwapData memory invalidSwapData = SwapData(
+            invalidBuyToken,
+            revertTestsSwapData.buyAmount,
+            revertTestsSwapData.nativeTokenAmount,
+            payable(revertTestsSwapData.swapTarget),
+            revertTestsSwapData.swapAllowanceTarget,
+            revertTestsSwapData.swapCallData
+        );
+
+        vm.prank(ALICE);
+        IERC20(revertTestsSellToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max);
+
+        deal(revertTestsSellToken, ALICE, 3 * revertTestsSellAmount); // Give enough to swap 3 times
+
+        uint256 currentNonce = getRandomNonce();
+        uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
+
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({
+                token: revertTestsSellToken,
+                amount: revertTestsSellAmount
+            }),
+            nonce: currentNonce,
+            deadline: currentDeadline
+        });
+
+        bytes32 msgToSign = getSwapWithPermit2MessageToSign(
+            revertTestsChainId, permit, address(revertTestsGasworks), invalidSwapData
+        );
+        bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
+
+        vm.expectRevert(abi.encodeWithSelector(IGasworksV2.InvalidToken.selector, invalidBuyToken));
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, signature, invalidSwapData);
     }
 
     /**
      * [REVERT] Should revert because low level call to swapTarget failed
      */
-    function testCannotSwapWithPermit2SwapCallFailed() public {
-        IGasworks.SwapData memory corruptedSwapData = IGasworks.SwapData(
+    function testCannotSwapSwapCallFailed() public {
+        SwapData memory corruptedSwapData = SwapData(
             revertTestsSwapData.buyToken,
             revertTestsSwapData.buyAmount,
             revertTestsSwapData.nativeTokenAmount,
@@ -419,11 +436,9 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         );
 
         vm.prank(ALICE);
-        IERC20(revertTestsSellToken).approve(revertTestsUniswapPermit2, type(uint256).max);
+        IERC20(revertTestsSellToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max);
 
-        deal(revertTestsSellToken, ALICE, 3 * revertTestsSellAmount); // Give enough to mint 3 times
-        uint256 previousSellTokenBalance = IERC20(revertTestsSellToken).balanceOf(ALICE);
-        uint256 previousBuyTokenBalance = IERC20(corruptedSwapData.buyToken).balanceOf(ALICE);
+        deal(revertTestsSellToken, ALICE, 3 * revertTestsSellAmount); // Give enough to swap 3 times
 
         uint256 currentNonce = getRandomNonce();
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
@@ -438,24 +453,21 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         });
 
         bytes32 msgToSign = getSwapWithPermit2MessageToSign(
-            revertTestsChainId, permit, address(reverTestsGasworks), corruptedSwapData
+            revertTestsChainId, permit, address(revertTestsGasworks), corruptedSwapData
         );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
-        vm.expectRevert(IGasworks.SwapCallFailed.selector);
-        reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, corruptedSwapData);
-
-        assertEq(IERC20(revertTestsSellToken).balanceOf(ALICE), previousSellTokenBalance);
-        assertEq(IERC20(corruptedSwapData.buyToken).balanceOf(ALICE), previousBuyTokenBalance);
+        vm.expectRevert(IGasworksV2.SwapCallFailed.selector);
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, signature, corruptedSwapData);
     }
 
     /**
      * [REVERT] Should revert due to underbought, because the sellAmount is too Big
      */
-    function testCannotSwapWithPermit2UnderboughtAsset() public {
+    function testCannotSwapUnderboughtAsset() public {
         uint256 exaggeratedBuyAmount = 2 * revertTestsSwapData.buyAmount;
 
-        IGasworks.SwapData memory invalidSwapData = IGasworks.SwapData(
+        SwapData memory invalidSwapData = SwapData(
             revertTestsSwapData.buyToken,
             exaggeratedBuyAmount, // Buy amount is twice {swapCallData} will actually get
             revertTestsSwapData.nativeTokenAmount,
@@ -465,11 +477,9 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         );
 
         vm.prank(ALICE);
-        IERC20(revertTestsSellToken).approve(revertTestsUniswapPermit2, type(uint256).max);
+        IERC20(revertTestsSellToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max);
 
-        deal(revertTestsSellToken, ALICE, revertTestsSellAmount); // Give enough to mint 3 times
-        uint256 previousSellTokenBalance = IERC20(revertTestsSellToken).balanceOf(ALICE);
-        uint256 previousBuyTokenBalance = IERC20(invalidSwapData.buyToken).balanceOf(ALICE);
+        deal(revertTestsSellToken, ALICE, revertTestsSellAmount); // Give enough to swap 3 times
 
         uint256 currentNonce = getRandomNonce();
         uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
@@ -484,19 +494,16 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         });
 
         bytes32 msgToSign = getSwapWithPermit2MessageToSign(
-            revertTestsChainId, permit, address(reverTestsGasworks), invalidSwapData
+            revertTestsChainId, permit, address(revertTestsGasworks), invalidSwapData
         );
         bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                IGasworks.Underbought.selector, invalidSwapData.buyToken, exaggeratedBuyAmount
+                IGasworksV2.Underbought.selector, invalidSwapData.buyToken, exaggeratedBuyAmount
             )
         );
-        reverTestsGasworks.swapWithPermit2(permit, ALICE, signature, invalidSwapData);
-
-        assertEq(IERC20(revertTestsSellToken).balanceOf(ALICE), previousSellTokenBalance);
-        assertEq(IERC20(invalidSwapData.buyToken).balanceOf(ALICE), previousBuyTokenBalance);
+        revertTestsGasworks.swapWithPermit2(permit, ALICE, signature, invalidSwapData);
     }
 
     /**
@@ -518,10 +525,9 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
      * Actually, the callData gives an Underbought error, but that's beyond signature validation, so its
      * enough to prove our point.
      */
-    function testCannotSwapWithPermit2FromUsdcToWeb3WithCustomPrivateKey() public {
-        path = string.concat(
-            root, "/data/permitTwo/swap/testSwapWithPermit2FromUsdcToWeb3.CrptoComWallet.json"
-        );
+    function testCannotSwapFromUsdcToWeb3WithCustomPrivateKey() public {
+        path =
+            string.concat(root, "/data/permitTwo/swap/testSwapFromUsdcToWeb3.CryptoComWallet.json");
         json = vm.readFile(path);
         (
             ,
@@ -545,7 +551,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         assertEq(cryptoComAddress, 0x4188585951dD5C0A7a423A021D3Bec38e7Affeff);
 
         vm.prank(cryptoComAddress);
-        IGasworks.SwapData memory swapData = IGasworks.SwapData(
+        SwapData memory swapData = SwapData(
             buyToken,
             buyAmount,
             nativeTokenAmount,
@@ -575,24 +581,21 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         // assertFalse(assertEq(signatureOnChain, signature));
 
         // Now proceed to see that the signature produced by us pass the Uniswap's Permit2 signature validation
-        uint256 previousSellTokenBalance = IERC20(sellToken).balanceOf(cryptoComAddress);
-        uint256 previousBuyTokenBalance = IERC20(buyToken).balanceOf(cryptoComAddress);
 
-        vm.expectRevert(abi.encodeWithSelector(IGasworks.Underbought.selector, buyToken, buyAmount));
-        IGasworks(gasworksOnChain).swapWithPermit2(permit, cryptoComAddress, signature, swapData);
-
-        assertEq(IERC20(sellToken).balanceOf(cryptoComAddress), previousSellTokenBalance);
-        assertGe(IERC20(buyToken).balanceOf(cryptoComAddress), previousBuyTokenBalance);
+        vm.expectRevert(
+            abi.encodeWithSelector(IGasworksV2.Underbought.selector, buyToken, buyAmount)
+        );
+        IGasworksV2(gasworksOnChain).swapWithPermit2(permit, cryptoComAddress, signature, swapData);
     }
 
     /*//////////////////////////////////////////////////////////////
-                            AUX FUNCT
+                        SUCCESS AUX FUNCTION
     //////////////////////////////////////////////////////////////*/
 
     /**
      * Does a swap using Permit2, with the params (quote) given
      */
-    function swapWithPermit2(
+    function successfulSwapWithPermit2(
         uint256 chainId,
         uint256 blockNumber,
         address sellToken,
@@ -604,23 +607,13 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         address swapAllowanceTarget,
         bytes memory swapCallData
     ) public {
-        Gasworks gasworks;
-        address uniswapPermit2;
-        if (chainId == POLYGON_CHAIN_ID) {
-            vm.createSelectFork("polygon", blockNumber);
-            gasworks = deployGasworks(chainId);
-            uniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
-        }
-        if (chainId == ETH_CHAIN_ID) {
-            vm.createSelectFork("ethereum", blockNumber);
-            gasworks = deployGasworks(chainId);
-            uniswapPermit2 = ETH_UNISWAP_PERMIT2;
-        }
+        vm.createSelectFork("polygon", blockNumber);
+        GasworksV2 gasworks = deployGasworksV2();
 
         vm.prank(ALICE);
-        IERC20(sellToken).approve(uniswapPermit2, type(uint256).max);
+        IERC20(sellToken).approve(POLYGON_UNISWAP_PERMIT2, type(uint256).max);
 
-        IGasworks.SwapData memory swapData = IGasworks.SwapData(
+        SwapData memory swapData = SwapData(
             buyToken,
             buyAmount,
             nativeTokenAmount,
@@ -631,6 +624,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
         deal(sellToken, ALICE, sellAmount);
         uint256 previousSellTokenBalance = IERC20(sellToken).balanceOf(ALICE);
+        uint256 previousNativeTokenBalance = ALICE.balance;
         uint256 previousBuyTokenBalance = IERC20(buyToken).balanceOf(ALICE);
 
         uint256 currentNonce = getRandomNonce();
@@ -648,9 +642,17 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
 
         gasworks.swapWithPermit2(permit, ALICE, signature, swapData);
 
+        if (buyToken == POLYGON_WMATIC) {
+            assertGe(ALICE.balance - previousNativeTokenBalance, swapData.buyAmount); // Receive MATIC, not WMATIC
+        } else {
+            assertGe(
+                IERC20(buyToken).balanceOf(ALICE) - previousBuyTokenBalance, swapData.buyAmount
+            );
+        }
+
         assertEq(previousSellTokenBalance - IERC20(sellToken).balanceOf(ALICE), sellAmount);
-        assertGe(IERC20(buyToken).balanceOf(ALICE) - previousBuyTokenBalance, swapData.buyAmount);
         assertEq(IERC20(sellToken).allowance(ALICE, address(gasworks)), 0);
+        assertEq(IERC20(sellToken).allowance(address(gasworks), swapAllowanceTarget), 0);
     }
 
     /**
@@ -671,7 +673,7 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
             address swapAllowanceTarget,
             bytes memory swapCallData
         ) = parseSwapQuoteFromJson(json);
-        swapWithPermit2(
+        successfulSwapWithPermit2(
             networkId,
             blockNumber,
             sellToken,
@@ -685,100 +687,49 @@ contract GaslessTest is Test, Permit2Utils, DeployPermit2 {
         );
     }
 
-    /**
-     * Used to create json files, fetches a quote from arch and prints a JSON-readable
-     * quote in console, ready to be saved for new tests. The fork is needed to get the
-     * block number alongside the quote.
-     */
-    function printQuoteToCreateATest() public {
-        vm.createSelectFork("polygon");
-        fetchSwapQuote(POLYGON_CHAIN_ID, 500e6, POLYGON_USDC_e, POLYGON_WMATIC, address(0));
-    }
-
     /*//////////////////////////////////////////////////////////////
-                            SUCCESS
+                        SUCCESS CASES
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * [SUCCESS] Should make a swap from USDC to WEB3 using permit2
+     * [SUCCESS] Should execute a swap from ADDY to CHAIN using permit2
      */
-    function testSwapWithPermit2FromUsdcToWeb3() public {
-        // swapWithPermit2(POLYGON_CHAIN_ID, 1e6, POLYGON_USDC, POLYGON_WEB3);
-        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapWithPermit2FromUsdcEToWeb3.json");
+    function testSwapWithPermit2FromAddyToChain() public {
+        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapFromAddyToChain.json");
     }
 
     /**
-     * [SUCCESS] Should make a swap from AEDY to ADDY using permit2
+     * [SUCCESS] Should execute a swap from AEDY to ADDY using permit2
      */
     function testSwapWithPermit2FromAedyToAddy() public {
-        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapWithPermit2FromAedyToAddy.json");
+        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapFromAedyToAddy.json");
     }
 
     /**
-     * [SUCCESS] Should make a swap from DAI to CHAIN using permit2
+     * [SUCCESS] Should execute a swap from CHAIN to USDC using permit2
      */
-    function testSwapWithPermit2FromDaiToChain() public {
-        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapWithPermit2FromDaiToChain.json");
+    function testSwapWithPermit2FromChainToUsdc() public {
+        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapFromChainToUsdc.json");
     }
 
     /**
-     * [SUCCESS] Should make a swap from USDC to native MATIC with permit2
+     * [SUCCESS] Should execute a swap from USDT to AEDY using permit2
      */
-    function testSwapWithPermit2FromUsdcToNativeMatic() public {
-        path = string.concat(
-            root, "/data/permitTwo/swap/testSwapWithPermit2FromUsdcEToNativeMatic.json"
-        );
-        json = vm.readFile(path);
-        (
-            ,
-            uint256 blockNumber,
-            address sellToken,
-            uint256 sellAmount,
-            address buyToken,
-            uint256 buyAmount,
-            uint256 nativeTokenAmount,
-            address swapTarget,
-            address swapAllowanceTarget,
-            bytes memory swapCallData
-        ) = parseSwapQuoteFromJson(json);
+    function testSwapWithPermit2FromUsdtToAedy() public {
+        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapFromUsdtToAedy.json");
+    }
 
-        vm.createSelectFork("polygon", blockNumber);
-        Gasworks gasworks = deployGasworks(POLYGON_CHAIN_ID);
-        address uniswapPermit2 = POLYGON_UNISWAP_PERMIT2;
+    /**
+     * [SUCCESS] Should execute a swap from USDT to WMATIC using permit2
+     */
+    function testSwapWithPermit2FromUsdtToMatic() public {
+        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapFromUsdtToMatic.json");
+    }
 
-        vm.prank(ALICE);
-        IERC20(sellToken).approve(uniswapPermit2, type(uint256).max);
-        IGasworks.SwapData memory swapData = IGasworks.SwapData(
-            buyToken,
-            buyAmount,
-            nativeTokenAmount,
-            payable(swapTarget),
-            swapAllowanceTarget,
-            swapCallData
-        );
-
-        deal(sellToken, ALICE, sellAmount);
-        uint256 previousSellTokenBalance = IERC20(sellToken).balanceOf(ALICE);
-        uint256 previousBuyTokenBalance = IERC20(buyToken).balanceOf(ALICE);
-
-        uint256 currentNonce = getRandomNonce();
-        uint256 currentDeadline = getFiveMinutesDeadlineFromNow();
-
-        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: sellToken, amount: sellAmount }),
-            nonce: currentNonce,
-            deadline: currentDeadline
-        });
-
-        bytes32 msgToSign =
-            getSwapWithPermit2MessageToSign(POLYGON_CHAIN_ID, permit, address(gasworks), swapData);
-        bytes memory signature = signMessage(ALICE_PRIVATE_KEY, msgToSign);
-
-        gasworks.swapWithPermit2(permit, ALICE, signature, swapData);
-
-        assertEq(previousSellTokenBalance - IERC20(sellToken).balanceOf(ALICE), sellAmount);
-        assertEq(IERC20(sellToken).allowance(ALICE, address(gasworks)), 0);
-        assertGe(previousBuyTokenBalance - IERC20(buyToken).balanceOf(ALICE), 0);
-        assertGe(ALICE.balance, swapData.buyAmount); // Receive MATIC, not WMATIC
+    /**
+     * [SUCCESS] Should execute a swap from WEB3 to USDC.e using permit2
+     */
+    function testSwapWithPermit2FromWeb3ToUsdce() public {
+        runLocalSwapQuoteTest("/data/permitTwo/swap/testSwapFromWeb3ToUsdce.json");
     }
 }

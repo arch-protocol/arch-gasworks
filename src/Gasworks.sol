@@ -276,7 +276,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        MintData calldata mintData
+        IGasworks.MintData calldata mintData
     ) external {
         if (permit2.permitted.amount == 0) revert ZeroBalance(permit2.permitted.token);
         if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
@@ -339,7 +339,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        RedeemData calldata redeemData,
+        IGasworks.RedeemData calldata redeemData,
         bool toNative
     ) external {
         if (permit2.permitted.amount == 0) revert ZeroBalance(permit2.permitted.token);
@@ -406,7 +406,7 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
         ISignatureTransfer.PermitTransferFrom memory permit2,
         address owner,
         bytes calldata signature,
-        RedeemAndMintData calldata redeemAndMintData
+        IGasworks.RedeemAndMintData calldata redeemAndMintData
     ) external {
         if (permit2.permitted.amount == 0) revert ZeroBalance(permit2.permitted.token);
         if (!tokens[permit2.permitted.token]) revert InvalidToken(permit2.permitted.token);
@@ -517,9 +517,9 @@ contract Gasworks is IGasworks, ERC2771Recipient, Owned {
     /**
      * Calculate the EIP-712 bytes32 hash of a swapDAta struct.
      *
-     * @param swapData  IGasworks.SwapData
+     * @param swapData  SwapData
      */
-    function _calculateSwapDataTypeWitness(IGasworks.SwapData memory swapData)
+    function _calculateSwapDataTypeWitness(SwapData memory swapData)
         internal
         pure
         returns (bytes32 witness)
